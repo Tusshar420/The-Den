@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 import db
+import router
 
 DASHBOARD_HTML_PATH = Path(__file__).parent / "dashboard.html"
 
@@ -49,6 +50,16 @@ class TaskIn(BaseModel):
     # starting a new one - that task's thread then resumes the same Claude
     # Code session instead of starting from a blank conversation.
     thread_id: Optional[int] = None
+
+
+class JarvisIn(BaseModel):
+    request: str
+    # Omit (or null) to use the built-in "General" project - fine for
+    # questions that don't belong to any repo.
+    project_id: Optional[int] = None
+    # "auto" lets the router decide; a models.json id forces that model.
+    model: str = "auto"
+    priority: int = 0
 
 
 class ApprovalDecisionIn(BaseModel):
@@ -114,8 +125,16 @@ def create_task(project_id: int, body: TaskIn):
         # id rather than the first message's (the dashboard always resolves
         # this itself, but other API clients might not).
         thread_id = root["thread_id"] or root["id"]
+        # A reply stays on whatever model its conversation started with -
+        # switching models mid-thread would lose the session/context.
+        thread_root = db.get_task(thread_id)
+        return db.add_task(project_id, body.prompt, body.priority, thread_id,
+                           lane=thread_root.get("lane") or "agent", model_id=thread_root.get("model_id"),
+                           category=thread_root.get("category"), routed_by="thread",
+                           route_reason="reply - same model as the rest of this chat")
 
-    return db.add_task(project_id, body.prompt, body.priority, thread_id)
+    return db.add_task(project_id, body.prompt, body.priority, thread_id, routed_by="direct",
+                       route_reason="sent straight to Claude Code")
 
 
 @app.post("/tasks/{task_id}/cancel", dependencies=[Depends(require_api_key)])
@@ -190,6 +209,59 @@ def run_checked_todos(project_id: int):
     if not db.get_project(project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     return db.run_checked_todos(project_id)
+
+
+# ------------------------------------------------------------------ JARVIS
+
+GENERAL_PROJECT_NAME = "General"
+GENERAL_PROJECT_PATH = Path(__file__).parent / "workspace" / "general"
+
+
+def _general_project() -> dict:
+    """Home for requests that don't belong to a registered repo. Its folder
+    is only used if such a request gets routed to Claude Code."""
+    GENERAL_PROJECT_PATH.mkdir(parents=True, exist_ok=True)
+    return db.get_project_by_name(GENERAL_PROJECT_NAME) or db.add_project(
+        GENERAL_PROJECT_NAME, str(GENERAL_PROJECT_PATH))
+
+
+@app.post("/jarvis", dependencies=[Depends(require_api_key)])
+def jarvis(body: JarvisIn):
+    """One entry point for any request: classify it, pick a model from
+    models.json, and queue it on the lane that model runs in."""
+    text = body.request.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="request is empty")
+    if body.project_id is not None:
+        project = db.get_project(body.project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    else:
+        project = _general_project()
+
+    try:
+        decision = router.route(
+            text,
+            project_name=None if project["name"] == GENERAL_PROJECT_NAME else project["name"],
+            force_model=body.model,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    task = db.add_task(project["id"], text, body.priority, None, lane=decision["lane"],
+                       model_id=decision["model_id"], category=decision["category"],
+                       route_reason=decision["reason"], routed_by=decision["routed_by"])
+    return {"task": task, "decision": decision}
+
+
+@app.get("/jarvis/models", dependencies=[Depends(require_api_key)])
+def jarvis_models():
+    return router.models_status()
+
+
+@app.get("/jarvis/usage", dependencies=[Depends(require_api_key)])
+def jarvis_usage(days: int = 30):
+    return db.usage_summary(days)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

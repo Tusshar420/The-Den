@@ -634,6 +634,86 @@
     flex: none;
   }
   .modal-footer button:disabled { opacity: .5; }
+
+  /* ------------------------------------------------------------- JARVIS */
+  .jarvis-box {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 14px;
+  }
+  .jarvis-box:focus-within { border-color: var(--accent); }
+  .jarvis-box textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 44px;
+    max-height: 220px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+    padding: 2px 4px;
+  }
+  .jarvis-box textarea:focus { outline: none; }
+  .jarvis-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .jarvis-row select {
+    background: var(--panel-2);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 13px;
+    min-width: 0;
+    max-width: 55%;
+  }
+  .jarvis-target { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jarvis-row button {
+    background: var(--accent);
+    color: #06122a;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    flex: none;
+  }
+  .jarvis-row button:disabled { opacity: .5; }
+  .jarvis-result { font-size: 12.5px; color: var(--muted); margin-top: 8px; word-break: break-word; }
+  .jarvis-result:empty { display: none; }
+  .jarvis-result.err { color: var(--c-error); }
+  .jarvis-result a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+  .model-chip {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 1px 7px;
+    white-space: nowrap;
+    flex: none;
+  }
+  .model-chip.api { color: var(--c-done); }
+  .route-note { font-size: 11px; color: var(--muted); margin-top: 6px; font-style: italic; word-break: break-word; }
+
+  .run-item + .run-item { margin-top: 10px; }
+  .models-list { display: flex; flex-direction: column; gap: 8px; }
+  .model-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .model-row .name { font-weight: 600; flex: none; }
+  .model-row .state { color: var(--muted); font-size: 11.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .model-row .use { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; flex: none; text-align: right; }
+  .model-row .dot.limited { background: var(--c-rate_limited); }
+  .model-row .dot.off { background: var(--c-cancelled); }
+  @media (max-width: 480px) {
+    .model-row { flex-wrap: wrap; row-gap: 0; }
+    .model-row .use { flex: 1; }
+    .model-row .state { order: 3; flex-basis: 100%; padding-left: 16px; white-space: normal; }
+  }
 </style>
 </head>
 <body>
@@ -691,12 +771,24 @@
       <div id="approvals"></div>
 
       <div id="historyView">
+        <div class="jarvis-box">
+          <textarea id="jarvisInput" rows="2" placeholder="Ask JARVIS anything…" onkeydown="onJarvisKeydown(event)"></textarea>
+          <div class="jarvis-row">
+            <select id="jarvisModel" title="Which model handles it">
+              <option value="auto">Auto - JARVIS decides</option>
+            </select>
+            <span class="jarvis-target" id="jarvisTarget"></span>
+            <button id="jarvisSend" onclick="sendJarvis()">Send</button>
+          </div>
+          <div class="jarvis-result" id="jarvisResult"></div>
+        </div>
+
         <div class="stats" id="stats"></div>
 
         <div class="panel">
           <div class="now-grid">
             <div>
-              <div class="now-label">🐙 Octopus is on</div>
+              <div class="now-label">Running now</div>
               <div id="running"></div>
             </div>
             <div>
@@ -704,6 +796,11 @@
               <div id="nextUp"></div>
             </div>
           </div>
+        </div>
+
+        <div class="panel">
+          <div class="now-label">Models · last 30 days</div>
+          <div class="models-list" id="modelsPanel"></div>
         </div>
 
         <div class="task-list" id="taskList"></div>
@@ -757,6 +854,8 @@ let allProjects = [];
 let currentProjectId = null; // null = All projects
 let currentTodos = [];
 let draggingTodoId = null;
+let allModels = [];    // /jarvis/models - registry entries + live availability
+let modelUsage = {};   // model id -> /jarvis/usage by_model row
 
 function apiKey() { return localStorage.getItem('cq_api_key') || ''; }
 
@@ -811,6 +910,8 @@ function renderSidebar() {
 function updateProjectLabel() {
   const proj = currentProjectId == null ? null : allProjects.find(p => p.id === currentProjectId);
   document.getElementById('currentProjectLabel').textContent = proj ? proj.name : 'All projects';
+  document.getElementById('jarvisTarget').textContent =
+    proj && proj.name !== 'General' ? 'in ' + proj.name : 'no project (General)';
 }
 
 function selectProject(id) {
@@ -879,12 +980,15 @@ function renderStats(counts) {
   `).join('');
 }
 
-function renderRunning(task) {
+// Octopus (agent lane) and the api lane can both be busy at once.
+function renderRunning(tasks) {
   const el = document.getElementById('running');
-  if (!task) { el.innerHTML = '<span class="empty">Nothing running</span>'; return; }
-  el.innerHTML = `
-    <div class="now-prompt">${escapeHtml(task.prompt)}</div>
-    <div class="now-meta">started ${timeAgo(task.started_at)}</div>`;
+  if (!tasks || !tasks.length) { el.innerHTML = '<span class="empty">Nothing running</span>'; return; }
+  el.innerHTML = tasks.map(task => `
+    <div class="run-item" onclick="openModal(${task.thread_id || task.id})" style="cursor:pointer">
+      <div class="now-prompt">${escapeHtml(task.prompt)}</div>
+      <div class="now-meta">${modelChip(task)} ${task.lane === 'agent' ? '🐙 ' : ''}started ${timeAgo(task.started_at)}</div>
+    </div>`).join('');
 }
 
 function renderNextUp(task) {
@@ -892,7 +996,101 @@ function renderNextUp(task) {
   if (!task) { el.innerHTML = '<span class="empty">Queue is empty</span>'; return; }
   el.innerHTML = `
     <div class="now-prompt">${escapeHtml(task.prompt)}</div>
-    <div class="now-meta">priority ${task.priority}</div>`;
+    <div class="now-meta">${modelChip(task)} priority ${task.priority}</div>`;
+}
+
+// ------------------------------------------------------------- JARVIS
+
+function modelLabel(id) {
+  const m = allModels.find(x => x.id === id);
+  return m ? (m.label || m.id) : (id || 'Claude Code');
+}
+
+function modelChip(t) {
+  return `<span class="model-chip ${t.lane === 'api' ? 'api' : ''}">${escapeHtml(modelLabel(t.model_id))}</span>`;
+}
+
+function renderModelPicker() {
+  const sel = document.getElementById('jarvisModel');
+  const current = sel.value;
+  sel.innerHTML = '<option value="auto">Auto - JARVIS decides</option>' + allModels
+    .filter(m => m.enabled !== false)
+    .map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label || m.id)}${m.available ? '' : ' (unavailable)'}</option>`)
+    .join('');
+  sel.value = [...sel.options].some(o => o.value === current) ? current : 'auto';
+}
+
+function fmtCost(v) {
+  if (v == null) return '';
+  return v < 0.01 ? '<$0.01' : '~$' + v.toFixed(2);
+}
+
+function renderModelsPanel() {
+  const el = document.getElementById('modelsPanel');
+  if (!allModels.length) { el.innerHTML = '<span class="empty">No models in models.json</span>'; return; }
+  el.innerHTML = allModels.map(m => {
+    const u = modelUsage[m.id] || {};
+    const cls = m.enabled === false ? 'off' : (m.rate_limited_until ? 'limited' : (m.available ? 'ok' : ''));
+    const state = m.available ? (m.lane === 'agent' ? 'agent · runs in the project' : 'api · answers only')
+      : m.rate_limited_until ? 'rate limited · back ' + inFuture(m.rate_limited_until)
+      : m.unavailable_reason;
+    const done = u.done || 0, failed = u.failed || 0;
+    const use = u.tasks
+      ? `${u.tasks} task${u.tasks === 1 ? '' : 's'}${done + failed ? ' · ' + Math.round(100 * done / (done + failed)) + '% ok' : ''}${u.cost_usd != null ? ' · ' + fmtCost(u.cost_usd) : ''}`
+      : 'unused';
+    return `
+      <div class="model-row">
+        <span class="dot ${cls}"></span>
+        <span class="name">${escapeHtml(m.label || m.id)}</span>
+        <span class="state">${escapeHtml(state)}</span>
+        <span class="use">${use}</span>
+      </div>`;
+  }).join('');
+}
+
+function onJarvisKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendJarvis();
+  }
+}
+
+async function sendJarvis() {
+  const input = document.getElementById('jarvisInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const btn = document.getElementById('jarvisSend');
+  const out = document.getElementById('jarvisResult');
+  const proj = currentProjectId == null ? null : allProjects.find(p => p.id === currentProjectId);
+  input.disabled = true;
+  btn.disabled = true;
+  out.className = 'jarvis-result';
+  out.textContent = 'Routing…';
+  try {
+    const res = await fetch('/jarvis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey() },
+      body: JSON.stringify({
+        request: text,
+        project_id: proj && proj.name !== 'General' ? proj.id : null,
+        model: document.getElementById('jarvisModel').value,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || 'request failed: ' + res.status);
+    input.value = '';
+    const d = data.decision;
+    out.innerHTML = `→ <b>${escapeHtml(modelLabel(d.model_id))}</b> · ${escapeHtml(d.reason)} · <a onclick="openModal(${data.task.id})">open #${data.task.id}</a>`;
+    if (!allProjects.some(p => p.id === data.task.project_id)) await loadProjects();
+    await refresh();
+  } catch (e) {
+    out.className = 'jarvis-result err';
+    out.textContent = 'Could not send: ' + e.message;
+  } finally {
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }
 }
 
 function renderFilters() {
@@ -1007,6 +1205,7 @@ function renderTasks(roots) {
         <div class="task-top">
           <span class="task-id">#${root.id}</span>
           <span class="task-project">${escapeHtml(root.project_name)}</span>
+          ${modelChip(root)}
           <span class="spacer"></span>
           ${count > 1 ? `<span class="thread-count">${count}</span>` : ''}
           ${badge(latest.status)}
@@ -1089,7 +1288,10 @@ function renderModal() {
   const thread = currentThreadTasks();
   if (!thread.length) { closeModal(); return; }
   const root = thread[0];
-  document.getElementById('modalProject').textContent = root.project_name;
+  document.getElementById('modalProject').textContent = root.project_name + ' · ' + modelLabel(root.model_id);
+  // The quick actions (run tests, deploy...) only make sense where the
+  // model can actually act on the project.
+  document.getElementById('quickbar').style.display = root.lane === 'api' ? 'none' : '';
   document.getElementById('modalTitle').textContent = '#' + root.id + (thread.length > 1 ? ` · ${thread.length} messages` : '');
 
   const threadIds = new Set(thread.map(t => t.id));
@@ -1100,14 +1302,13 @@ function renderModal() {
   const chat = document.getElementById('modalChat');
   const wasNearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 60;
 
-  chat.innerHTML = thread.map(t => {
+  chat.innerHTML = thread.map((t, i) => {
     const c = claudeBubble(t);
+    const secs = t.duration_ms ? ' · ' + (t.duration_ms / 1000).toFixed(1) + 's' : '';
+    const cost = t.cost_usd != null ? ' · ' + fmtCost(t.cost_usd) : '';
     return `
       <div class="bubble bubble-user">${escapeHtml(t.prompt)}</div>
-      <div class="bubble bubble-claude ${c.cls}">
-        ${escapeHtml(c.text)}
-        <div class="bubble-meta">${badge(t.status)}<span>${timeAgo(t.created_at)}</span></div>
-      </div>`;
+      <div class="bubble bubble-claude ${c.cls}">${escapeHtml(c.text)}<div class="bubble-meta">${badge(t.status)}<span>${escapeHtml(modelLabel(t.model_id))} · ${timeAgo(t.created_at)}${secs}${cost}</span></div>${i === 0 && t.route_reason ? `<div class="route-note">Routed: ${escapeHtml(t.route_reason)}</div>` : ''}</div>`;
   }).join('');
 
   if (wasNearBottom) chat.scrollTop = chat.scrollHeight;
@@ -1168,16 +1369,22 @@ async function sendReply() {
 
 async function refresh() {
   try {
-    const [status, tasks, approvals] = await Promise.all([
+    const [status, tasks, approvals, models, usage] = await Promise.all([
       api('/queue/status'),
       api('/tasks?limit=200'
         + (activeFilter !== 'all' ? '&status=' + activeFilter : '')
         + (currentProjectId != null ? '&project_id=' + currentProjectId : '')),
       api('/approvals'),
+      api('/jarvis/models').catch(() => allModels),
+      api('/jarvis/usage').catch(() => null),
     ]);
     document.getElementById('healthDot').classList.add('ok');
+    allModels = models;
+    if (usage) modelUsage = Object.fromEntries(usage.by_model.map(r => [r.key, r]));
+    renderModelPicker();
+    renderModelsPanel();
     renderStats(status.counts || {});
-    renderRunning(status.running);
+    renderRunning(status.running_all || (status.running ? [status.running] : []));
     renderNextUp(status.next_up);
     allApprovals = approvals;
     renderApprovals(approvals);

@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Optional
 
 import db
+import providers
+import router
 
 
 
@@ -145,17 +147,20 @@ def _next_backoff(task_id: int) -> datetime:
 class TaskResult:
     def __init__(self, success: bool, rate_limited: bool = False,
                  summary: str = "", error: str = "", resume_at: Optional[datetime] = None,
-                 session_id: Optional[str] = None):
+                 session_id: Optional[str] = None, usage: Optional[dict] = None):
         self.success = success
         self.rate_limited = rate_limited
         self.summary = summary
         self.error = error
         self.resume_at = resume_at
         self.session_id = session_id
+        # duration_ms / input_tokens / output_tokens / cost_usd, whichever
+        # the run reported - see db.set_task_usage.
+        self.usage = usage or {}
 
 
 async def run_claude_task(prompt: str, project_path: str, task_id: int,
-                           session_id: Optional[str] = None) -> TaskResult:
+                           session_id: Optional[str] = None, model: Optional[str] = None) -> TaskResult:
     # Resuming an existing session_id (the caller's thread, from
     # db.get_thread_session_id) keeps this task in the same conversation -
     # so "remove the thing you just added" refers to what Claude actually
@@ -164,6 +169,8 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
     cmd = [CLAUDE_BIN, "-p", prompt]
     if session_id:
         cmd += ["--resume", session_id]
+    if model:
+        cmd += ["--model", model]
     cmd += CLAUDE_EXTRA_ARGS
     if MCP_CONFIG_PATH.exists():
         cmd += ["--mcp-config", str(MCP_CONFIG_PATH), "--permission-prompt-tool", PERMISSION_PROMPT_TOOL]
@@ -200,6 +207,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
     # Try structured JSON output first (--output-format json)
     summary = None
     new_session_id = None
+    usage: dict = {}
     is_error = proc.returncode != 0
     try:
         parsed = json.loads(stdout)
@@ -209,6 +217,17 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
             if "is_error" in parsed:
                 is_error = bool(parsed["is_error"]) or is_error
             new_session_id = parsed.get("session_id") or None
+            # total_cost_usd is Claude Code's API-price estimate - on a
+            # subscription it's what the run *would* have cost, still a
+            # useful yardstick for comparing against the api lane.
+            u = parsed.get("usage") or {}
+            usage = {
+                "duration_ms": parsed.get("duration_ms"),
+                "input_tokens": (u.get("input_tokens") or 0) + (u.get("cache_read_input_tokens") or 0)
+                                + (u.get("cache_creation_input_tokens") or 0) if u else None,
+                "output_tokens": u.get("output_tokens"),
+                "cost_usd": parsed.get("total_cost_usd"),
+            }
     except (json.JSONDecodeError, ValueError):
         pass
 
@@ -216,15 +235,16 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
         summary = stdout[-4000:] if stdout.strip() else stderr[-4000:]
 
     if is_error:
-        return TaskResult(False, error=summary or stderr[-2000:], session_id=new_session_id)
+        return TaskResult(False, error=summary or stderr[-2000:], session_id=new_session_id, usage=usage)
 
-    return TaskResult(True, summary=summary, session_id=new_session_id)
+    return TaskResult(True, summary=summary, session_id=new_session_id, usage=usage)
 
 
 async def worker_loop(stop_event: asyncio.Event) -> None:
+    """Octopus: the agent lane - Claude Code running inside the project."""
     log.info("Worker loop started (polling every %ss)", POLL_INTERVAL_SECONDS)
     while not stop_event.is_set():
-        task = db.get_next_queued_task()
+        task = db.get_next_queued_task("agent")
         if not task:
             await asyncio.sleep(POLL_INTERVAL_SECONDS)
             continue
@@ -242,10 +262,18 @@ async def worker_loop(stop_event: asyncio.Event) -> None:
         # on its own first run - i.e. it starts a fresh conversation.
         thread_root_id = task["thread_id"] or task["id"]
         resume_session_id = db.get_thread_session_id(thread_root_id)
-        result = await run_claude_task(task["prompt"], project["path"], task["id"], resume_session_id)
+        model_cfg = router.get_model(task.get("model_id") or "claude-code") or {}
+        started = datetime.now(timezone.utc)
+        result = await run_claude_task(task["prompt"], project["path"], task["id"], resume_session_id,
+                                       model=model_cfg.get("model"))
 
         if result.session_id:
             db.set_task_session(task["id"], result.session_id)
+        if not result.rate_limited:
+            usage = dict(result.usage)
+            if not usage.get("duration_ms"):
+                usage["duration_ms"] = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+            db.set_task_usage(task["id"], **usage)
 
         if result.rate_limited:
             resume_at = result.resume_at or _next_backoff(task["id"])
@@ -267,3 +295,84 @@ async def worker_loop(stop_event: asyncio.Event) -> None:
             db.mark_error(task["id"], result.error, needs_review=True)
             log.error("Task %s failed: %s", task["id"], result.error[:300])
             notify_phone("Claude task needs review", f"{project['name']}: {task['prompt'][:100]}")
+
+
+# ------------------------------------------------------------------ api lane
+# Plain model calls (OpenAI etc.) routed here by JARVIS. They touch no
+# project files, so they run alongside Octopus instead of waiting behind a
+# long coding task - "explain this function" shouldn't queue for an hour.
+
+API_TASK_TIMEOUT_SECONDS = int(os.environ.get("API_TASK_TIMEOUT_SECONDS", "300"))
+API_RESULT_MAX_CHARS = 20000
+
+API_INSTRUCTIONS = """You are JARVIS, Tushar's personal AI assistant. Answer directly and clearly.
+You are answering through a chat on a dashboard, not inside a project: you cannot read the user's files,
+run commands or change anything. If the request truly needs that, say so briefly so the user can resend
+it as a coding task."""
+
+
+def _api_messages(task: dict) -> list[dict]:
+    root_id = task["thread_id"] or task["id"]
+    messages = []
+    for prev in db.get_thread_history(root_id, task["id"]):
+        messages.append({"role": "user", "content": prev["prompt"]})
+        if prev["status"] == "done" and prev["result_summary"]:
+            messages.append({"role": "assistant", "content": prev["result_summary"]})
+    messages.append({"role": "user", "content": task["prompt"]})
+    return messages
+
+
+async def api_worker_loop(stop_event: asyncio.Event) -> None:
+    log.info("API lane started (polling every %ss)", POLL_INTERVAL_SECONDS)
+    while not stop_event.is_set():
+        try:
+            limited = tuple(m["id"] for m in router.registry().get("models", [])
+                            if router.lane_for(m) == "api" and db.model_rate_limited_until(m["id"]))
+        except Exception as e:  # a half-saved models.json shouldn't kill the lane
+            log.error("Could not read models.json: %s", e)
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            continue
+
+        task = db.get_next_queued_task("api", exclude_models=limited)
+        if not task:
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            continue
+
+        project = db.get_project(task["project_id"])
+        model_cfg = router.get_model(task.get("model_id"))
+        if not model_cfg:
+            db.mark_error(task["id"], f"Model '{task.get('model_id')}' is no longer in models.json", needs_review=True)
+            continue
+
+        db.mark_running(task["id"])
+        log.info("API lane: task %s -> %s", task["id"], model_cfg["id"])
+        started = datetime.now(timezone.utc)
+        try:
+            instructions = API_INSTRUCTIONS
+            if project and project["name"] != "General":
+                instructions += f"\nThe user currently has the project '{project['name']}' selected."
+            completion = await asyncio.to_thread(
+                providers.complete, model_cfg, _api_messages(task), instructions, API_TASK_TIMEOUT_SECONDS)
+        except providers.ProviderError as e:
+            if e.rate_limited:
+                resume_at = datetime.now(timezone.utc) + timedelta(seconds=e.retry_after or 60)
+                db.set_model_rate_limited(model_cfg["id"], resume_at.isoformat(), str(e))
+                db.mark_rate_limited(task["id"], resume_at.isoformat())
+                log.warning("API lane: %s rate-limited until %s", model_cfg["id"], resume_at.isoformat())
+            else:
+                db.mark_error(task["id"], str(e), needs_review=True)
+                log.error("API lane: task %s failed: %s", task["id"], e)
+                notify_phone("JARVIS task needs review", f"{model_cfg.get('label')}: {task['prompt'][:100]}")
+            continue
+        except Exception as e:
+            db.mark_error(task["id"], f"Unexpected error: {e}", needs_review=True)
+            log.exception("API lane: task %s crashed", task["id"])
+            continue
+
+        duration_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        db.clear_model_rate_limit(model_cfg["id"])
+        db.set_task_usage(task["id"], duration_ms, completion.input_tokens, completion.output_tokens,
+                          providers.estimate_cost(model_cfg, completion.input_tokens, completion.output_tokens))
+        db.mark_done(task["id"], completion.text[:API_RESULT_MAX_CHARS] or "(empty response)")
+        log.info("API lane: task %s done in %sms", task["id"], duration_ms)
+        notify_phone("JARVIS answered", f"{model_cfg.get('label')}: {task['prompt'][:150]}")

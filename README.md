@@ -159,6 +159,9 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | DELETE | `/todos/{id}` | - | remove a todo item |
 | POST | `/projects/{id}/todos/reorder` | `{"ids": [...]}` | set the todo order (full id list, in the new order) |
 | POST | `/projects/{id}/todos/run` | - | queue every checked, not-yet-run todo, in order |
+| POST | `/jarvis` | `{"request", "project_id"?, "model"?, "priority"?}` | JARVIS: classify + route a request, queue it on the right lane (see below) |
+| GET | `/jarvis/models` | - | models from `models.json` plus live availability (key set? rate-limited?) |
+| GET | `/jarvis/usage` | - | per-model / per-category counts, success, duration, tokens, est. cost (`?days=30`) |
 
 ## Safety note
 
@@ -240,6 +243,47 @@ finishes before box 2 starts. A checkbox greys out while its task is
 in-flight (queued/running); once it finishes, uncheck and re-check the
 item to stage a fresh rerun. Unchecking an in-flight item doesn't cancel
 it - use the cancel button on the task itself (in History) for that.
+
+## JARVIS (V1): routing requests to the right model
+
+The "Ask JARVIS" box at the top of the dashboard (or `POST /jarvis`) takes
+any request and decides where it goes, instead of everything going to
+Claude Code:
+
+1. **Classify** - a cheap model (`routing.classifier` in `models.json`)
+   labels the request `coding`, `general` or `simple`. If that model
+   isn't reachable, keyword rules in `router.py` decide instead.
+2. **Pick a model** - each category in `models.json` has an ordered
+   `candidates` list. The first one that is enabled, has its API key and
+   isn't rate-limited wins; the rest are fallbacks. `coding` is marked
+   `"transferable": false`, so it waits for Claude Code through a rate
+   limit rather than hopping to a model without project access.
+3. **Queue it** - on the lane that model runs in:
+   - `agent` lane = Octopus, unchanged: `claude -p` inside the project.
+   - `api` lane = a plain model call (`providers.py`), run by a second
+     loop in `worker.py` alongside Octopus, so a quick question never
+     waits behind an hour-long coding task.
+
+Every task records the decision (`model_id`, `category`, `routed_by`,
+`route_reason`) and its usage (`duration_ms`, tokens, estimated
+`cost_usd`) - shown in the chat view and the dashboard's Models panel,
+and summarised by `GET /jarvis/usage`.
+
+Things that did not change: the plain `POST /projects/{id}/tasks`
+endpoint and Todos still go straight to Claude Code; a reply always stays
+on its thread's model (Claude threads keep `--resume`, api-lane threads
+get the earlier messages as history); approvals work as before.
+
+**Registry** - `models.json` lists every model (provider, capabilities,
+rough coding/reasoning/cost/speed ratings, context size, price) and the
+routing rules. It's re-read on change - no restart needed to add a model,
+disable one (`"enabled": false`) or reorder fallbacks. Requests without a
+project land in a built-in **General** project (`workspace/general/`).
+
+**Setup** - add your OpenAI API key (platform.openai.com - separate from
+a ChatGPT subscription) to the plist's `EnvironmentVariables` as
+`OPENAI_API_KEY`, then restart the service. Without it, OpenAI models show
+as unavailable and general/simple requests fall back to Claude Code.
 
 ## Not built yet (next phases)
 

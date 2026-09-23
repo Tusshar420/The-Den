@@ -1,0 +1,80 @@
+{
+  "_readme": [
+    "JARVIS model registry + routing rules. Re-read on every request - edit and save, no restart needed.",
+    "models[]: one entry per model JARVIS may use. 'provider' picks the code that talks to it:",
+    "  claude_code = the existing Octopus worker (runs `claude -p` inside the project folder; set 'model' to pass --model),",
+    "  openai      = OpenAI Responses API (needs OPENAI_API_KEY in the launchd plist).",
+    "Set 'enabled': false to take a model out of rotation without deleting it.",
+    "coding/reasoning are rough 1-5 ratings, cost/speed are relative 1-5 (5 = most expensive / fastest).",
+    "price_per_mtok (USD per million tokens) is only used to estimate cost - check current prices before trusting it.",
+    "routing.categories: for each task category, 'candidates' is the preference order - the first one that is",
+    "enabled and not rate-limited wins, the rest are fallbacks. 'transferable': false means never fall back just",
+    "because the first choice is rate-limited - wait for it instead (coding work shouldn't hop models mid-project)."
+  ],
+  "models": [
+    {
+      "id": "claude-code",
+      "label": "Claude Code",
+      "provider": "claude_code",
+      "model": null,
+      "enabled": true,
+      "capabilities": ["coding", "filesystem", "terminal", "git", "reasoning", "long_context"],
+      "coding": 5,
+      "reasoning": 5,
+      "vision": true,
+      "context_tokens": 200000,
+      "cost": 5,
+      "speed": 2
+    },
+    {
+      "id": "gpt-6-sol",
+      "label": "GPT-6 Sol",
+      "provider": "openai",
+      "model": "gpt-6-sol",
+      "enabled": true,
+      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context"],
+      "coding": 4,
+      "reasoning": 4,
+      "vision": true,
+      "context_tokens": 1050000,
+      "cost": 3,
+      "speed": 3,
+      "price_per_mtok": {"input": 2.0, "output": 10.0}
+    },
+    {
+      "id": "gpt-6-luna",
+      "label": "GPT-6 Luna",
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "enabled": true,
+      "capabilities": ["general", "classification", "vision", "long_context"],
+      "coding": 2,
+      "reasoning": 2,
+      "vision": true,
+      "context_tokens": 1050000,
+      "cost": 1,
+      "speed": 5,
+      "price_per_mtok": {"input": 0.1, "output": 0.5}
+    }
+  ],
+  "routing": {
+    "classifier": "gpt-6-luna",
+    "categories": {
+      "coding": {
+        "description": "Needs to read or change files in the user's project, run commands, tests or git, deploy, or otherwise act on the codebase.",
+        "candidates": ["claude-code"],
+        "transferable": false
+      },
+      "general": {
+        "description": "Writing, explaining, analysing, planning or answering where everything needed is in the message itself - including explaining code that is pasted in.",
+        "candidates": ["gpt-6-sol", "claude-code"],
+        "transferable": true
+      },
+      "simple": {
+        "description": "A short factual question, definition, quick rewrite or small talk that a small fast model handles well.",
+        "candidates": ["gpt-6-luna", "gpt-6-sol", "claude-code"],
+        "transferable": true
+      }
+    }
+  }
+}

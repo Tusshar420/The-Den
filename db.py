@@ -8,7 +8,7 @@ for a heavier DB. Keeping this dependency-free (sqlite3 is stdlib).
 
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -45,7 +45,31 @@ CREATE TABLE IF NOT EXISTS tasks (
     -- The Claude Code session this exact task ran (or resumed) in. The
     -- next reply in the same thread resumes whichever task in that
     -- thread most recently captured one - see get_thread_session_id.
-    session_id TEXT
+    session_id TEXT,
+    -- JARVIS routing (see router.py / models.json). lane 'agent' = the
+    -- Octopus worker (Claude Code in the project folder); 'api' = a plain
+    -- model call handled by worker.api_worker_loop. A reply always inherits
+    -- its thread root's lane and model_id so a conversation never hops models.
+    lane TEXT NOT NULL DEFAULT 'agent',
+    model_id TEXT,
+    category TEXT,
+    route_reason TEXT,
+    -- classifier | rules | manual | thread | direct
+    routed_by TEXT,
+    -- Usage, filled in when the task finishes. cost_usd is an estimate.
+    duration_ms INTEGER,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    cost_usd REAL
+);
+
+-- Per-model availability that outlives a single task: set when a provider
+-- answers "rate limited" so the router can skip that model until then.
+CREATE TABLE IF NOT EXISTS model_state (
+    model_id TEXT PRIMARY KEY,
+    rate_limited_until TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL
 );
 
 -- A tool call (usually Bash) that needed permission while a task was
@@ -104,6 +128,22 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE tasks ADD COLUMN thread_id INTEGER REFERENCES tasks(id)")
     if "session_id" not in cols:
         conn.execute("ALTER TABLE tasks ADD COLUMN session_id TEXT")
+    for name, decl in (
+        ("lane", "TEXT NOT NULL DEFAULT 'agent'"),
+        ("model_id", "TEXT"),
+        ("category", "TEXT"),
+        ("route_reason", "TEXT"),
+        ("routed_by", "TEXT"),
+        ("duration_ms", "INTEGER"),
+        ("input_tokens", "INTEGER"),
+        ("output_tokens", "INTEGER"),
+        ("cost_usd", "REAL"),
+    ):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {decl}")
+    # Everything queued before JARVIS ran on Claude Code - say so, so usage
+    # stats don't lump it under "unknown".
+    conn.execute("UPDATE tasks SET model_id = 'claude-code' WHERE model_id IS NULL AND lane = 'agent'")
     conn.commit()
 
 
@@ -169,16 +209,55 @@ def set_project_active(project_id: int, active: bool) -> None:
 
 # ------------------------------------------------------------------- tasks
 
-def add_task(project_id: int, prompt: str, priority: int = 0, thread_id: Optional[int] = None) -> dict[str, Any]:
+def add_task(
+    project_id: int,
+    prompt: str,
+    priority: int = 0,
+    thread_id: Optional[int] = None,
+    lane: str = "agent",
+    model_id: Optional[str] = None,
+    category: Optional[str] = None,
+    route_reason: Optional[str] = None,
+    routed_by: Optional[str] = None,
+) -> dict[str, Any]:
+    """Defaults (agent lane, claude-code) are what every pre-JARVIS caller -
+    the plain task endpoint, todos - has always meant."""
+    if model_id is None and lane == "agent":
+        model_id = "claude-code"
     with _lock:
         conn = get_conn()
         cur = conn.execute(
-            "INSERT INTO tasks (project_id, prompt, priority, status, created_at, thread_id) "
-            "VALUES (?, ?, ?, 'queued', ?, ?)",
-            (project_id, prompt, priority, _now(), thread_id),
+            "INSERT INTO tasks (project_id, prompt, priority, status, created_at, thread_id, "
+            "lane, model_id, category, route_reason, routed_by) "
+            "VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)",
+            (project_id, prompt, priority, _now(), thread_id,
+             lane, model_id, category, route_reason, routed_by),
         )
         conn.commit()
         return get_task(cur.lastrowid)
+
+
+def get_thread_history(root_task_id: int, before_task_id: int) -> list[dict[str, Any]]:
+    """Earlier messages of a thread (root included), oldest first - what an
+    api-lane model is shown as the conversation so far."""
+    with _lock:
+        conn = get_conn()
+        rows = conn.execute(
+            "SELECT * FROM tasks WHERE (id = ? OR thread_id = ?) AND id < ? ORDER BY id ASC",
+            (root_task_id, root_task_id, before_task_id),
+        ).fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def set_task_usage(task_id: int, duration_ms: Optional[int] = None, input_tokens: Optional[int] = None,
+                   output_tokens: Optional[int] = None, cost_usd: Optional[float] = None) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE tasks SET duration_ms = ?, input_tokens = ?, output_tokens = ?, cost_usd = ? WHERE id = ?",
+            (duration_ms, input_tokens, output_tokens, cost_usd, task_id),
+        )
+        conn.commit()
 
 
 def get_thread_session_id(root_task_id: int) -> Optional[str]:
@@ -255,26 +334,30 @@ def list_all_tasks(
         return [_row_to_dict(r) for r in conn.execute(q, params).fetchall()]
 
 
-def get_next_queued_task() -> Optional[dict[str, Any]]:
-    """Next task to run: queued tasks, or rate_limited tasks whose resume_at has passed,
-    only from active projects. Highest priority first, then oldest first."""
+def get_next_queued_task(lane: str = "agent", exclude_models: tuple = ()) -> Optional[dict[str, Any]]:
+    """Next task to run in this lane: queued tasks, or rate_limited tasks whose
+    resume_at has passed, only from active projects. Highest priority first,
+    then oldest first. exclude_models skips tasks for models currently known
+    to be rate-limited, so the api lane doesn't keep hitting a limited model."""
     with _lock:
         conn = get_conn()
         now = _now()
-        row = conn.execute(
-            """
+        q = """
             SELECT t.* FROM tasks t
             JOIN projects p ON p.id = t.project_id
             WHERE p.active = 1
+              AND t.lane = ?
               AND (
                     t.status = 'queued'
                     OR (t.status = 'rate_limited' AND t.resume_at IS NOT NULL AND t.resume_at <= ?)
                   )
-            ORDER BY t.priority DESC, t.created_at ASC
-            LIMIT 1
-            """,
-            (now,),
-        ).fetchone()
+        """
+        params: list[Any] = [lane, now]
+        if exclude_models:
+            q += f" AND COALESCE(t.model_id, '') NOT IN ({','.join('?' * len(exclude_models))})"
+            params.extend(exclude_models)
+        q += " ORDER BY t.priority DESC, t.created_at ASC LIMIT 1"
+        row = conn.execute(q, params).fetchone()
         return _row_to_dict(row) if row else None
 
 
@@ -498,14 +581,96 @@ def queue_status() -> dict[str, Any]:
             r["status"]: r["n"]
             for r in conn.execute("SELECT status, COUNT(*) as n FROM tasks GROUP BY status").fetchall()
         }
-        running = conn.execute("SELECT * FROM tasks WHERE status = 'running' LIMIT 1").fetchone()
-        next_up = get_next_queued_task()
+        # "running" stays Octopus's own task (agent lane) for older clients;
+        # running_all adds whatever the api lane is doing alongside it.
+        running = conn.execute(
+            "SELECT * FROM tasks WHERE status = 'running' AND lane = 'agent' LIMIT 1"
+        ).fetchone()
+        running_all = conn.execute(
+            "SELECT * FROM tasks WHERE status = 'running' ORDER BY started_at ASC"
+        ).fetchall()
+        next_up = get_next_queued_task("agent") or get_next_queued_task("api")
         rate_limited = conn.execute(
             "SELECT * FROM tasks WHERE status = 'rate_limited' ORDER BY resume_at ASC LIMIT 1"
         ).fetchone()
         return {
             "counts": counts,
             "running": _row_to_dict(running) if running else None,
+            "running_all": [_row_to_dict(r) for r in running_all],
             "next_up": next_up,
             "earliest_rate_limit_resume": _row_to_dict(rate_limited) if rate_limited else None,
         }
+
+
+# -------------------------------------------------------------- model state
+
+def set_model_rate_limited(model_id: str, until_iso: str, error: str = "") -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO model_state (model_id, rate_limited_until, last_error, updated_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(model_id) DO UPDATE SET rate_limited_until = excluded.rate_limited_until, "
+            "last_error = excluded.last_error, updated_at = excluded.updated_at",
+            (model_id, until_iso, error[:500], _now()),
+        )
+        conn.commit()
+
+
+def clear_model_rate_limit(model_id: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE model_state SET rate_limited_until = NULL, updated_at = ? WHERE model_id = ?",
+            (_now(), model_id),
+        )
+        conn.commit()
+
+
+def model_rate_limited_until(model_id: str) -> Optional[str]:
+    """ISO time this model is known to be rate-limited until, or None if it
+    isn't (or the limit has already passed). For claude-code this is derived
+    from Octopus's own rate_limited tasks, which is where that limit shows up."""
+    with _lock:
+        conn = get_conn()
+        now = _now()
+        if model_id == "claude-code":
+            row = conn.execute(
+                "SELECT MAX(resume_at) AS until FROM tasks "
+                "WHERE status = 'rate_limited' AND lane = 'agent' AND resume_at > ?",
+                (now,),
+            ).fetchone()
+            return row["until"] if row and row["until"] else None
+        row = conn.execute(
+            "SELECT rate_limited_until FROM model_state WHERE model_id = ? AND rate_limited_until > ?",
+            (model_id, now),
+        ).fetchone()
+        return row["rate_limited_until"] if row else None
+
+
+def usage_summary(days: int = 30) -> dict[str, Any]:
+    """Per-model and per-category totals over the last `days` - the data
+    future routing decisions can learn from (success rate, cost, speed)."""
+    with _lock:
+        conn = get_conn()
+        since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+        def grouped(col: str) -> list[dict[str, Any]]:
+            rows = conn.execute(
+                f"""
+                SELECT COALESCE({col}, 'unknown') AS key,
+                       COUNT(*) AS tasks,
+                       SUM(status = 'done') AS done,
+                       SUM(status IN ('error', 'needs_review')) AS failed,
+                       SUM(status = 'rate_limited') AS rate_limited,
+                       AVG(duration_ms) AS avg_duration_ms,
+                       SUM(input_tokens) AS input_tokens,
+                       SUM(output_tokens) AS output_tokens,
+                       SUM(cost_usd) AS cost_usd
+                FROM tasks WHERE created_at >= ?
+                GROUP BY key ORDER BY tasks DESC
+                """,
+                (since,),
+            ).fetchall()
+            return [_row_to_dict(r) for r in rows]
+
+        return {"days": days, "by_model": grouped("model_id"), "by_category": grouped("category")}
