@@ -27,6 +27,13 @@ class ProviderError(Exception):
         self.retry_after = retry_after
 
 
+# Provider-side overload/outage ("high demand, try again later") - not the
+# request's fault, so it's retried like a short rate limit rather than
+# marked as failed.
+TRANSIENT_HTTP_CODES = (500, 502, 503, 504)
+TRANSIENT_RETRY_SECONDS = 30
+
+
 class Completion:
     def __init__(self, text: str, input_tokens: Optional[int] = None, output_tokens: Optional[int] = None):
         self.text = text
@@ -87,6 +94,9 @@ def openai_complete(model: str, messages: list[dict[str, str]], instructions: Op
             retry_after = e.headers.get("retry-after")
             raise ProviderError(f"OpenAI rate limit: {msg}", rate_limited=True,
                                 retry_after=int(float(retry_after)) if retry_after else None)
+        if e.code in TRANSIENT_HTTP_CODES:
+            raise ProviderError(f"OpenAI temporarily unavailable ({e.code}): {msg}", rate_limited=True,
+                                retry_after=TRANSIENT_RETRY_SECONDS)
         raise ProviderError(f"OpenAI error {e.code}: {msg}")
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise ProviderError(f"Could not reach OpenAI: {e}")
@@ -164,6 +174,9 @@ def gemini_complete(model: str, messages: list[dict[str, str]], instructions: Op
         if e.code == 429:
             raise ProviderError(f"Gemini rate limit: {msg}", rate_limited=True,
                                 retry_after=_gemini_retry_after(err))
+        if e.code in TRANSIENT_HTTP_CODES:
+            raise ProviderError(f"Gemini temporarily unavailable ({e.code}): {msg}", rate_limited=True,
+                                retry_after=_gemini_retry_after(err) or TRANSIENT_RETRY_SECONDS)
         raise ProviderError(f"Gemini error {e.code}: {msg}")
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise ProviderError(f"Could not reach Gemini: {e}")
