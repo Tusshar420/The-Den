@@ -52,7 +52,7 @@ class TaskIn(BaseModel):
     thread_id: Optional[int] = None
 
 
-class JarvisIn(BaseModel):
+class OctopusIn(BaseModel):
     request: str
     # Omit (or null) to use the built-in "General" project - fine for
     # questions that don't belong to any repo.
@@ -211,7 +211,7 @@ def run_checked_todos(project_id: int):
     return db.run_checked_todos(project_id)
 
 
-# ------------------------------------------------------------------ JARVIS
+# ------------------------------------------------------------------ Octopus
 
 GENERAL_PROJECT_NAME = "General"
 GENERAL_PROJECT_PATH = Path(__file__).parent / "workspace" / "general"
@@ -225,8 +225,8 @@ def _general_project() -> dict:
         GENERAL_PROJECT_NAME, str(GENERAL_PROJECT_PATH))
 
 
-@app.post("/jarvis", dependencies=[Depends(require_api_key)])
-def jarvis(body: JarvisIn):
+@app.post("/octopus", dependencies=[Depends(require_api_key)])
+def octopus(body: OctopusIn):
     """One entry point for any request: classify it, pick a model from
     models.json, and queue it on the lane that model runs in."""
     text = body.request.strip()
@@ -254,13 +254,13 @@ def jarvis(body: JarvisIn):
     return {"task": task, "decision": decision}
 
 
-@app.get("/jarvis/models", dependencies=[Depends(require_api_key)])
-def jarvis_models():
+@app.get("/octopus/models", dependencies=[Depends(require_api_key)])
+def octopus_models():
     return router.models_status()
 
 
-@app.get("/jarvis/usage", dependencies=[Depends(require_api_key)])
-def jarvis_usage(days: int = 30):
+@app.get("/octopus/usage", dependencies=[Depends(require_api_key)])
+def octopus_usage(days: int = 30):
     return db.usage_summary(days)
 
 

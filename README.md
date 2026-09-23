@@ -6,9 +6,10 @@ at a time, automatically moving to the next task when one finishes, and
 automatically resuming if it hits a usage limit. A local HTTP API in front
 of it is what your phone (via iOS Shortcuts, over Tailscale) talks to.
 
-The background worker that actually pulls tasks and runs them (`worker.py`)
-goes by **Octopus** - one brain processing at a time, but reaching into
-however many projects have work queued.
+The whole system goes by **Octopus** - one brain (the router, which
+decides which model handles a request) with many arms (Claude Code in any
+registered project, plus API models like OpenAI's), reaching into however
+many projects have work queued.
 
 This is Phase 1-4 of the plan: the engine, rate-limit auto-resume, running
 it as a background service, and the API. iOS Shortcuts and a nicer status
@@ -159,9 +160,9 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | DELETE | `/todos/{id}` | - | remove a todo item |
 | POST | `/projects/{id}/todos/reorder` | `{"ids": [...]}` | set the todo order (full id list, in the new order) |
 | POST | `/projects/{id}/todos/run` | - | queue every checked, not-yet-run todo, in order |
-| POST | `/jarvis` | `{"request", "project_id"?, "model"?, "priority"?}` | JARVIS: classify + route a request, queue it on the right lane (see below) |
-| GET | `/jarvis/models` | - | models from `models.json` plus live availability (key set? rate-limited?) |
-| GET | `/jarvis/usage` | - | per-model / per-category counts, success, duration, tokens, est. cost (`?days=30`) |
+| POST | `/octopus` | `{"request", "project_id"?, "model"?, "priority"?}` | Octopus: classify + route a request, queue it on the right lane (see below) |
+| GET | `/octopus/models` | - | models from `models.json` plus live availability (key set? rate-limited?) |
+| GET | `/octopus/usage` | - | per-model / per-category counts, success, duration, tokens, est. cost (`?days=30`) |
 
 ## Safety note
 
@@ -244,9 +245,9 @@ in-flight (queued/running); once it finishes, uncheck and re-check the
 item to stage a fresh rerun. Unchecking an in-flight item doesn't cancel
 it - use the cancel button on the task itself (in History) for that.
 
-## JARVIS (V1): routing requests to the right model
+## Octopus (V1): routing requests to the right model
 
-The "Ask JARVIS" box at the top of the dashboard (or `POST /jarvis`) takes
+The "Ask Octopus" box at the top of the dashboard (or `POST /octopus`) takes
 any request and decides where it goes, instead of everything going to
 Claude Code:
 
@@ -259,15 +260,15 @@ Claude Code:
    `"transferable": false`, so it waits for Claude Code through a rate
    limit rather than hopping to a model without project access.
 3. **Queue it** - on the lane that model runs in:
-   - `agent` lane = Octopus, unchanged: `claude -p` inside the project.
+   - `agent` lane = the original worker, unchanged: `claude -p` inside the project.
    - `api` lane = a plain model call (`providers.py`), run by a second
-     loop in `worker.py` alongside Octopus, so a quick question never
+     loop in `worker.py` alongside the agent lane, so a quick question never
      waits behind an hour-long coding task.
 
 Every task records the decision (`model_id`, `category`, `routed_by`,
 `route_reason`) and its usage (`duration_ms`, tokens, estimated
 `cost_usd`) - shown in the chat view and the dashboard's Models panel,
-and summarised by `GET /jarvis/usage`.
+and summarised by `GET /octopus/usage`.
 
 Things that did not change: the plain `POST /projects/{id}/tasks`
 endpoint and Todos still go straight to Claude Code; a reply always stays

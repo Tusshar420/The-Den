@@ -241,7 +241,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
 
 
 async def worker_loop(stop_event: asyncio.Event) -> None:
-    """Octopus: the agent lane - Claude Code running inside the project."""
+    """The agent lane - Claude Code running inside the project."""
     log.info("Worker loop started (polling every %ss)", POLL_INTERVAL_SECONDS)
     while not stop_event.is_set():
         task = db.get_next_queued_task("agent")
@@ -298,14 +298,14 @@ async def worker_loop(stop_event: asyncio.Event) -> None:
 
 
 # ------------------------------------------------------------------ api lane
-# Plain model calls (OpenAI etc.) routed here by JARVIS. They touch no
-# project files, so they run alongside Octopus instead of waiting behind a
+# Plain model calls (OpenAI etc.) routed here by Octopus. They touch no
+# project files, so they run alongside the agent lane instead of waiting behind a
 # long coding task - "explain this function" shouldn't queue for an hour.
 
 API_TASK_TIMEOUT_SECONDS = int(os.environ.get("API_TASK_TIMEOUT_SECONDS", "300"))
 API_RESULT_MAX_CHARS = 20000
 
-API_INSTRUCTIONS = """You are JARVIS, Tushar's personal AI assistant. Answer directly and clearly.
+API_INSTRUCTIONS = """You are Octopus, Tushar's personal AI assistant. Answer directly and clearly.
 You are answering through a chat on a dashboard, not inside a project: you cannot read the user's files,
 run commands or change anything. If the request truly needs that, say so briefly so the user can resend
 it as a coding task."""
@@ -362,7 +362,7 @@ async def api_worker_loop(stop_event: asyncio.Event) -> None:
             else:
                 db.mark_error(task["id"], str(e), needs_review=True)
                 log.error("API lane: task %s failed: %s", task["id"], e)
-                notify_phone("JARVIS task needs review", f"{model_cfg.get('label')}: {task['prompt'][:100]}")
+                notify_phone("Octopus task needs review", f"{model_cfg.get('label')}: {task['prompt'][:100]}")
             continue
         except Exception as e:
             db.mark_error(task["id"], f"Unexpected error: {e}", needs_review=True)
@@ -375,4 +375,4 @@ async def api_worker_loop(stop_event: asyncio.Event) -> None:
                           providers.estimate_cost(model_cfg, completion.input_tokens, completion.output_tokens))
         db.mark_done(task["id"], completion.text[:API_RESULT_MAX_CHARS] or "(empty response)")
         log.info("API lane: task %s done in %sms", task["id"], duration_ms)
-        notify_phone("JARVIS answered", f"{model_cfg.get('label')}: {task['prompt'][:150]}")
+        notify_phone("Octopus answered", f"{model_cfg.get('label')}: {task['prompt'][:150]}")

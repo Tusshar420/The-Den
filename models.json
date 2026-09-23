@@ -1,8 +1,8 @@
 {
   "_readme": [
-    "JARVIS model registry + routing rules. Re-read on every request - edit and save, no restart needed.",
-    "models[]: one entry per model JARVIS may use. 'provider' picks the code that talks to it:",
-    "  claude_code = the existing Octopus worker (runs `claude -p` inside the project folder; set 'model' to pass --model),",
+    "Octopus model registry + routing rules. Re-read on every request - edit and save, no restart needed.",
+    "models[]: one entry per model Octopus may use. 'provider' picks the code that talks to it:",
+    "  claude_code = the agent lane (runs `claude -p` inside the project folder; set 'model' to pass --model),",
     "  openai      = OpenAI Responses API (needs OPENAI_API_KEY in the launchd plist).",
     "Set 'enabled': false to take a model out of rotation without deleting it.",
     "coding/reasoning are rough 1-5 ratings, cost/speed are relative 1-5 (5 = most expensive / fastest).",

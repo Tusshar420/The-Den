@@ -1,5 +1,5 @@
 """
-Plain model calls for JARVIS's api lane - anything that isn't Claude Code
+Plain model calls for Octopus's api lane - anything that isn't Claude Code
 running inside a project folder.
 
 Deliberately stdlib-only (urllib), matching the rest of this project on

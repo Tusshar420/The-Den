@@ -48,7 +48,7 @@ async def main() -> None:
     worker_task = asyncio.create_task(worker.worker_loop(stop_event))
     api_lane_task = asyncio.create_task(worker.api_worker_loop(stop_event))
 
-    log.info("claude-queue running: API on http://%s:%s , worker + JARVIS api lane active", HOST, PORT)
+    log.info("claude-queue running: API on http://%s:%s , worker + Octopus api lane active", HOST, PORT)
 
     try:
         await asyncio.gather(api_task, worker_task, api_lane_task)

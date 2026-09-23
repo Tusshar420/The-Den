@@ -1,5 +1,5 @@
 """
-JARVIS routing: turn a natural-language request into (category, model).
+Octopus routing: turn a natural-language request into (category, model).
 
     request -> classify (cheap model, keyword rules as backup)
             -> category's candidate list in models.json
@@ -93,7 +93,7 @@ def _rules_classify(text: str, has_project: bool) -> tuple[str, str]:
     return "general", "no project/code actions mentioned"
 
 
-CLASSIFIER_INSTRUCTIONS = """You route requests for JARVIS, a personal AI assistant. Pick exactly one category:
+CLASSIFIER_INSTRUCTIONS = """You route requests for Octopus, a personal AI assistant. Pick exactly one category:
 {categories}
 Reply with only a JSON object: {{"category": "<one of: {names}>", "reason": "<max 12 words>"}}"""
 

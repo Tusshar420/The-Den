@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     -- next reply in the same thread resumes whichever task in that
     -- thread most recently captured one - see get_thread_session_id.
     session_id TEXT,
-    -- JARVIS routing (see router.py / models.json). lane 'agent' = the
-    -- Octopus worker (Claude Code in the project folder); 'api' = a plain
+    -- Octopus routing (see router.py / models.json). lane 'agent' = the
+    -- original worker (Claude Code in the project folder); 'api' = a plain
     -- model call handled by worker.api_worker_loop. A reply always inherits
     -- its thread root's lane and model_id so a conversation never hops models.
     lane TEXT NOT NULL DEFAULT 'agent',
@@ -141,7 +141,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     ):
         if name not in cols:
             conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {decl}")
-    # Everything queued before JARVIS ran on Claude Code - say so, so usage
+    # Everything queued before Octopus ran on Claude Code - say so, so usage
     # stats don't lump it under "unknown".
     conn.execute("UPDATE tasks SET model_id = 'claude-code' WHERE model_id IS NULL AND lane = 'agent'")
     conn.commit()
@@ -220,7 +220,7 @@ def add_task(
     route_reason: Optional[str] = None,
     routed_by: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Defaults (agent lane, claude-code) are what every pre-JARVIS caller -
+    """Defaults (agent lane, claude-code) are what every pre-Octopus caller -
     the plain task endpoint, todos - has always meant."""
     if model_id is None and lane == "agent":
         model_id = "claude-code"
@@ -581,7 +581,7 @@ def queue_status() -> dict[str, Any]:
             r["status"]: r["n"]
             for r in conn.execute("SELECT status, COUNT(*) as n FROM tasks GROUP BY status").fetchall()
         }
-        # "running" stays Octopus's own task (agent lane) for older clients;
+        # "running" stays the agent lane's own task for older clients;
         # running_all adds whatever the api lane is doing alongside it.
         running = conn.execute(
             "SELECT * FROM tasks WHERE status = 'running' AND lane = 'agent' LIMIT 1"
@@ -629,7 +629,7 @@ def clear_model_rate_limit(model_id: str) -> None:
 def model_rate_limited_until(model_id: str) -> Optional[str]:
     """ISO time this model is known to be rate-limited until, or None if it
     isn't (or the limit has already passed). For claude-code this is derived
-    from Octopus's own rate_limited tasks, which is where that limit shows up."""
+    from the agent lane's own rate_limited tasks, which is where that limit shows up."""
     with _lock:
         conn = get_conn()
         now = _now()

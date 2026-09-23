@@ -635,16 +635,16 @@
   }
   .modal-footer button:disabled { opacity: .5; }
 
-  /* ------------------------------------------------------------- JARVIS */
-  .jarvis-box {
+  /* ------------------------------------------------------------- Octopus */
+  .octopus-box {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 12px;
     padding: 10px;
     margin-bottom: 14px;
   }
-  .jarvis-box:focus-within { border-color: var(--accent); }
-  .jarvis-box textarea {
+  .octopus-box:focus-within { border-color: var(--accent); }
+  .octopus-box textarea {
     width: 100%;
     resize: vertical;
     min-height: 44px;
@@ -656,9 +656,9 @@
     font-size: 16px; /* prevents iOS zoom-on-focus */
     padding: 2px 4px;
   }
-  .jarvis-box textarea:focus { outline: none; }
-  .jarvis-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-  .jarvis-row select {
+  .octopus-box textarea:focus { outline: none; }
+  .octopus-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .octopus-row select {
     background: var(--panel-2);
     border: 1px solid var(--panel-border);
     color: var(--text);
@@ -669,8 +669,8 @@
     min-width: 0;
     max-width: 55%;
   }
-  .jarvis-target { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .jarvis-row button {
+  .octopus-target { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .octopus-row button {
     background: var(--accent);
     color: #06122a;
     border: none;
@@ -681,11 +681,11 @@
     cursor: pointer;
     flex: none;
   }
-  .jarvis-row button:disabled { opacity: .5; }
-  .jarvis-result { font-size: 12.5px; color: var(--muted); margin-top: 8px; word-break: break-word; }
-  .jarvis-result:empty { display: none; }
-  .jarvis-result.err { color: var(--c-error); }
-  .jarvis-result a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .octopus-row button:disabled { opacity: .5; }
+  .octopus-result { font-size: 12.5px; color: var(--muted); margin-top: 8px; word-break: break-word; }
+  .octopus-result:empty { display: none; }
+  .octopus-result.err { color: var(--c-error); }
+  .octopus-result a { color: var(--accent); cursor: pointer; text-decoration: underline; }
 
   .model-chip {
     font-size: 10.5px;
@@ -771,16 +771,16 @@
       <div id="approvals"></div>
 
       <div id="historyView">
-        <div class="jarvis-box">
-          <textarea id="jarvisInput" rows="2" placeholder="Ask JARVIS anything…" onkeydown="onJarvisKeydown(event)"></textarea>
-          <div class="jarvis-row">
-            <select id="jarvisModel" title="Which model handles it">
-              <option value="auto">Auto - JARVIS decides</option>
+        <div class="octopus-box">
+          <textarea id="octopusInput" rows="2" placeholder="🐙 Ask Octopus anything…" onkeydown="onOctopusKeydown(event)"></textarea>
+          <div class="octopus-row">
+            <select id="octopusModel" title="Which model handles it">
+              <option value="auto">Auto - Octopus decides</option>
             </select>
-            <span class="jarvis-target" id="jarvisTarget"></span>
-            <button id="jarvisSend" onclick="sendJarvis()">Send</button>
+            <span class="octopus-target" id="octopusTarget"></span>
+            <button id="octopusSend" onclick="sendOctopus()">Send</button>
           </div>
-          <div class="jarvis-result" id="jarvisResult"></div>
+          <div class="octopus-result" id="octopusResult"></div>
         </div>
 
         <div class="stats" id="stats"></div>
@@ -854,8 +854,8 @@ let allProjects = [];
 let currentProjectId = null; // null = All projects
 let currentTodos = [];
 let draggingTodoId = null;
-let allModels = [];    // /jarvis/models - registry entries + live availability
-let modelUsage = {};   // model id -> /jarvis/usage by_model row
+let allModels = [];    // /octopus/models - registry entries + live availability
+let modelUsage = {};   // model id -> /octopus/usage by_model row
 
 function apiKey() { return localStorage.getItem('cq_api_key') || ''; }
 
@@ -910,7 +910,7 @@ function renderSidebar() {
 function updateProjectLabel() {
   const proj = currentProjectId == null ? null : allProjects.find(p => p.id === currentProjectId);
   document.getElementById('currentProjectLabel').textContent = proj ? proj.name : 'All projects';
-  document.getElementById('jarvisTarget').textContent =
+  document.getElementById('octopusTarget').textContent =
     proj && proj.name !== 'General' ? 'in ' + proj.name : 'no project (General)';
 }
 
@@ -980,14 +980,14 @@ function renderStats(counts) {
   `).join('');
 }
 
-// Octopus (agent lane) and the api lane can both be busy at once.
+// The agent lane (Claude Code) and the api lane can both be busy at once.
 function renderRunning(tasks) {
   const el = document.getElementById('running');
   if (!tasks || !tasks.length) { el.innerHTML = '<span class="empty">Nothing running</span>'; return; }
   el.innerHTML = tasks.map(task => `
     <div class="run-item" onclick="openModal(${task.thread_id || task.id})" style="cursor:pointer">
       <div class="now-prompt">${escapeHtml(task.prompt)}</div>
-      <div class="now-meta">${modelChip(task)} ${task.lane === 'agent' ? '🐙 ' : ''}started ${timeAgo(task.started_at)}</div>
+      <div class="now-meta">${modelChip(task)} started ${timeAgo(task.started_at)}</div>
     </div>`).join('');
 }
 
@@ -999,7 +999,7 @@ function renderNextUp(task) {
     <div class="now-meta">${modelChip(task)} priority ${task.priority}</div>`;
 }
 
-// ------------------------------------------------------------- JARVIS
+// ------------------------------------------------------------- Octopus
 
 function modelLabel(id) {
   const m = allModels.find(x => x.id === id);
@@ -1011,9 +1011,9 @@ function modelChip(t) {
 }
 
 function renderModelPicker() {
-  const sel = document.getElementById('jarvisModel');
+  const sel = document.getElementById('octopusModel');
   const current = sel.value;
-  sel.innerHTML = '<option value="auto">Auto - JARVIS decides</option>' + allModels
+  sel.innerHTML = '<option value="auto">Auto - Octopus decides</option>' + allModels
     .filter(m => m.enabled !== false)
     .map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label || m.id)}${m.available ? '' : ' (unavailable)'}</option>`)
     .join('');
@@ -1048,32 +1048,32 @@ function renderModelsPanel() {
   }).join('');
 }
 
-function onJarvisKeydown(e) {
+function onOctopusKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendJarvis();
+    sendOctopus();
   }
 }
 
-async function sendJarvis() {
-  const input = document.getElementById('jarvisInput');
+async function sendOctopus() {
+  const input = document.getElementById('octopusInput');
   const text = input.value.trim();
   if (!text) return;
-  const btn = document.getElementById('jarvisSend');
-  const out = document.getElementById('jarvisResult');
+  const btn = document.getElementById('octopusSend');
+  const out = document.getElementById('octopusResult');
   const proj = currentProjectId == null ? null : allProjects.find(p => p.id === currentProjectId);
   input.disabled = true;
   btn.disabled = true;
-  out.className = 'jarvis-result';
+  out.className = 'octopus-result';
   out.textContent = 'Routing…';
   try {
-    const res = await fetch('/jarvis', {
+    const res = await fetch('/octopus', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey() },
       body: JSON.stringify({
         request: text,
         project_id: proj && proj.name !== 'General' ? proj.id : null,
-        model: document.getElementById('jarvisModel').value,
+        model: document.getElementById('octopusModel').value,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -1084,7 +1084,7 @@ async function sendJarvis() {
     if (!allProjects.some(p => p.id === data.task.project_id)) await loadProjects();
     await refresh();
   } catch (e) {
-    out.className = 'jarvis-result err';
+    out.className = 'octopus-result err';
     out.textContent = 'Could not send: ' + e.message;
   } finally {
     input.disabled = false;
@@ -1375,8 +1375,8 @@ async function refresh() {
         + (activeFilter !== 'all' ? '&status=' + activeFilter : '')
         + (currentProjectId != null ? '&project_id=' + currentProjectId : '')),
       api('/approvals'),
-      api('/jarvis/models').catch(() => allModels),
-      api('/jarvis/usage').catch(() => null),
+      api('/octopus/models').catch(() => allModels),
+      api('/octopus/usage').catch(() => null),
     ]);
     document.getElementById('healthDot').classList.add('ok');
     allModels = models;
