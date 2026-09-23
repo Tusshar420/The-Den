@@ -42,6 +42,10 @@ def provider_ready(provider: str) -> tuple[bool, str]:
         if not os.environ.get("OPENAI_API_KEY"):
             return False, "OPENAI_API_KEY is not set"
         return True, ""
+    if provider == "gemini":
+        if not os.environ.get("GEMINI_API_KEY"):
+            return False, "GEMINI_API_KEY is not set"
+        return True, ""
     return False, f"unknown provider '{provider}'"
 
 
@@ -104,8 +108,86 @@ def openai_complete(model: str, messages: list[dict[str, str]], instructions: Op
     return Completion(text, usage.get("input_tokens"), usage.get("output_tokens"))
 
 
+# ------------------------------------------------------------------ gemini
+
+GEMINI_BASE_URL = os.environ.get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta")
+
+
+def _gemini_retry_after(err: dict[str, Any]) -> Optional[int]:
+    # 429s carry a google.rpc.RetryInfo detail like {"retryDelay": "33s"}.
+    for d in err.get("details") or []:
+        delay = str(d.get("retryDelay") or "")
+        if delay.endswith("s"):
+            try:
+                return int(float(delay[:-1]))
+            except ValueError:
+                pass
+    return None
+
+
+def gemini_complete(model: str, messages: list[dict[str, str]], instructions: Optional[str] = None,
+                    timeout: int = 120) -> Completion:
+    """Gemini API generateContent. Same `messages` shape as openai_complete;
+    Gemini calls the assistant role "model"."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise ProviderError("GEMINI_API_KEY is not set")
+
+    body: dict[str, Any] = {
+        "contents": [
+            {"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]}
+            for m in messages
+        ],
+    }
+    if instructions:
+        body["systemInstruction"] = {"parts": [{"text": instructions}]}
+
+    req = urllib.request.Request(
+        f"{GEMINI_BASE_URL}/models/{model}:generateContent",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")
+        try:
+            err = json.loads(raw).get("error") or {}
+        except ValueError:
+            err = {}
+        msg = err.get("message") or raw[:500] or str(e)
+        # The free tier answers 429 both per-minute and once the day's
+        # quota is used up - either way, wait it out and let the router
+        # use the next model meanwhile.
+        if e.code == 429:
+            raise ProviderError(f"Gemini rate limit: {msg}", rate_limited=True,
+                                retry_after=_gemini_retry_after(err))
+        raise ProviderError(f"Gemini error {e.code}: {msg}")
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise ProviderError(f"Could not reach Gemini: {e}")
+
+    candidates = data.get("candidates") or []
+    if not candidates:
+        reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates returned")
+        raise ProviderError(f"Gemini returned no answer ({reason})")
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    # Thinking models can include thought-summary parts - only the answer counts.
+    text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+    if not text:
+        raise ProviderError(f"Gemini returned an empty answer ({candidates[0].get('finishReason', 'unknown')})")
+
+    usage = data.get("usageMetadata") or {}
+    output = usage.get("candidatesTokenCount")
+    if output is not None:
+        output += usage.get("thoughtsTokenCount") or 0  # thinking is billed as output
+    return Completion(text, usage.get("promptTokenCount"), output)
+
+
 COMPLETERS = {
     "openai": openai_complete,
+    "gemini": gemini_complete,
 }
 
 

@@ -3,7 +3,8 @@
     "Octopus model registry + routing rules. Re-read on every request - edit and save, no restart needed.",
     "models[]: one entry per model Octopus may use. 'provider' picks the code that talks to it:",
     "  claude_code = the agent lane (runs `claude -p` inside the project folder; set 'model' to pass --model),",
-    "  openai      = OpenAI Responses API (needs OPENAI_API_KEY in the launchd plist).",
+    "  openai      = OpenAI Responses API (needs OPENAI_API_KEY in the launchd plist),",
+    "  gemini      = Google Gemini API (needs GEMINI_API_KEY in the launchd plist).",
     "Set 'enabled': false to take a model out of rotation without deleting it.",
     "coding/reasoning are rough 1-5 ratings, cost/speed are relative 1-5 (5 = most expensive / fastest).",
     "price_per_mtok (USD per million tokens) is only used to estimate cost - check current prices before trusting it.",
@@ -55,6 +56,22 @@
       "cost": 1,
       "speed": 5,
       "price_per_mtok": {"input": 0.1, "output": 0.5}
+    },
+    {
+      "id": "gemini-3.8-flash",
+      "label": "Gemini 3.8 Flash",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "enabled": true,
+      "_note": "Free tier: $0 with daily limits, but Google may use prompts to improve its products. If you enable billing on the key, set price_per_mtok to {\"input\": 0.75, \"output\": 3.75}.",
+      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context"],
+      "coding": 4,
+      "reasoning": 4,
+      "vision": true,
+      "context_tokens": 1000000,
+      "cost": 1,
+      "speed": 4,
+      "price_per_mtok": null
     }
   ],
   "routing": {
@@ -67,12 +84,12 @@
       },
       "general": {
         "description": "Writing, explaining, analysing, planning or answering where everything needed is in the message itself - including explaining code that is pasted in.",
-        "candidates": ["gpt-6-luna", "claude-code"],
+        "candidates": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
         "transferable": true
       },
       "simple": {
         "description": "A short factual question, definition, quick rewrite or small talk that a small fast model handles well.",
-        "candidates": ["gpt-6-luna", "claude-code"],
+        "candidates": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
         "transferable": true
       }
     }
