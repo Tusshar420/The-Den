@@ -67,12 +67,12 @@
       },
       "general": {
         "description": "Writing, explaining, analysing, planning or answering where everything needed is in the message itself - including explaining code that is pasted in.",
-        "candidates": ["gpt-6-sol", "claude-code"],
+        "candidates": ["gpt-6-luna", "claude-code"],
         "transferable": true
       },
       "simple": {
         "description": "A short factual question, definition, quick rewrite or small talk that a small fast model handles well.",
-        "candidates": ["gpt-6-luna", "gpt-6-sol", "claude-code"],
+        "candidates": ["gpt-6-luna", "claude-code"],
         "transferable": true
       }
     }
