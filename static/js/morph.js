@@ -9,20 +9,40 @@
 //   - an input/textarea that has focus keeps its value (the user is typing in it);
 //   - elements marked data-live-style keep their inline style (gestures animate it);
 //   - newly inserted elements are returned, so the caller can bind gestures to them.
+//
+// Only nodes and attributes morph itself created are ever touched. Browser extensions
+// (Grammarly, password managers...) inject their own elements next to text fields and
+// add attributes to them; treating those as stale would rebuild - and so blur - the
+// field the user is typing in, on every keystroke.
 
+const ours = new WeakSet();          // elements morph inserted
+const ownAttrs = new WeakMap();      // element -> attribute names morph set on it
+
+const isOurs = n => n.nodeType !== 1 || ours.has(n);
+const nextOurs = n => { while (n && !isOurs(n)) n = n.nextSibling; return n; };
 const keyOf = n => (n.nodeType === 1 ? n.getAttribute('data-key') : null);
 const sameKind = (a, b) => a.nodeType === b.nodeType && (a.nodeType !== 1 || a.tagName === b.tagName);
 
+function adopt(el) {
+  for (const e of [el, ...el.querySelectorAll('*')]) {
+    ours.add(e);
+    ownAttrs.set(e, new Set(e.getAttributeNames()));
+  }
+}
+
 function syncAttrs(a, b) {
   const liveStyle = a.hasAttribute('data-live-style');
-  for (const { name } of [...a.attributes]) {
+  const want = b.getAttributeNames();
+  for (const name of ownAttrs.get(a) || []) {
     if (liveStyle && name === 'style') continue;
     if (!b.hasAttribute(name)) a.removeAttribute(name);
   }
-  for (const { name, value } of [...b.attributes]) {
+  for (const name of want) {
     if (liveStyle && name === 'style') continue;
+    const value = b.getAttribute(name);
     if (a.getAttribute(name) !== value) a.setAttribute(name, value);
   }
+  ownAttrs.set(a, new Set(want));
 }
 
 function patch(a, b, added) {
@@ -41,9 +61,9 @@ function patch(a, b, added) {
 function morphChildren(parent, next, added) {
   const want = [...next.childNodes];
   const keyed = new Map();
-  for (const n of parent.childNodes) { const k = keyOf(n); if (k != null) keyed.set(k, n); }
-  want.forEach((nb, i) => {
-    const cur = parent.childNodes[i] || null;
+  for (const n of parent.childNodes) { const k = keyOf(n); if (k != null && isOurs(n)) keyed.set(k, n); }
+  let cur = nextOurs(parent.firstChild);
+  for (const nb of want) {
     const k = keyOf(nb);
     let match = null;
     if (k != null) {
@@ -53,14 +73,16 @@ function morphChildren(parent, next, added) {
       match = cur;
     }
     if (match) {
-      if (match !== cur) parent.insertBefore(match, cur);
+      if (match === cur) cur = nextOurs(cur.nextSibling);
+      else parent.insertBefore(match, cur);
       patch(match, nb, added);
     } else {
       parent.insertBefore(nb, cur);
-      if (nb.nodeType === 1) added.push(nb);
+      if (nb.nodeType === 1) { adopt(nb); added.push(nb); }
     }
-  });
-  while (parent.childNodes.length > want.length) parent.removeChild(parent.lastChild);
+  }
+  // Everything of ours from here on is stale; foreign nodes stay where they are.
+  while (cur) { const n = nextOurs(cur.nextSibling); parent.removeChild(cur); cur = n; }
 }
 
 const tpl = document.createElement('template');
