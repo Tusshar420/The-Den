@@ -45,9 +45,9 @@ CLI flags shift between versions. Run:
 claude --help
 ```
 
-and check that `--output-format json` and `--permission-mode acceptEdits`
-(or your version's equivalent for "don't stop to ask permission") still
-exist. If the names differ, set `CLAUDE_EXTRA_ARGS` to match — see `worker.py`
+and check that `--output-format stream-json`, `--verbose` and
+`--permission-mode acceptEdits` (or your version's equivalent for "don't
+stop to ask permission") still exist. If the names differ, set `CLAUDE_EXTRA_ARGS` to match — see `worker.py`
 for where this is read. Also run `which claude` and note the full path;
 you'll need it in step 6 if `claude` isn't on launchd's minimal PATH.
 
@@ -144,7 +144,7 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 |---|---|---|---|
 | GET | `/health` | - | liveness check, no auth |
 | GET | `/projects` | - | list registered projects |
-| POST | `/projects` | `{"name", "path"}` | register a project (path = absolute repo path on this Mac) |
+| POST | `/projects` | `{"name", "path"}` | register a project (path = a folder on this Mac; `~` is expanded, a missing folder is rejected) |
 | PATCH | `/projects/{id}` | `{"active": true/false}` | pause/resume a project's queue |
 | GET | `/projects/{id}/tasks` | - | list that project's tasks |
 | POST | `/projects/{id}/tasks` | `{"prompt", "priority", "thread_id"}` | queue a new task, or a reply (see below) |
@@ -153,16 +153,33 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | GET | `/tasks` | - | most recent tasks across all projects (`?limit=`, `?status=queued,error`) |
 | GET | `/dashboard` | - | browser status page (see below) |
 | GET | `/approvals` | - | pending Bash approval requests |
-| POST | `/approvals/{id}/decide` | `{"approved": true/false}` | approve or deny a pending request |
+| POST | `/approvals/{id}/decide` | `{"approved", "note"?, "always"?}` | approve or deny a pending request; `always` also adds the command to the project's allow list, `note` is passed back to Claude on a deny |
 | GET | `/projects/{id}/todos` | - | list a project's todo backlog, in order |
 | POST | `/projects/{id}/todos` | `{"text"}` | add a todo item (appended to the end) |
 | PATCH | `/todos/{id}` | `{"text"?, "checked"?}` | edit or check/uncheck a todo item |
 | DELETE | `/todos/{id}` | - | remove a todo item |
 | POST | `/projects/{id}/todos/reorder` | `{"ids": [...]}` | set the todo order (full id list, in the new order) |
 | POST | `/projects/{id}/todos/run` | - | queue every checked, not-yet-run todo, in order |
-| POST | `/octopus` | `{"request", "project_id"?, "model"?, "priority"?}` | Octopus: classify + route a request, queue it on the right lane (see below) |
+| POST | `/octopus` | `{"text" (or "request"), "project_id"?, "model"?, "priority"?}` | Octopus: classify + route a request, queue it on the right lane (see below). Returns `{task, decision}` |
 | GET | `/octopus/models` | - | models from `models.json` plus live availability (key set? rate-limited?) |
 | GET | `/octopus/usage` | - | per-model / per-category counts, success, duration, tokens, est. cost (`?days=30`) |
+| POST | `/octopus/polish` | `{"text"}` | rewrite a prompt with the cheapest available answer-only model → `{"text"}` |
+| POST | `/tasks/{id}/requeue` | `{"front": true/false}` | put a failed / cancelled / rate-limited task back in the queue (Retry, Retry now, Undo) |
+| POST | `/tasks/{id}/top` | - | move a queued task to the front |
+| POST | `/queue/reorder` | `{"ids": [...]}` | set the run order of queued tasks |
+| POST | `/tasks/{id}/stop` | - | kill a running Claude Code task |
+| POST | `/tasks/{id}/reviewed` | - | mark a `needs_review` task done |
+| GET | `/tasks/{id}/thread` | - | every message in that task's chat plus each turn's step log |
+| GET | `/approvals/{id}/context` | - | risk read, steps so far and the project's uncommitted diff |
+| GET / PATCH | `/projects/{id}/settings` | see below | default priority, notifications, quiet hours, allowed commands, monthly budget |
+| GET / PATCH | `/settings` | `{"notify_on_resume"?, "hold_low_when_busy"?, "monthly_budget_usd"?}` | global toggles, plus the last Claude usage snapshot |
+| POST | `/notify/test` | - | send a test ntfy push |
+| GET | `/usage/summary` | - | real API spend (today, month, last 7 days, by project) and Claude's 5-hour / weekly usage |
+| GET / POST | `/recipes` | `{"name", "prompt", "target"}` | saved prompts (`target`: `any`, `all`, or a project id) |
+| DELETE | `/recipes/{id}` | - | remove a recipe |
+| POST | `/recipes/{id}/run` | `{"project_id"?, "priority"?}` | queue a recipe in one project, or in every active one for an `all` recipe |
+| GET / POST | `/schedules` | `{"prompt", "label"?, "project_id"?, "cadence", "time", "weekday"?, "date"?, "model"?, "priority"?}` | run a prompt at a time of day (`cadence`: `once`, `daily`, `weekdays`, `weekly`; `project_id` null = every active project) |
+| PATCH / DELETE | `/schedules/{id}` | `{"enabled"}` | turn a schedule on/off, or remove it |
 
 ## Safety note
 
@@ -209,21 +226,48 @@ already point at `.approval-venv/bin/python3` running `approval_server.py`
 pending requests; `POST /approvals/{id}/decide` with `{"approved": true}`
 resolves one (the dashboard calls both for you).
 
+The dashboard shows each request with context: a heuristic risk read of the
+command (`risk.py`), the steps the task took before asking, and the
+project's uncommitted `git diff`. **Always allow** adds the command to the
+project's allow list (Settings tab), and the approval server then lets it
+through without asking. An entry covers the program plus its subcommand
+(`npm test`, `git status`, `npm run build`, `./scripts/deploy.sh`), except
+for risky commands (`rm`, `sudo`, `curl`, force-pushes, anything mentioning
+production...), which are only ever allowed exactly as approved. A command
+that chains, pipes, redirects or substitutes (`;`, `&&`, `|`, `>`, `$(...)`)
+never matches an allow-list entry.
+
 ## Dashboard
 
-Visit `http://127.0.0.1:8787/dashboard` (or your tailnet address) in a
-browser for a live view of the queue: counts by status, what's running now,
-what's next, and a searchable, filterable history of every task. It
-auto-refreshes every 5 seconds and works on mobile.
+Visit `http://127.0.0.1:8787/dashboard` (or your tailnet address) - it's
+Tushar's Workspace, the redesign in `design_handoff_tushars_workspace/`.
+Phone first (bottom tab bar, swipe between pages, full-screen chat), with a
+sidebar layout at 900px and up. It refreshes every 5 seconds.
 
 The page itself loads without auth, but it asks for your `X-API-Key` on
-first visit and keeps it in that browser's `localStorage` - it needs the
-key to actually fetch data, same as any other client of this API.
+first visit and keeps it in that browser's `localStorage` (`cq_api_key`) -
+it needs the key to actually fetch data, same as any other client of this
+API.
 
-Tapping a task opens it as a chat: Claude's full result/error, exact
-timestamps, and a reply box. Each task is normally its own fresh `claude -p`
-invocation with no memory of anything else in the queue - replying keeps
-you in the same conversation instead, via `thread_id`:
+- **Home** - what Octopus is doing, the Ask box (routes through `/octopus`),
+  anything that needs you (approve by tapping or swiping right, deny by
+  swiping left; retry or dismiss failures), what's running with its live
+  step, the rate-limit countdown, **Up next** (drag to reorder, ↑ to move
+  to the top, ✕ to cancel with Undo), schedules, usage, models and recent
+  work.
+- **Projects** - filter chips, sort/filter/search, and each project's
+  active tasks. A project page has Work (live tasks, its place in the
+  queue, the **Backlog**), Activity, Recipes and Settings tabs.
+- **Recipes & schedules**, **Activity** - saved prompts and schedules, and
+  every finished chat grouped by day.
+- **+ / ⌘K / N** - New task: pick a project, a model (or Auto), a priority
+  and when to run it.
+
+Tapping a task opens it as a chat: every message, Claude Code's step log,
+reply footers (status, model, time, cost) and a reply box. Each task is
+normally its own fresh `claude -p` invocation with no memory of anything
+else in the queue - replying keeps you in the same conversation instead,
+via `thread_id`:
 
 - A brand new task (no `thread_id`) always starts a fresh Claude Code
   session.
@@ -231,19 +275,42 @@ you in the same conversation instead, via `thread_id`:
   makes the new task resume whatever session that task's thread last ran
   in (`worker.py` tracks this with `claude --resume`, keyed by whichever
   task in the thread most recently captured a `session_id`).
-- The flat task list only shows root tasks (one card per conversation);
-  replies live inside that task's chat view.
 
-The dashboard's **Todos** tab is a per-project backlog, separate from the
-task queue itself: add items, reorder them with ↑/↓, and check the ones
-you want to run. Nothing happens until you press **Run selected** - that
-converts every checked, not-yet-run item into a real queued task, in the
-order you arranged them (not the order you checked them in), and the
-worker's usual one-at-a-time processing takes it from there - box 1
-finishes before box 2 starts. A checkbox greys out while its task is
-in-flight (queued/running); once it finishes, uncheck and re-check the
-item to stage a fresh rerun. Unchecking an in-flight item doesn't cancel
-it - use the cancel button on the task itself (in History) for that.
+The **Backlog** (the todos endpoints) is a per-project list separate from
+the queue: add items, drag them into order, select the ones you want and
+press **Run selected** - they join the queue in your order, not the order
+you selected them in.
+
+The code is plain ES modules with no build step: `static/js/app.js` (router,
+actions, polling), `static/js/views/` (one file per screen), and the
+handoff's helpers (`api.js`, `format.js`, `gestures.js`...). Views render
+template strings that `morph.js` patches into the page, so polling never
+interrupts typing. Image attachments are designed but hidden
+(`static/js/features.js`) until the backend supports them. The old
+single-file dashboard is still at `/dashboard/legacy`.
+
+## Queue order, schedules, usage
+
+- **Order** - the agent lane runs tasks by `queue_pos`: a new task goes after
+  everything queued with the same or higher priority (Urgent 1 > Normal 0 >
+  Low -1), and reordering or Retry changes it from there.
+- **Progress** - Claude Code runs with `--output-format stream-json`; every
+  tool call becomes a step ("Running npm test") in `task_events`, and the
+  same stream reports real 5-hour and weekly usage. That's where the
+  dashboard's usage bars and exact rate-limit resume times come from. **Stop**
+  kills a running task and everything it launched.
+- **Schedules** - checked every 30 seconds. One that was due while the Mac
+  slept runs once when it wakes (not once per missed time).
+- **Spend** - "API spend" and budgets count real money only: answer-only
+  models (OpenAI, Gemini). Claude Code's cost is an estimate of what the run
+  would cost at API prices; a subscription doesn't bill it, so it shows on
+  each task but isn't counted as spend. A project that reaches its monthly
+  budget is paused, and you get a push.
+- **Notifications** (ntfy) - per project: approvals (priority 5, breaks
+  through Focus), failures (4), completions (2), and quiet hours 23:00-08:00
+  that hold everything except approvals. **Ping me when back** sends one push
+  when a rate-limit pause ends. **Save the session for urgent work** holds
+  Low tasks while the 5-hour window is over 85%.
 
 ## Octopus (V1): routing requests to the right model
 
@@ -289,4 +356,4 @@ as unavailable and general/simple requests fall back to Claude Code.
 ## Not built yet (next phases)
 
 - iOS Shortcuts flows calling this API
-- Multi-project priority tuning beyond simple priority number + insertion order
+- Image attachments (the dashboard's attach buttons are hidden until then)
