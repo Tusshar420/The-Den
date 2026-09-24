@@ -13,16 +13,33 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
 import router
 
 DASHBOARD_HTML_PATH = Path(__file__).parent / "dashboard.html"
+LEGACY_DASHBOARD_HTML_PATH = Path(__file__).parent / "dashboard_legacy.html"
+STATIC_DIR = Path(__file__).parent / "static"
 
 API_KEY = os.environ.get("API_KEY")  # set this in your environment / launchd plist
 
 app = FastAPI(title="claude-queue")
+
+
+class NoCacheStaticFiles(StaticFiles):
+    """The dashboard's modules change whenever this repo does, and iOS
+    Safari will happily keep serving a stale app.js for days - make every
+    load revalidate (cheap: an unchanged file is a 304)."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+app.mount("/static", NoCacheStaticFiles(directory=STATIC_DIR), name="static")
 
 
 def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
@@ -268,5 +285,12 @@ def octopus_usage(days: int = 30):
 def dashboard():
     # No auth on the page shell itself (it's static HTML/JS) - the data
     # requests it makes still need the API key, entered once and kept in
-    # the browser's localStorage. See dashboard.html.
-    return DASHBOARD_HTML_PATH.read_text()
+    # the browser's localStorage. The app itself lives in static/js/.
+    return HTMLResponse(DASHBOARD_HTML_PATH.read_text(), headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/dashboard/legacy", response_class=HTMLResponse)
+def dashboard_legacy():
+    # The pre-redesign single-file dashboard, kept reachable until the new
+    # one has fully replaced it.
+    return LEGACY_DASHBOARD_HTML_PATH.read_text()
