@@ -98,8 +98,9 @@ export const needsYou = d => {
     ...d.tasks.filter(t => t.status === 'needs_review').map(t => ({ kind: 'review', task: t })),
   ];
 };
+// Run order is the backend's queue_pos (priority on insert, then manual reorders).
 export const queued = d => d.tasks.filter(t => t.status === 'queued')
-  .sort((a, b) => b.priority - a.priority || a.created_at.localeCompare(b.created_at));
+  .sort((a, b) => (a.queue_pos ?? 1e12) - (b.queue_pos ?? 1e12) || a.id - b.id);
 export const rollups = d => {
   const c = d.status?.counts || {};
   return [

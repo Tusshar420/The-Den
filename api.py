@@ -124,9 +124,17 @@ def list_projects():
 
 @app.post("/projects", dependencies=[Depends(require_api_key)])
 def create_project(body: ProjectIn):
-    if db.get_project_by_name(body.name):
-        raise HTTPException(status_code=409, detail=f"Project '{body.name}' already exists")
-    return db.add_project(body.name, body.path)
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Give the project a name")
+    if db.get_project_by_name(name):
+        raise HTTPException(status_code=409, detail=f"Project '{name}' already exists")
+    # The dashboard suggests "~/code/..."; the worker runs Claude Code with this
+    # as its working directory, so it has to be a real absolute folder.
+    path = os.path.abspath(os.path.expanduser(body.path.strip()))
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=400, detail=f"No folder at {path} on this Mac")
+    return db.add_project(name, path)
 
 
 @app.patch("/projects/{project_id}", dependencies=[Depends(require_api_key)])
