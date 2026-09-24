@@ -20,12 +20,15 @@ export function paneHead(c, root, latest) {
   const p = projectById(root.project_id);
   const st = c.w.uiStatus(latest);
   const s = st === 'approval' ? { label: 'Waiting on you', color: 'var(--wait)' } : statusOf(latest);
+  // Phone: a back arrow on the left (the pane is full-screen). Desktop: ✕ on the right.
+  const close = `<button class="icon-btn icon-btn--44 pane__close" data-action="closePane" aria-label="Close">${c.desk ? '✕' : '←'}</button>`;
   return `<div class="pane__head">
-    <button class="icon-btn icon-btn--44 pane__close" data-action="closePane" aria-label="Close">${c.desk ? '✕' : '←'}</button>
+    ${c.desk ? '' : close}
     <div class="pane__titles">
       <span class="pane__title truncate">${esc(root.prompt)}</span>
       <span class="pane__sub"><span class="swatch" style="background:${projectColor(p)}"></span>${esc(p ? p.name : '?')} · <span style="color:${laneColor(root.lane)}">${esc(modelLabel(root.model_id))}</span> · <span style="color:${s.color}">${s.label}</span></span>
     </div>
+    ${c.desk ? close : ''}
   </div>`;
 }
 
@@ -60,7 +63,7 @@ export function chatPane(c, taskId) {
   const seed = taskById(taskId);
   const th = d.threads[taskId];
   const msgs = th ? th.tasks : seed ? d.tasks.filter(t => rootId(t) === rootId(seed)).sort((a, b) => a.id - b.id) : [];
-  if (!msgs.length) return `<aside class="pane" data-key="pane-chat-${taskId}"><div class="pane__head"><button class="icon-btn icon-btn--44" data-action="closePane" aria-label="Close">${c.desk ? '✕' : '←'}</button><span class="pane__title">Loading…</span></div></aside>`;
+  if (!msgs.length) return `<aside class="pane" data-key="pane-chat-${taskId}"><div class="pane__head">${c.desk ? '' : `<button class="icon-btn icon-btn--44" data-action="closePane" aria-label="Close">←</button>`}<span class="pane__title grow">Loading…</span>${c.desk ? `<button class="icon-btn icon-btn--44" data-action="closePane" aria-label="Close">✕</button>` : ''}</div></aside>`;
   const root = msgs[0];
   // Status can be fresher in the 5-second snapshot than in the thread fetch.
   const fresh = msgs.map(m => ({ ...m, ...(taskById(m.id) || {}) }));

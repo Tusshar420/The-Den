@@ -410,3 +410,12 @@ button:focus:not(:focus-visible), textarea:focus:not(:focus-visible), input:focu
 .meta-row > .truncate { flex: 1 1 0%; }
 .composer__box textarea::placeholder, .ask__input::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 359px) { .topbar .live { display: none; } }
+
+/* desktop side pane: close button on the right, drag the left edge to resize */
+.app--desk .pane__close { margin-left: auto; }
+.pane-resizer { position: absolute; top: 0; bottom: 0; right: calc(min(var(--pane-w), 100% - var(--sidebar-w)) - 4px); width: 8px; z-index: 31; cursor: col-resize; touch-action: none; }
+.pane-resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background var(--t); }
+.pane-resizer:hover::after, .is-resizing .pane-resizer::after { background: var(--coral); }
+@media (min-width: 1280px) { .pane-resizer { right: calc(var(--pane-w) - 4px); } }
+.is-resizing, .is-resizing * { cursor: col-resize !important; user-select: none !important; -webkit-user-select: none !important; }
+.is-resizing .pane { transition: none; }

@@ -26,6 +26,8 @@ const root = document.getElementById('app');
 const KEY_STORAGE = 'cq_api_key';
 const LAST_PROJECT = 'octopus-last-project';
 const SKELETON_MS = 520;
+const PANE_WIDTH = 'octopus-pane-w';
+const PANE_DEFAULT = 460, PANE_MIN = 360, MAIN_MIN = 380, SIDEBAR = 250;
 const VIEWS = ['home', 'projects', 'recipes', 'activity'];
 
 // ---------------------------------------------------------------- UI state (on top of api.js's store.ui)
@@ -148,6 +150,7 @@ function appHTML(c) {
       <div class="pager" data-pager data-live-style>${page(c)}</div>
     </main>
     ${pane(c)}
+    ${c.desk && c.ui.pane ? '<div class="pane-resizer" data-key="pane-resizer" title="Drag to resize · double-click to reset" aria-hidden="true"></div>' : ''}
     ${c.desk ? '' : tabbar(c)}
     ${sheet(c)}
     ${toastHTML(c)}
@@ -209,7 +212,36 @@ document.addEventListener('pointerdown', e => { if (e.target.closest('.handle, [
 const endInteract = () => setTimeout(() => { if (!interacting) return; interacting = false; if (pending) { pending = false; requestRender(); } }, 0);
 window.addEventListener('pointerup', endInteract, true);
 window.addEventListener('pointercancel', endInteract, true);
-window.addEventListener('resize', requestRender);
+window.addEventListener('resize', () => { applyPaneWidth(paneWidth); requestRender(); });
+
+// ---------------------------------------------------------------- resizable side pane (desktop)
+// The width lives in the --pane-w custom property on <html>, so dragging never re-renders.
+// At 1280px+ the pane sits beside the page, so leave the page MAIN_MIN; below that it
+// floats over the page and may cover most of it.
+const clampPane = w => Math.round(Math.max(PANE_MIN, Math.min(w, window.innerWidth - SIDEBAR - (window.innerWidth >= 1280 ? MAIN_MIN : 60))));
+let paneWidth = Number(ls(PANE_WIDTH)) || PANE_DEFAULT;
+function applyPaneWidth(w) { document.documentElement.style.setProperty('--pane-w', clampPane(w) + 'px'); }
+applyPaneWidth(paneWidth);
+document.addEventListener('pointerdown', e => {
+  const handle = e.target.closest('.pane-resizer');
+  if (!handle || e.button) return;
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+  document.documentElement.classList.add('is-resizing');
+  const move = ev => { paneWidth = clampPane(window.innerWidth - ev.clientX); applyPaneWidth(paneWidth); };
+  const up = () => {
+    handle.removeEventListener('pointermove', move);
+    document.documentElement.classList.remove('is-resizing');
+    ls(PANE_WIDTH, String(paneWidth));
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', up, { once: true });
+  handle.addEventListener('pointercancel', up, { once: true });
+});
+document.addEventListener('dblclick', e => {
+  if (!e.target.closest('.pane-resizer')) return;
+  paneWidth = PANE_DEFAULT; applyPaneWidth(paneWidth); ls(PANE_WIDTH, String(paneWidth));
+});
 
 function dismissSplash() {
   if (ui().booted || ui().splashLeaving) return;
