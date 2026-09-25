@@ -1,4 +1,4 @@
-# claude-queue
+# THE DEN
 
 A small always-on service for your Mac, running as **Tushar's Workspace**:
 keep a queue of tasks per project, and it runs them through Claude Code one
