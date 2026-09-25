@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "approval": {
+      "command": "/Users/work/claude-queue/.approval-venv/bin/python3",
+      "args": ["/Users/work/claude-queue/approval_server.py"]
+    }
+  }
+}

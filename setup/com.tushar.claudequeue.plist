@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent for claude-queue.
+
+  BEFORE INSTALLING, replace every YOUR_USERNAME below with your actual
+  macOS username, and confirm the venv path matches where you created it
+  in the README's setup steps. Then:
+
+    cp setup/com.tushar.claudequeue.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tushar.claudequeue.plist
+    launchctl enable gui/$(id -u)/com.tushar.claudequeue
+
+  To stop/uninstall:
+    launchctl bootout gui/$(id -u)/com.tushar.claudequeue
+
+  Logs land at ~/Library/Logs/claude-queue/ (created automatically).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tushar.claudequeue</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOUR_USERNAME/claude-queue/.venv/bin/python3</string>
+        <string>/Users/YOUR_USERNAME/claude-queue/main.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USERNAME/claude-queue</string>
+
+    <!-- launchd agents get a minimal PATH - list any directories the
+         `claude` binary and its dependencies (e.g. node) live in. Run
+         `echo $PATH` in your normal terminal and copy the relevant bits
+         in if `claude` isn't found once this is running under launchd. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+        <key>HOST</key>
+        <string>0.0.0.0</string>
+        <key>PORT</key>
+        <string>8787</string>
+        <key>API_KEY</key>
+        <string>REPLACE_WITH_A_LONG_RANDOM_STRING</string>
+        <key>CLAUDE_BIN</key>
+        <string>claude</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_USERNAME/Library/Logs/claude-queue/stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_USERNAME/Library/Logs/claude-queue/stderr.log</string>
+</dict>
+</plist>

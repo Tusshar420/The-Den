@@ -1,0 +1,152 @@
+/* Tushar's Workspace · design tokens
+   Source of truth for every color, font, radius, shadow and motion value used in the prototype.
+   Load this before components.css. */
+
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ---------- surfaces (darkest → lightest) */
+  --bg-deep: #06090D;        /* page behind the app / device frame */
+  --bg: #0B1016;             /* app background, header, tab bar */
+  --bg-sidebar: #090D12;     /* desktop left rail */
+  --bg-pane: #0A0E13;        /* chat / approval pane */
+  --bg-sheet: #0F151D;       /* bottom sheets, desktop modal */
+  --inset: #0F141B;          /* code blocks, inputs inside cards */
+  --inset-deep: #0B1016;     /* inputs, segmented control track */
+  --surface: #121922;        /* cards, list containers */
+  --surface-2: #18212C;      /* secondary buttons, hover rows, menus */
+  --surface-3: #223040;      /* selected segment, pressed, tracks */
+  --surface-drag: #1E2936;   /* row being dragged */
+
+  /* ---------- borders */
+  --line-soft: #1A2330;      /* row dividers inside cards */
+  --line: #223040;           /* card borders */
+  --line-strong: #2A3747;    /* inputs, secondary buttons */
+  --line-btn: #33404F;       /* ghost buttons on tinted cards */
+  --line-focus: #3A4B60;     /* selected chip border */
+  --line-menu: #2F3D4F;      /* popover border */
+
+  /* ---------- text */
+  --text: #E8EEF3;
+  --text-2: #DCE4EB;         /* long-form reply text */
+  --text-3: #C2CDD8;         /* secondary emphasis */
+  --text-muted: #A3B0BE;     /* sub copy */
+  --text-meta: #93A1B0;      /* meta lines, labels */
+  --text-faint: #6B7A8A;     /* timestamps, eyebrow labels */
+  --text-ghost: #5B6A7A;     /* drag handles, disabled */
+
+  /* ---------- brand: Octopus coral */
+  --coral: #FF7B5C;
+  --coral-hover: #FFA48C;
+  --on-coral: #1A0A05;
+  --coral-tint: rgba(255, 123, 92, .12);
+  --coral-tint-2: rgba(255, 123, 92, .14);
+  --coral-line: rgba(255, 123, 92, .38);
+  --you-bubble: #2A1A15;     /* user chat bubble */
+
+  /* ---------- status (each has fg, soft fg, card bg, button bg) */
+  --wait: #FFB547;  --on-wait: #1A1204;  --wait-card: #17150F;  --wait-line: rgba(255, 181, 71, .45);  --wait-tint: rgba(255, 181, 71, .14);
+  --run: #45E0C8;   --run-soft: #9FEFE2; --run-card: #0E191B;   --run-line: rgba(69, 224, 200, .35);  --run-tint: rgba(69, 224, 200, .22);
+  --err: #FF5470;   --err-soft: #FF8FA2; --err-card: #1A1015;   --err-line: rgba(255, 84, 112, .35);  --err-btn: #2A1820;
+  --review: #7FB2FF; --review-soft: #A9CBFF; --review-btn: #1C2A3D;
+  --sleep: #A58BFF; --sleep-soft: #C9B9FF; --sleep-card: #13111F; --sleep-line: rgba(165, 139, 255, .4); --sleep-btn: #241E3D; --sleep-sel: #2C2450;
+  --ok: #6FCF97;    --ok-soft: #8FE0B0;  --ok-line: rgba(111, 207, 151, .5); --ok-tint: rgba(111, 207, 151, .12);
+  --queued: #C2CDD8;
+  --cancelled: #93A1B0;
+  --offline: #5B6A7A;
+
+  /* ---------- model lanes (see README › Model label) */
+  --lane-agent-fg: #FFA48C;  --lane-agent-bg: rgba(255, 123, 92, .12); --lane-agent-line: rgba(255, 123, 92, .38); --lane-agent-radius: 5px;
+  --lane-api-fg: #8FE0B0;    --lane-api-bg: transparent;               --lane-api-line: rgba(111, 207, 151, .5); --lane-api-radius: 999px;
+
+  /* ---------- project palette (assigned round-robin on create) */
+  --p1: #7FB2FF; --p2: #FF7B5C; --p3: #F58AC0; --p4: #E6C07B; --p5: #7FD1B9; --p-muted: #8FA3B8; --p-general: #6FCF97;
+
+  /* ---------- diff */
+  --diff-add-bg: rgba(111, 207, 151, .10); --diff-add-fg: #9BE3B8;
+  --diff-del-bg: rgba(255, 84, 112, .10);  --diff-del-fg: #FF9DAE;
+  --diff-hunk: #7FB2FF;
+
+  /* ---------- type */
+  --font-ui: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-eyebrow: 10.5px;  /* mono, 600, uppercase, letter-spacing .08em */
+  --fs-meta: 11.5px;     /* mono meta lines */
+  --fs-small: 12.5px;
+  --fs-body: 14px;
+  --fs-row: 14.5px;      /* list row titles */
+  --fs-section: 15px;    /* section headers, 700 */
+  --fs-input: 16px;      /* all inputs: 16px stops iOS zoom */
+  --fs-card-title: 18px;
+  --fs-title: 20px;      /* header title phone (22 desktop) */
+  --fs-hero: 23px;       /* Octopus status line (19 compact) */
+  --fs-display: 31px;    /* splash greeting */
+  --lh-reading: 1.62;    /* long answers */
+
+  /* ---------- radius */
+  --r-xs: 5px; --r-sm: 8px; --r-md: 10px; --r-btn: 12px; --r-btn-lg: 14px;
+  --r-card-sm: 16px; --r-card: 18px; --r-card-lg: 20px; --r-sheet: 26px; --r-pill: 999px;
+
+  /* ---------- spacing / sizing */
+  --tap: 44px;               /* minimum hit target */
+  --row-h: 56px;             /* list/queue row (44 compact) */
+  --section-gap: 20px;       /* between Home sections (12 compact) */
+  --card-pad: 14px;          /* (11 compact) */
+  --page-pad-x: 14px;        /* phone; 28px desktop */
+  --sidebar-w: 250px;
+  --pane-w: 460px;
+  --tabbar-h: 96px;          /* incl. FAB overhang; content bottom padding 120px + safe area */
+
+  /* ---------- elevation */
+  --sh-drag: 0 14px 30px rgba(0, 0, 0, .55);
+  --sh-toast: 0 12px 30px rgba(0, 0, 0, .45);
+  --sh-menu: 0 18px 40px rgba(0, 0, 0, .5);
+  --sh-modal: 0 30px 80px rgba(0, 0, 0, .6);
+  --sh-pane: -24px 0 60px rgba(0, 0, 0, .5);
+  --sh-fab: 0 8px 24px rgba(255, 123, 92, .35);
+  --blur-bar: blur(14px);    /* sticky header + pane header, bg rgba(11,16,22,.88) */
+
+  /* ---------- motion */
+  --ease-out: cubic-bezier(.2, .7, .3, 1);
+  --t-fast: .15s; --t: .2s; --t-page: .26s; --t-rise: .4s;
+  --stagger: 45ms;           /* per list row, capped at 8 rows */
+}
+
+/* compact density (header toggle) */
+[data-density="compact"] {
+  --row-h: 44px; --section-gap: 12px; --card-pad: 11px; --fs-hero: 19px;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes dot-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-4px); opacity: 1; } }
+@keyframes load-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
+@keyframes octo-wig { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes octo-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes octo-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes octo-zz { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -12px); } }
+@keyframes octo-dance { 0%, 100% { transform: translateY(0) rotate(-10deg); } 25% { transform: translateY(-8px) rotate(0); } 50% { transform: translateY(0) rotate(10deg); } 75% { transform: translateY(-8px) rotate(0); } }
+@keyframes octo-shadow { 0%, 50%, 100% { transform: scaleX(1); opacity: .55; } 25%, 75% { transform: scaleX(.65); opacity: .25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0; background: var(--bg-deep); color: var(--text);
+  font-family: var(--font-ui); -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
+}
+a { color: var(--coral); text-decoration: none; }
+a:hover { color: var(--coral-hover); }
+button { font-family: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; }
+input, textarea { font-family: inherit; color: var(--text); }
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
+:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
