@@ -1,0 +1,12 @@
+.venv/
+.approval-venv/
+__pycache__/
+*.pyc
+queue.db
+queue.db-*
+queue.db.bak*
+.DS_Store
+*.log
+# Holds the real API_KEY (and soon OPENAI_API_KEY) - never commit it.
+setup/com.tushar.claudequeue.plist
+workspace/
