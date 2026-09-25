@@ -1,14 +1,35 @@
 // Project detail: header, paused banner, stats, and the Work / Activity / Recipes /
 // Settings tabs. Backlog = the existing todos API.
 
-import { money, plural, priorityLabel, agoShort, ago, statusOf, fmtCost, taskName } from '../format.js';
+import { money, plural, priorityLabel, agoShort, ago, statusOf, fmtCost, taskName, modelState, PERMISSION_MODES } from '../format.js';
 import { projectColor, queuedTasks, threadSummaries, finishedAt, PROJECT_STATUSES, NOTE_KINDS } from '../data.js';
 import { esc, octo, chipFor, histRow, toggle, glyph, took, scopeSwitch } from '../ui.js';
 import { octopusSVG } from '../octopus.js';
 import { recipeCard } from './recipes.js';
 
 const TABS = [['work', 'Work'], ['notes', 'Notes'], ['activity', 'Activity'], ['recipes', 'Recipes'], ['settings', 'Settings']];
+const chevSVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 const tildify = p => (p || '').replace(/^\/Users\/[^/]+/, '~');
+
+// What opens under a backlog item: everything it says, and how it will run once it joins the queue.
+// Model / mode / priority save as you tap; empty means the defaults (Claude Code, Accept edits, Normal).
+function todoDetail(c, t) {
+  const models = [{ id: 'auto', label: 'Auto', dot: 'var(--text)', ok: true },
+    ...c.d.models.filter(m => m.lane !== 'control').map(m => modelState(m, c.now)).map(m => ({ id: m.id, label: m.label, dot: m.dot, ok: m.available || m.rate }))];
+  const model = t.model_id || 'claude-code', mode = t.permission_mode || 'acceptEdits', pri = t.priority || 0;
+  const label = s => `<span class="pal-label">${s}</span>`;
+  return `<div class="brow__detail">
+    <div class="brow__full">${esc(t.text)}</div>
+    <span class="meta">Added ${esc(ago(t.created_at, c.now))}</span>
+    ${label('MODEL')}<div class="pal-chips pal-chips--flush" data-noswipe>${models.map(m =>
+      `<button class="pal-model${model === m.id ? ' is-on' : ''}" style="opacity:${m.ok ? 1 : 0.5}" data-action="todoSet" data-id="${t.id}" data-k="model" data-v="${esc(m.id)}"><span class="dot" style="--c:${m.dot};width:7px;height:7px"></span>${esc(m.label)}</button>`).join('')}</div>
+    ${label('MODE')}<div class="pal-chips pal-chips--flush" data-noswipe>${PERMISSION_MODES.map(m =>
+      `<button class="pal-model${mode === m.id ? ' is-on' : ''}" title="${esc(m.sub)}" data-action="todoSet" data-id="${t.id}" data-k="permission_mode" data-v="${m.id}"><span class="dot" style="--c:${m.dot};width:7px;height:7px"></span>${esc(m.label)}</button>`).join('')}</div>
+    ${label('PRIORITY')}<div class="segmented">${[[-1, 'Low'], [0, 'Normal'], [1, 'Urgent']].map(([v, l]) =>
+      `<button class="segmented__opt${pri === v ? (v === 1 ? ' is-urgent' : ' is-on') : ''}" data-action="todoSet" data-id="${t.id}" data-k="priority" data-v="${v}">${l}</button>`).join('')}</div>
+    <div class="need__row"><button class="btn btn--ghost btn--38" data-action="openTodoEdit" data-id="${t.id}">Edit text</button><span class="meta">Used when you press Run selected.</span></div>
+  </div>`;
+}
 
 function work(c, p) {
   const { d, w, ui } = c;
@@ -45,14 +66,18 @@ function work(c, p) {
   const backlog = `<div class="section section--backlog">
     <div class="section__head"><span class="section__title">Backlog <span class="section__count">${todos.length}</span></span>${todos.length ? `<button class="btn--text" data-action="backlogSelectAll" data-all="${allSel ? 1 : 0}">${allSel ? 'Clear' : 'Select all'}</button>` : ''}</div>
     <form class="backlog-add" data-submit="addTodo"><textarea id="todoInput" class="input grow backlog-add__input" rows="3" placeholder="Add to backlog… (Shift+Enter for a new line)" data-input="todoText" data-enter="submitTodo" data-autogrow="260" aria-label="Add to backlog">${esc(ui.todoText)}</textarea><button class="btn btn--48" type="submit">Add</button></form>
-    ${todos.length ? `<div class="list list--backlog" data-drag-list="backlog" data-pid="${p.id}">${todos.map(t => `<div class="qrow brow" data-id="${t.id}" data-key="b${t.id}">
+    ${todos.length ? `<div class="list list--backlog" data-drag-list="backlog" data-pid="${p.id}">${todos.map(t => { const open = !!ui.todoOpen[t.id]; return `<div class="qrow brow${open ? ' is-open' : ''}" data-id="${t.id}" data-key="b${t.id}">
         <span class="handle" aria-label="Drag to reorder">⋮⋮</span>
         <button class="check" role="checkbox" aria-checked="${t.checked ? 'true' : 'false'}" data-action="todoCheck" data-id="${t.id}" aria-label="Select">${t.checked ? '✓' : ''}</button>
         <span class="brow__title truncate" data-action="todoCheck" data-id="${t.id}">${esc(t.text)}</span>
-        <button class="icon-btn icon-btn--ghost brow__edit" data-action="openTodoEdit" data-id="${t.id}" aria-label="Edit">✎</button>
-      </div>`).join('')}</div>` : ''}
+        <span class="brow__acts">
+          <button class="icon-btn icon-btn--ghost brow__toggle" aria-expanded="${open}" data-action="todoToggle" data-id="${t.id}" aria-label="${open ? 'Hide details' : 'Show details'}">${chevSVG}</button>
+          <button class="icon-btn icon-btn--ghost brow__edit" data-action="openTodoEdit" data-id="${t.id}" aria-label="Edit">✎</button>
+        </span>
+        ${open ? todoDetail(c, t) : ''}
+      </div>`; }).join('')}</div>` : ''}
     ${sel.length ? `<div class="bulkbar"><span class="bulkbar__text">${sel.length} selected · joins after ${plural(queue.length, 'task')}</span>${allSel ? '' : `<button class="bulkbar__all" data-action="backlogSelectAll" data-all="0">Select all</button>`}<button class="bulkbar__del" data-action="backlogDelete">Delete</button><button class="bulkbar__run" data-action="backlogRun"${ui.busy.backlogRun ? ' disabled' : ''}>Run selected</button></div>` : ''}
-    <span class="section__hint">Drag to set the order. Selected items join the queue in this order.</span>
+    <span class="section__hint">${todos.some(t => ui.todoOpen[t.id]) ? 'Close open items to drag them. ' : 'Drag to set the order. '}Selected items join the queue in this order.</span>
   </div>`;
 
   return `<div class="proj-work" data-key="tab-work">

@@ -265,7 +265,15 @@ code { font-family: var(--font-mono); font-size: .92em; color: var(--text-3); }
 .backlog-add__input { min-height: 84px; resize: vertical; font: 400 14.5px/1.45 var(--font-ui); white-space: pre-wrap; }
 .list--backlog { position: relative; overflow: visible; }
 .brow { grid-template-columns: 30px 26px minmax(0, 1fr) auto; gap: 8px; padding: 0 4px 0 4px; }
-.brow__edit { width: 36px; height: 36px; font-size: 16px; }
+.brow__edit, .brow__toggle { width: 36px; height: 36px; font-size: 16px; }
+.brow__acts { display: flex; align-items: center; }
+.brow__toggle svg { transition: transform var(--t) ease; }
+.brow__toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.brow.is-open { height: auto; grid-template-rows: var(--row-h) auto; padding-bottom: 12px; }
+.brow.is-open .handle { opacity: .35; cursor: default; }
+.brow__detail { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 2px 6px 0 6px; }
+.brow__full { font: 400 var(--fs-row) / 1.5 var(--font-ui); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow-y: auto; align-self: stretch; }
+.brow__detail .need__row { align-items: center; gap: 10px; margin-top: 4px; }
 .brow .check { cursor: pointer; }
 .brow__title { font: 500 var(--fs-row) var(--font-ui); cursor: pointer; }
 .notes { max-width: 720px; }

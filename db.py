@@ -192,7 +192,11 @@ CREATE TABLE IF NOT EXISTS todos (
     -- ('queued' onward mirrors the linked task's status - see list_todos)
     status TEXT NOT NULL DEFAULT 'pending',
     task_id INTEGER REFERENCES tasks(id),
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    -- How it will run once queued. NULL = the defaults (Claude Code, acceptEdits, normal).
+    model_id TEXT,
+    permission_mode TEXT,
+    priority INTEGER NOT NULL DEFAULT 0
 );
 
 -- What you've told Octopus about a project: guidelines, requirements, plain
@@ -404,6 +408,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
         "UPDATE tasks SET title = (SELECT r.title FROM tasks r WHERE r.id = tasks.thread_id), title_by = 'thread' "
         "WHERE title IS NULL AND thread_id IS NOT NULL"
     )
+    todo_cols = {r["name"] for r in conn.execute("PRAGMA table_info(todos)").fetchall()}
+    for name, decl in (("model_id", "TEXT"), ("permission_mode", "TEXT"), ("priority", "INTEGER NOT NULL DEFAULT 0")):
+        if name not in todo_cols:
+            conn.execute(f"ALTER TABLE todos ADD COLUMN {name} {decl}")
     approval_cols = {r["name"] for r in conn.execute("PRAGMA table_info(approvals)").fetchall()}
     if "note" not in approval_cols:
         conn.execute("ALTER TABLE approvals ADD COLUMN note TEXT")
@@ -1383,7 +1391,10 @@ def list_todos(project_id: int) -> list[dict[str, Any]]:
         return [_row_to_dict(r) for r in rows]
 
 
-def update_todo(todo_id: int, text: Optional[str] = None, checked: Optional[bool] = None) -> Optional[dict[str, Any]]:
+def update_todo(todo_id: int, text: Optional[str] = None, checked: Optional[bool] = None,
+                settings: Optional[dict[str, Any]] = None) -> Optional[dict[str, Any]]:
+    """`settings` holds any of model_id / permission_mode / priority - how the
+    item will run once queued. None as a value puts one back to its default."""
     with _lock:
         conn = get_conn()
         todo = get_todo(todo_id)
@@ -1392,6 +1403,10 @@ def update_todo(todo_id: int, text: Optional[str] = None, checked: Optional[bool
 
         if text is not None:
             conn.execute("UPDATE todos SET text = ? WHERE id = ?", (text, todo_id))
+
+        for k, v in (settings or {}).items():
+            if k in ("model_id", "permission_mode", "priority"):
+                conn.execute(f"UPDATE todos SET {k} = ? WHERE id = ?", (0 if k == "priority" and v is None else v, todo_id))
 
         if checked is not None and bool(checked) != bool(todo["checked"]):
             conn.execute("UPDATE todos SET checked = ? WHERE id = ?", (1 if checked else 0, todo_id))
@@ -1489,10 +1504,13 @@ def project_notes_prompt(project_id: Optional[int]) -> str:
             "instructions and keep them in mind for everything you do here.\n\n" + "\n\n".join(sections))
 
 
-def run_checked_todos(project_id: int) -> list[dict[str, Any]]:
+def run_checked_todos(project_id: int, decisions: Optional[dict[int, dict[str, Any]]] = None) -> list[dict[str, Any]]:
     """Convert every checked, not-yet-run todo (in position order) into a
     real queued task - see add_task. Already queued/done/error ones are
-    left alone; re-check one (see update_todo) to stage it for a rerun."""
+    left alone; re-check one (see update_todo) to stage it for a rerun.
+    A todo with its own model, mode or priority carries them onto the task;
+    `decisions` maps a todo id to the router's decision for its model (made
+    in api.py - routing can call a model, so not under this lock)."""
     with _lock:
         conn = get_conn()
         rows = conn.execute(
@@ -1501,7 +1519,13 @@ def run_checked_todos(project_id: int) -> list[dict[str, Any]]:
             (project_id,),
         ).fetchall()
         for row in rows:
-            task = add_task(row["project_id"], row["text"])
+            decision = (decisions or {}).get(row["id"])
+            task = add_task(
+                row["project_id"], row["text"], priority=row["priority"] or 0,
+                permission_mode=row["permission_mode"],
+                **({k: decision[k] for k in ("lane", "model_id", "category", "routed_by")}
+                   | {"route_reason": decision["reason"]} if decision else {}),
+            )
             conn.execute(
                 "UPDATE todos SET status = 'queued', task_id = ? WHERE id = ?",
                 (task["id"], row["id"]),

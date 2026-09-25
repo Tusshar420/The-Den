@@ -8,6 +8,7 @@ device on your tailnet from poking your queue without you noticing.
 """
 
 import hmac
+import html
 import json
 import os
 import time
@@ -19,6 +20,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, Field
 
+import approval_links
 import db
 import providers
 import risk
@@ -184,6 +186,10 @@ class TodoIn(BaseModel):
 class TodoUpdateIn(BaseModel):
     text: Optional[str] = None
     checked: Optional[bool] = None
+    # How it will run once queued - same meaning as on a task. null = the default (Claude Code, acceptEdits, normal).
+    model: Optional[str] = None
+    permission_mode: Optional[str] = None
+    priority: Optional[int] = None
 
 
 class TodoReorderIn(BaseModel):
@@ -502,6 +508,47 @@ def decide_approval(approval_id: int, body: ApprovalDecisionIn):
     return db.decide_approval(approval_id, body.approved, note=None if body.approved else body.note)
 
 
+_QUICK_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title} · The Den</title>
+<style>
+:root{{--bg:#f6f7f9;--card:#fff;--fg:#14181f;--muted:#5b6573;--accent:{accent};--line:#e3e6eb}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#0f141a;--card:#18202a;--fg:#e8edf2;--muted:#93a1b0;--line:#26313d}}}}
+body{{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 -apple-system,system-ui,sans-serif;
+display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}}
+.card{{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:420px;width:100%}}
+h1{{margin:0 0 6px;font-size:22px;color:var(--accent)}}p{{margin:0 0 14px;color:var(--muted)}}
+code{{display:block;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+font:13px/1.4 ui-monospace,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-word;margin-bottom:16px}}
+a{{color:var(--fg);font-weight:600}}
+</style></head><body><div class="card"><h1>{title}</h1><p>{text}</p>{command}
+<a href="/dashboard">Open dashboard</a></div></body></html>"""
+
+
+def _quick_page(title: str, text: str, command: str = "", accent: str = "#5b6573", status: int = 200) -> HTMLResponse:
+    cmd = f"<code>{html.escape(command[:600])}</code>" if command else ""
+    return HTMLResponse(_QUICK_PAGE.format(title=html.escape(title), text=html.escape(text), command=cmd, accent=accent),
+                        status_code=status, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/approvals/{approval_id}/quick/{decision}", response_class=HTMLResponse)
+def quick_decide(approval_id: int, decision: str, t: str = ""):
+    """Approve / Deny buttons on an approval push. Opened in Safari, which can't
+    send X-API-Key - the signed token in the link is the auth (approval_links)."""
+    if not approval_links.valid(approval_id, decision, t):
+        return _quick_page("Link not valid", "This approval link is broken or was changed.", status=403)
+    approval = db.get_approval(approval_id)
+    if not approval:
+        return _quick_page("Not found", "That approval doesn't exist any more.", status=404)
+    command = risk.command_of(approval["tool_name"], approval["tool_input"]) if approval["tool_name"] == "Bash" else ""
+    if approval["status"] != "pending":
+        said = {"approved": "approved", "denied": "denied", "timed_out": "closed (timed out or the task stopped)"}
+        return _quick_page("Already decided", f"This was already {said.get(approval['status'], approval['status'])}.", command)
+    decide_approval(approval_id, ApprovalDecisionIn(approved=decision == "approve"))
+    if db.get_approval(approval_id)["status"] == "approved":
+        return _quick_page("Approved ✓", "Octopus is carrying on.", command, accent="#2e9e5b")
+    return _quick_page("Denied", "Octopus won't run this and will work around it.", command, accent="#d0473a")
+
+
 @app.get("/approvals/{approval_id}/context", dependencies=[Depends(require_api_key)])
 def approval_context(approval_id: int):
     """Risk read, the steps so far and the project's uncommitted changes -
@@ -574,7 +621,18 @@ def create_todo(project_id: int, body: TodoIn):
 def update_todo(todo_id: int, body: TodoUpdateIn):
     if not db.get_todo(todo_id):
         raise HTTPException(status_code=404, detail="Todo not found")
-    return db.update_todo(todo_id, text=body.text, checked=body.checked)
+    sent, settings = body.model_fields_set, {}
+    if "model" in sent:
+        if body.model not in (None, "auto") and not router.get_model(body.model):
+            raise HTTPException(status_code=400, detail=f"Unknown model '{body.model}'")
+        settings["model_id"] = body.model
+    if "permission_mode" in sent:
+        settings["permission_mode"] = _check_mode(body.permission_mode)
+    if "priority" in sent:
+        if body.priority not in (-1, 0, 1):
+            raise HTTPException(status_code=400, detail="priority must be -1, 0 or 1")
+        settings["priority"] = body.priority
+    return db.update_todo(todo_id, text=body.text, checked=body.checked, settings=settings)
 
 
 @app.delete("/todos/{todo_id}", dependencies=[Depends(require_api_key)])
@@ -594,9 +652,18 @@ def reorder_todos(project_id: int, body: TodoReorderIn):
 
 @app.post("/projects/{project_id}/todos/run", dependencies=[Depends(require_api_key)])
 def run_checked_todos(project_id: int):
-    if not db.get_project(project_id):
+    project = db.get_project(project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return db.run_checked_todos(project_id)
+    name = None if db.is_general_project(project) else project["name"]
+    decisions = {}
+    for t in db.list_todos(project_id):
+        if t["checked"] and t["status"] == "pending" and t["model_id"]:
+            try:
+                decisions[t["id"]] = router.route(t["text"], project_name=name, force_model=t["model_id"])
+            except ValueError:
+                pass  # can't take it right now - it runs on the default rather than being lost
+    return db.run_checked_todos(project_id, decisions=decisions)
 
 
 # ------------------------------------------------------------------ Octopus

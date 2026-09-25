@@ -158,10 +158,10 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | POST | `/approvals/{id}/decide` | `{"approved", "note"?, "always"?}` | approve or deny a pending request; `always` also adds the command to the project's allow list, `note` is passed back to Claude on a deny |
 | GET | `/projects/{id}/todos` | - | list a project's todo backlog, in order |
 | POST | `/projects/{id}/todos` | `{"text"}` | add a todo item (appended to the end) |
-| PATCH | `/todos/{id}` | `{"text"?, "checked"?}` | edit or check/uncheck a todo item |
+| PATCH | `/todos/{id}` | `{"text"?, "checked"?, "model"?, "permission_mode"?, "priority"?}` | edit or check/uncheck a todo item; model / mode / priority (`null` = default) are how it will run once queued |
 | DELETE | `/todos/{id}` | - | remove a todo item |
 | POST | `/projects/{id}/todos/reorder` | `{"ids": [...]}` | set the todo order (full id list, in the new order) |
-| POST | `/projects/{id}/todos/run` | - | queue every checked, not-yet-run todo, in order |
+| POST | `/projects/{id}/todos/run` | - | queue every checked, not-yet-run todo, in order, each with its own model / mode / priority |
 | GET | `/projects/{id}/notes` | - | list a project's notes (guidelines, requirements, notes), oldest first. Every task run for the project is given these |
 | POST | `/projects/{id}/notes` | `{"text", "kind"?}` | add a note; `kind` is `guideline`, `requirement` or `note` (default) |
 | PATCH | `/notes/{id}` | `{"text"?, "kind"?}` | edit a note |
@@ -369,7 +369,7 @@ the lane:
   each task but isn't counted as spend. A project that reaches its monthly
   budget is paused, and you get a push.
 - **Notifications** (ActivitySmith) - per project: approvals and failures
-  (time-sensitive, break through Focus), completions (passive), and quiet hours 23:00-08:00
+  (time-sensitive, break through Focus), completions (normal banner), and quiet hours 23:00-08:00
   that hold everything except approvals. **Ping me when back** sends one push
   when a rate-limit pause ends. **Save the session for urgent work** holds
   Low tasks while the 5-hour window is over 85%.

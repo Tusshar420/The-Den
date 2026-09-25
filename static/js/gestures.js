@@ -86,7 +86,7 @@ export function dragReorder(list, { rowHeight = () => parseFloat(getComputedStyl
   let drag = null;
   const rows = () => [...list.children].filter(r => r.dataset.id);
   const down = e => {
-    const h = e.target.closest('.handle'); if (!h) return;
+    const h = e.target.closest('.handle'); if (!h || list.querySelector('.is-open')) return;  // rows are only equal height while closed
     e.preventDefault(); e.stopPropagation();
     const row = h.closest('[data-id]'), all = rows();
     drag = { row, from: all.indexOf(row), y0: e.clientY, dy: 0, all };

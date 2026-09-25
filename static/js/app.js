@@ -52,7 +52,7 @@ const VIEWS = ['home', 'projects', 'recipes', 'activity', 'personal', 'messages'
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch {} return null; };
 Object.assign(store.ui, {
   booted: false, splashLeaving: false, bootDate: new Date(), bootRand: Math.random(), gateError: '',
-  palette: null, onboard: { name: '', path: '', category: 'work', error: '' }, todoText: '', todoEdit: null, quickEdit: false, quickNew: null, noteText: '', noteKind: 'guideline', noteEdit: null, reply: '', replyMode: null, replyModel: null, replyMenu: false, denyNote: '',
+  palette: null, onboard: { name: '', path: '', category: 'work', error: '' }, todoText: '', todoOpen: {}, todoEdit: null, quickEdit: false, quickNew: null, noteText: '', noteKind: 'guideline', noteEdit: null, reply: '', replyMode: null, replyModel: null, replyMenu: false, denyNote: '',
   scope: ['all', 'work', 'personal'].includes(ls('octopus-scope')) ? ls('octopus-scope') : 'all',
   busy: {}, polishing: null, focus: null, tabs: [], drafts: {}, lastProjectId: Number(ls(LAST_PROJECT)) || null,
   personalTab: 'email', sidebarPref: ls(SIDEBAR_PREF) !== '0', navDrawer: false,
@@ -1057,6 +1057,17 @@ const ACTIONS = {
     if (!t) return;
     patchTodos(pid, x => (x.id === id ? { ...x, checked: t.checked ? 0 : 1 } : x));
     endpoints.updateTodo(id, { checked: !t.checked }).catch(fail);
+  },
+  todoToggle: el => { const id = Number(el.dataset.id); set({ todoOpen: { ...ui().todoOpen, [id]: !ui().todoOpen[id] } }); },
+  // How a backlog item will run once queued: model / permission_mode / priority.
+  todoSet: el => {
+    const pid = ui().projectId, id = Number(el.dataset.id), k = el.dataset.k;
+    const v = k === 'priority' ? Number(el.dataset.v) : el.dataset.v;
+    const field = { model: 'model_id', permission_mode: 'permission_mode', priority: 'priority' }[k];
+    const before = (store.data.todos[pid] || []).find(x => x.id === id);
+    if (!before) return;
+    patchTodos(pid, x => (x.id === id ? { ...x, [field]: v } : x));
+    endpoints.updateTodo(id, { [k]: v }).catch(e => { patchTodos(pid, x => (x.id === id ? { ...x, [field]: before[field] } : x)); fail(e); });
   },
   submitTodo: () => SUBMITS.addTodo(),
   submitNote: () => SUBMITS.addNote(),

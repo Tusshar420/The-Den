@@ -26,6 +26,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import approval_links
 import db
 import providers
 import router
@@ -42,16 +43,22 @@ ACTIVITYSMITH_API_KEY = os.environ.get("ACTIVITYSMITH_API_KEY")
 ACTIVITYSMITH_URL = "https://activitysmith.com/api/push-notification"
 
 # ActivitySmith interruption levels: time-sensitive can break through a
-# Focus mode, active is a normal notification, passive arrives quietly.
+# Focus mode, active is a normal notification. (passive skips the banner and
+# sound entirely, so nothing uses it - completions went unnoticed.)
 PUSH_LEVEL = {"approval": "time-sensitive", "reminder": "time-sensitive", "failure": "time-sensitive",
-              "completion": "passive", "info": "active"}
+              "completion": "active", "info": "active"}
 
 
-def notify_phone(title: str, message: str, kind: str = "info") -> bool:
+def notify_phone(title: str, message: str, kind: str = "info", actions: Optional[list] = None) -> bool:
     if not ACTIVITYSMITH_API_KEY:
         return False
     try:
         body = {"title": title, "message": message, "interruption_level": PUSH_LEVEL.get(kind, "active")}
+        if approval_links.den_url():
+            # Tapping the notification itself opens the dashboard.
+            body["redirection"] = approval_links.den_url() + "/dashboard"
+        if actions:
+            body["actions"] = actions
         req = urllib.request.Request(
             ACTIVITYSMITH_URL,
             data=json.dumps(body).encode("utf-8"),
@@ -969,7 +976,9 @@ def _assistant_notifier(task: dict[str, Any]):
     'approval' notification setting like approval_server.py does."""
     def notify_approval(title: str, message: str) -> None:
         if db.get_project_settings(task["project_id"])["notify_approvals"]:
-            notify_phone(title, message[:200], "approval")
+            # Open dashboard only - an assistant approval (an email, an invite) should be
+            # read on its card before it's approved, so no blind Approve button here.
+            notify_phone(title, message[:200], "approval", approval_links.actions())
     return notify_approval
 
 

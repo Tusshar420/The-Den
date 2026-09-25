@@ -27,6 +27,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import approval_links  # noqa: E402
 import db  # noqa: E402
 import risk  # noqa: E402
 
@@ -44,13 +45,17 @@ SLEEP_TIMEOUT_SECONDS = int(os.environ.get("SLEEP_APPROVAL_TIMEOUT_SECONDS", str
 mcp = FastMCP("the-den-approval")
 
 
-def notify_phone(title: str, message: str) -> None:
+def notify_phone(title: str, message: str, approval_id: int) -> None:
     if not ACTIVITYSMITH_API_KEY:
         return
     try:
         # time-sensitive can break through a Focus mode - an approval
         # blocks the whole queue.
         body = {"title": title, "message": message, "interruption_level": "time-sensitive"}
+        buttons = approval_links.actions(approval_id)
+        if buttons:
+            body["actions"] = buttons
+            body["redirection"] = approval_links.den_url() + "/dashboard"
         req = urllib.request.Request(
             "https://activitysmith.com/api/push-notification",
             data=json.dumps(body).encode("utf-8"),
@@ -85,6 +90,7 @@ def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
         notify_phone(
             "Approval needed",
             f"{project['name'] if project else 'task #' + str(TASK_ID)}: {command[:150]}",
+            approval["id"],
         )
 
     deadline = time.time() + (min(TIMEOUT_SECONDS, SLEEP_TIMEOUT_SECONDS) if asleep else TIMEOUT_SECONDS)
