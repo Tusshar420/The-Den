@@ -12,17 +12,33 @@ keeps it running in the background and restarts it if it ever dies.
 import asyncio
 import logging
 import os
+import re
 
 import uvicorn
 
-from api import app
+from api import app, check_bind_is_safe
+import titles
 import worker
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-log = logging.getLogger("claude-queue.main")
+log = logging.getLogger("the-den.main")
+
+
+class _RedactOAuthParams(logging.Filter):
+    """uvicorn logs each request line; the OAuth redirect carries a one-time
+    code and state in its query string - keep those out of the log."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(re.sub(r"([?&](?:code|state)=)[^&\s\"]+", r"\1[redacted]", a) if isinstance(a, str) else a
+                                for a in record.args)
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_RedactOAuthParams())
 
 # Bind address:
 #   - "127.0.0.1" = only reachable from this Mac itself (fine for local testing)
@@ -39,6 +55,7 @@ PORT = int(os.environ.get("PORT", "8787"))
 
 
 async def main() -> None:
+    check_bind_is_safe(HOST)
     stop_event = asyncio.Event()
 
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="info")
@@ -47,12 +64,16 @@ async def main() -> None:
     api_task = asyncio.create_task(server.serve())
     worker_task = asyncio.create_task(worker.worker_loop(stop_event))
     api_lane_task = asyncio.create_task(worker.api_worker_loop(stop_event))
+    assistant_task = asyncio.create_task(worker.assistant_worker_loop(stop_event))
     scheduler_task = asyncio.create_task(worker.scheduler_loop(stop_event))
+    namer_task = asyncio.create_task(titles.namer_loop(stop_event))
+    run_now_task = asyncio.create_task(worker.run_now_loop(stop_event))
 
-    log.info("claude-queue running: API on http://%s:%s , worker + Octopus api lane + scheduler active", HOST, PORT)
+    log.info("The Den running: API on http://%s:%s , worker + proceed-now + Octopus api lane + assistant lane + scheduler + namer active", HOST, PORT)
 
     try:
-        await asyncio.gather(api_task, worker_task, api_lane_task, scheduler_task)
+        await asyncio.gather(api_task, worker_task, api_lane_task, assistant_task, scheduler_task, namer_task,
+                             run_now_task)
     except asyncio.CancelledError:
         pass
     finally:

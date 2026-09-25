@@ -2,7 +2,7 @@
 // Every user- or model-supplied string goes through esc().
 
 import { store } from './api.js';
-import { escapeHTML, modelChip, modelChipHTML, statusOf, agoShort, ago, mmss, secs, fmtCost } from './format.js';
+import { escapeHTML, modelChip, modelChipHTML, statusOf, agoShort, ago, mmss, secs, fmtCost, taskName } from './format.js';
 import { octopusSVG } from './octopus.js';
 import { icon } from './icons.js';
 import { projectById, projectColor } from './data.js';
@@ -20,7 +20,7 @@ export const swatch = (color, cls = 'swatch-sq') => `<span class="${cls}" style=
 
 export const chipFor = t => modelChipHTML(modelChip(t, store.data.models));
 export const modelLabel = id => (store.data.models.find(m => m.id === id) || {}).label || (id === 'claude-code' || !id ? 'Claude Code' : id);
-export const laneColor = lane => (lane === 'api' ? 'var(--lane-api-fg)' : 'var(--lane-agent-fg)');
+export const laneColor = lane => (lane === 'api' ? 'var(--lane-api-fg)' : lane === 'assistant' ? 'var(--lane-assistant-fg)' : 'var(--lane-agent-fg)');
 
 export const toggle = (on, action, attrs = '', sleep = false) =>
   `<button class="toggle${sleep ? ' toggle--sleep' : ''}" role="switch" aria-checked="${on ? 'true' : 'false'}" data-action="${action}" ${attrs}></button>`;
@@ -41,7 +41,7 @@ export function dayWord(iso) {
 }
 
 // "4:12" for Claude Code turns, "2.1s" for answer-only calls - the prototype's split.
-export const took = t => (t.duration_ms == null ? '' : t.lane === 'api' ? secs(t.duration_ms) : mmss(t.duration_ms / 1000));
+export const took = t => (t.duration_ms == null ? '' : t.lane !== 'agent' ? secs(t.duration_ms) : mmss(t.duration_ms / 1000));
 
 // ---------------------------------------------------------------- status glyphs
 const GLYPH = { done: ['✓', 'var(--ok)'], cancelled: ['–', 'var(--cancelled)'], error: ['✕', 'var(--err)'], needs_review: ['◐', 'var(--review)'] };
@@ -65,7 +65,7 @@ export function histRow(t, { project = true, key = 'h' } = {}) {
   return `<div class="row hrow" data-key="${key}${t.id}">
     <span class="row__glyph" style="color:${gc}">${g}</span>
     <div class="row__body" data-action="openChat" data-id="${t.id}">
-      <span class="row__title truncate">${esc(t.prompt)}</span>
+      <span class="row__title truncate">${esc(taskName(t))}</span>
       <div class="meta-row">${project ? `<span class="nowrap">${esc(p ? p.name : t.project_name)}</span>` : ''}${chipFor(t)}<span class="truncate">${project ? '· ' : ''}${esc(rest)}</span></div>
     </div>
     <button class="row-icon" title="Run again" aria-label="Run again" data-action="runAgain" data-id="${t.id}">↻</button>
@@ -74,3 +74,20 @@ export function histRow(t, { project = true, key = 'h' } = {}) {
 
 export const projectSwatch = p => swatch(projectColor(p));
 export { ago, agoShort, statusOf, fmtCost, mmss, secs };
+
+// Work / Personal / All switch. `action` is the data-action fired with data-scope (or data-cat).
+export function scopeSwitch(current, action, options, cls = '') {
+  return `<div class="chip-row scope ${cls}" role="radiogroup" aria-label="Work or personal" data-noswipe>${options.map(([k, l]) =>
+    `<button class="chip${current === k ? ' is-on' : ''}" role="radio" aria-checked="${current === k}" data-action="${action}" data-scope="${k}" data-key="${action}-${k}">${l}</button>`).join('')}</div>`;
+}
+
+// Pause all / Resume all / Dismiss all for a list of queued tasks. Each button
+// carries the ids it acts on; a button with nothing to do is disabled.
+export function bulkBar(tasks, key = 'bulk') {
+  const queued = tasks.filter(t => t.status === 'queued');
+  if (!queued.length) return '';
+  const ids = ts => ts.map(t => t.id).join(',');
+  const running = queued.filter(t => !t.paused), held = queued.filter(t => t.paused);
+  const btn = (action, label, list, extra = '') => `<button class="btn btn--ghost btn--sm${extra}" data-action="${action}" data-ids="${ids(list)}"${list.length ? '' : ' disabled'}>${label}</button>`;
+  return `<div class="bulk" data-key="${key}">${btn('pauseAll', 'Pause all', running)}${btn('resumeAll', 'Resume all', held)}${btn('dismissAll', 'Dismiss all', queued, ' bulk__danger')}</div>`;
+}

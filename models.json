@@ -10,7 +10,16 @@
     "price_per_mtok (USD per million tokens) is only used to estimate cost - check current prices before trusting it.",
     "routing.categories: for each task category, 'candidates' is the preference order - the first one that is",
     "enabled and not rate-limited wins, the rest are fallbacks. 'transferable': false means never fall back just",
-    "because the first choice is rate-limited - wait for it instead (coding work shouldn't hop models mid-project)."
+    "because the first choice is rate-limited - wait for it instead (coding work shouldn't hop models mid-project).",
+    "octopus-tools (provider 'tools') is the personal assistant: email, calendar and reminders through connected accounts.",
+    "It is not a language model. routing.assistant_planner lists the models it may use, in order, when a request needs interpreting; through its 'ai' tool it can also hand work to any other model here",
+    "(same candidates, availability and cost limits as the Ask box - assistant/tools/ai.py) -",
+    "claude-code last means it only falls back to your Claude subscription (with every tool switched off) when no API-key model is available.",
+    "Per model: 'modality': 'image' = makes pictures instead of text. 'scarce': true = a limited resource (a subscription window) the router",
+    "  avoids spending on work that doesn't need it. 'web_search': true = can ground answers in a live web search. 'rate_limit' is a free-text note shown on the AI Providers page.",
+    "Per category: 'optimize' = cost | balanced | quality picks how the router weighs price against strength (see octopus/plan.py);",
+    "  'quality_from' = which rating (coding | reasoning) counts as strength; 'classifiable': false keeps a category out of the classifier's menu",
+    "  (instant commands about Octopus itself are recognised by rules). routing.weights can override the weight presets."
   ],
   "models": [
     {
@@ -25,7 +34,9 @@
       "vision": true,
       "context_tokens": 200000,
       "cost": 5,
-      "speed": 2
+      "speed": 2,
+      "scarce": true,
+      "rate_limit": "Your Claude subscription: a 5-hour window plus a weekly limit"
     },
     {
       "id": "gpt-6-sol",
@@ -33,7 +44,8 @@
       "provider": "openai",
       "model": "gpt-6-sol",
       "enabled": true,
-      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context"],
+      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context", "web_search"],
+      "web_search": true,
       "coding": 4,
       "reasoning": 4,
       "vision": true,
@@ -64,7 +76,8 @@
       "model": "gemini-3.8-flash",
       "enabled": true,
       "_note": "Free tier: $0 with daily limits, but Google may use prompts to improve its products. If you enable billing on the key, set price_per_mtok to {\"input\": 0.75, \"output\": 3.75}.",
-      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context"],
+      "capabilities": ["writing", "reasoning", "general", "code_explanation", "vision", "long_context", "web_search"],
+      "web_search": true,
       "coding": 4,
       "reasoning": 4,
       "vision": true,
@@ -72,6 +85,66 @@
       "cost": 1,
       "speed": 4,
       "price_per_mtok": null
+    },
+    {
+      "id": "octopus-tools",
+      "label": "Personal Assistant",
+      "provider": "tools",
+      "model": null,
+      "enabled": true,
+      "capabilities": ["email", "calendar", "reminders", "queue", "ai_models"],
+      "coding": 0,
+      "reasoning": 0,
+      "vision": false,
+      "context_tokens": 0,
+      "cost": 1,
+      "speed": 5
+    },
+    {
+      "id": "octopus-control",
+      "label": "Octopus (instant)",
+      "provider": "control",
+      "model": null,
+      "enabled": true,
+      "capabilities": ["status", "task_control", "projects"],
+      "coding": 0,
+      "reasoning": 0,
+      "vision": false,
+      "context_tokens": 0,
+      "cost": 1,
+      "speed": 5
+    },
+    {
+      "id": "gpt-image-1",
+      "label": "GPT Image",
+      "provider": "openai",
+      "model": "gpt-image-1",
+      "modality": "image",
+      "enabled": true,
+      "capabilities": ["image_generation"],
+      "coding": 0,
+      "reasoning": 0,
+      "vision": false,
+      "context_tokens": 0,
+      "cost": 3,
+      "speed": 2,
+      "price_per_image": 0.04
+    },
+    {
+      "id": "gemini-image",
+      "label": "Gemini Image",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash-image",
+      "modality": "image",
+      "enabled": true,
+      "capabilities": ["image_generation"],
+      "coding": 0,
+      "reasoning": 0,
+      "vision": false,
+      "context_tokens": 0,
+      "cost": 2,
+      "speed": 3,
+      "price_per_image": 0.03
     }
   ],
   "routing": {
@@ -80,18 +153,72 @@
       "coding": {
         "description": "Needs to read or change files in the user's project, run commands, tests or git, deploy, or otherwise act on the codebase.",
         "candidates": ["claude-code"],
-        "transferable": false
+        "transferable": false,
+        "quality_from": "coding",
+        "optimize": "quality"
+      },
+      "salesforce": {
+        "description": "Salesforce work in a project: Apex, LWC, metadata, orgs, sf/sfdx commands.",
+        "candidates": ["claude-code"],
+        "transferable": false,
+        "quality_from": "coding",
+        "optimize": "quality"
+      },
+      "system": {
+        "description": "Working on this Mac itself: disk space, apps, services, settings - not a code project.",
+        "candidates": ["claude-code"],
+        "transferable": false,
+        "optimize": "quality"
+      },
+      "writing": {
+        "description": "Producing text where the words are the product: essays, articles, emails written out as text, rewrites, summaries, translations.",
+        "candidates": ["gemini-3.8-flash", "gpt-6-sol", "gpt-6-luna", "claude-code"],
+        "transferable": true,
+        "optimize": "quality"
+      },
+      "research": {
+        "description": "Looking something up on the web or comparing current information, with sources.",
+        "candidates": ["gemini-3.8-flash", "gpt-6-sol", "claude-code"],
+        "transferable": true,
+        "requires": "web_search",
+        "optimize": "balanced"
+      },
+      "image": {
+        "description": "Generate or draw a picture, logo, illustration or other image from a description.",
+        "candidates": ["gpt-image-1", "gemini-image"],
+        "transferable": true,
+        "optimize": "balanced"
       },
       "general": {
         "description": "Writing, explaining, analysing, planning or answering where everything needed is in the message itself - including explaining code that is pasted in.",
         "candidates": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
-        "transferable": true
+        "transferable": true,
+        "optimize": "balanced"
       },
       "simple": {
         "description": "A short factual question, definition, quick rewrite or small talk that a small fast model handles well.",
         "candidates": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
-        "transferable": true
+        "transferable": true,
+        "optimize": "cost"
+      },
+      "assistant": {
+        "description": "Act on the owner's own email, calendar or reminders: read, search, draft, send or reply to email; read, create, move or cancel calendar events; check availability; set reminders. Also questions about Octopus's own task queue that need more than a status line, and jobs that combine those with a model, such as summarising an email with a named model.",
+        "candidates": ["octopus-tools"],
+        "transferable": false
+      },
+      "control": {
+        "description": "A command about Octopus itself: what is happening, stop or cancel a task, continue the previous one.",
+        "candidates": ["octopus-control"],
+        "transferable": false,
+        "classifiable": false
+      },
+      "project": {
+        "description": "Project management inside Octopus: list projects, show or add to a project's backlog.",
+        "candidates": ["octopus-control"],
+        "transferable": false,
+        "classifiable": false
       }
-    }
+    },
+    "assistant_planner": ["gpt-6-sol", "gemini-3.8-flash", "gpt-6-luna", "claude-code"]
   }
 }

@@ -22,13 +22,16 @@ export async function api(path, { method = 'GET', body } = {}) {
 export const endpoints = {
   // existing
   projects:        ()            => api('/projects'),
-  addProject:      (name, path)  => api('/projects', { method: 'POST', body: { name, path } }),
+  addProject:      (name, path, category = 'work') => api('/projects', { method: 'POST', body: { name, path, category } }),
+  setCategory:     (id, category) => api(`/projects/${id}`, { method: 'PATCH', body: { category } }),
+  setProjectStatus: (id, status) => api(`/projects/${id}`, { method: 'PATCH', body: { status } }),
   setActive:       (id, active)  => api(`/projects/${id}`, { method: 'PATCH', body: { active } }),
   queueStatus:     ()            => api('/queue/status'),
   tasks:           (q = 'limit=200') => api(`/tasks?${q}`),
   projectTasks:    id            => api(`/projects/${id}/tasks`),
-  addTask:         (pid, prompt, priority = 0, thread_id = null) => api(`/projects/${pid}/tasks`, { method: 'POST', body: { prompt, priority, thread_id } }),
+  addTask:         (pid, prompt, priority = 0, thread_id = null, permission_mode = null, images = null, model = null) => api(`/projects/${pid}/tasks`, { method: 'POST', body: { prompt, priority, thread_id, permission_mode, images, model } }),
   cancel:          id            => api(`/tasks/${id}/cancel`, { method: 'POST' }),
+  suggest:         pid           => api(`/projects/${pid}/suggest`, { method: 'POST' }),
   approvals:       ()            => api('/approvals'),
   decide:          (id, approved) => api(`/approvals/${id}/decide`, { method: 'POST', body: { approved } }),
   todos:           pid           => api(`/projects/${pid}/todos`),
@@ -37,6 +40,10 @@ export const endpoints = {
   deleteTodo:      id            => api(`/todos/${id}`, { method: 'DELETE' }),
   reorderTodos:    (pid, ids)    => api(`/projects/${pid}/todos/reorder`, { method: 'POST', body: { ids } }),
   runTodos:        pid           => api(`/projects/${pid}/todos/run`, { method: 'POST' }),
+  notes:           pid           => api(`/projects/${pid}/notes`),
+  addNote:         (pid, text, kind) => api(`/projects/${pid}/notes`, { method: 'POST', body: { text, kind } }),
+  updateNote:      (id, patch)   => api(`/notes/${id}`, { method: 'PATCH', body: patch }),
+  deleteNote:      id            => api(`/notes/${id}`, { method: 'DELETE' }),
   // new (Octopus routing) — see README › Backend
   send:            (text, project_id, model = 'auto', images) => api('/octopus', { method: 'POST', body: { text, project_id, model, images } }),
   models:          ()            => api('/octopus/models'),
@@ -59,10 +66,13 @@ export const store = {
     skeleton: true,           // true for ~520ms after every view change
     pane: null,               // { type: 'chat' | 'approval', taskId }
     sheet: null,              // 'palette' | 'usage' | 'addProject' | 'keys'
-    toast: null,              // { text, action?, onAction?, until }
+    // toasts live in NotificationCenter (notifications.js), not in store.ui
     projectsList: { quick: 'all', sort: 'activity', q: '', searchOpen: false, menu: null, showPaused: true, onlyActive: false, open: {} },
-    ask: { text: '', model: 'auto', projectId: null /* null = General */, images: [], sending: false, result: null, menu: null },
+    ask: { text: '', model: 'auto', mode: null /* null = Accept edits */, projectId: null /* null = General */, images: [], sending: false, result: null, menu: null },
     activityFilter: 'all',
+    hideDone: localStorage.getItem('octopus-hide-done') === '1',   // Home > Recent collapsed
+    // Message centre. status: all | needs | active | done | error. project: 'all' or a project id. lane: all | agent | api | assistant.
+    messages: { q: '', status: 'all', project: 'all', lane: 'all', limit: 40, menu: false },
   },
   set(patch) { Object.assign(this.ui, typeof patch === 'function' ? patch(this.ui) : patch); emit(); },
 };

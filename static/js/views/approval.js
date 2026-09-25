@@ -1,11 +1,12 @@
 // Approval detail pane: risk read, the command and where it runs, what the task
 // did before asking, the project's uncommitted changes, and the decision buttons.
 
-import { agoShort, plural } from '../format.js';
+import { agoShort, plural, taskName } from '../format.js';
 import { projectById, taskById } from '../data.js';
 import { commandOf } from '../derive.js';
 import { esc, spinner } from '../ui.js';
 import { paneHead } from './chat.js';
+import { assistantCard, isAssistant } from './assistant-card.js';
 
 const tildify = p => (p || '').replace(/^\/Users\/[^/]+/, '~');
 const LEVEL_COLOR = { 1: 'var(--ok)', 2: 'var(--wait)', 3: 'var(--err)' };
@@ -13,15 +14,26 @@ const LEVEL_COLOR = { 1: 'var(--ok)', 2: 'var(--wait)', 3: 'var(--err)' };
 export function approvalPane(c, approval) {
   const { d, ui } = c;
   const ctx = d.approvalCtx[approval.id];
-  const task = taskById(approval.task_id) || { id: approval.task_id, prompt: approval.task_prompt, project_id: approval.project_id, lane: approval.lane, model_id: approval.model_id, status: 'running' };
+  const task = taskById(approval.task_id) || { id: approval.task_id, prompt: approval.task_prompt, title: approval.task_title, project_id: approval.project_id, lane: approval.lane, model_id: approval.model_id, status: 'running' };
   const p = projectById(task.project_id);
   const busy = ui.busy['ap' + approval.id];
+  if (isAssistant(approval)) {
+    // A personal-assistant action: the card is the whole story - what's on it is exactly what runs.
+    return `<aside class="pane" data-key="pane-ap-${approval.id}" aria-label="Approval">
+      ${paneHead(c, task, task)}
+      <div class="ap-body">
+        ${assistantCard(c, approval)}
+        <span class="pa-note">Nothing happens until you press the button. What's shown here is exactly what will run, once.</span>
+        ${c.desk ? `<span class="ap-hint">A approve · D deny · Esc close</span>` : ''}
+      </div>
+    </aside>`;
+  }
   const cmd = commandOf(approval);
 
   let details = `<div class="empty">Reading the command and the project…</div>`;
   if (ctx) {
     const lc = LEVEL_COLOR[ctx.level] || 'var(--wait)';
-    const facts = [['cwd', tildify(ctx.cwd) || '—'], ['tool', ctx.tool_name], ['task', `${task.prompt} · step ${ctx.step_no}`]];
+    const facts = [['cwd', tildify(ctx.cwd) || '—'], ['tool', ctx.tool_name], ['task', `${taskName(task)} · step ${ctx.step_no}`]];
     const changes = ctx.is_git
       ? `<div class="ap-section"><span class="ap-section__title">Changes so far${ctx.summary ? ` · ${plural(ctx.summary.files, 'file')} +${ctx.summary.added} −${ctx.summary.deleted}` : ''}</span>
           ${ctx.files.length ? `<div class="ap-diff">

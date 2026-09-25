@@ -1,0 +1,125 @@
+{
+  "_readme": [
+    "Octopus tool registry. A tool is something an agent can be given: a set of capabilities plus (eventually) an MCP server.",
+    "Re-read whenever this file changes - edit and save, no restart.",
+    "  agents.json says which tools an agent MAY ever get; this file says when a request NEEDS one, so a task is only",
+    "  given the tools it uses (a writing request gets none, a coding request gets filesystem + git + terminal, ...).",
+    "  kind          builtin = works today (Claude Code's own tools, or Octopus's own code)",
+    "                mcp     = provided by an MCP server; needs 'mcp' filled in and 'enabled' set to true",
+    "  enabled       false = never selected, whatever the request says",
+    "  capabilities  what the tool can do, as capability names from assistant/capabilities.py. The plan shows their policies,",
+    "                and the strictest one decides whether the plan needs your OK",
+    "  when          categories: always selected for these request categories",
+    "                keywords:   selected when the request matches any of these regular expressions (case-insensitive)",
+    "  mcp           {\"command\": \"npx\", \"args\": [...], \"env\": {...}} - the MCP server to attach. Not used until the agent lane",
+    "                passes it to Claude Code (--mcp-config); kept here so adding a server is a data change, not a code change"
+  ],
+  "tools": [
+    {
+      "id": "filesystem", "label": "Filesystem", "kind": "builtin", "enabled": true,
+      "description": "Read and edit files inside the selected project.",
+      "capabilities": ["FILES_READ", "FILES_WRITE"],
+      "when": {"categories": ["coding", "salesforce", "system"]}
+    },
+    {
+      "id": "git", "label": "Git", "kind": "builtin", "enabled": true,
+      "description": "Inspect history and make local commits and branches.",
+      "capabilities": ["GIT_READ", "GIT_WRITE"],
+      "when": {"categories": ["coding", "salesforce"]}
+    },
+    {
+      "id": "terminal", "label": "Terminal", "kind": "builtin", "enabled": true,
+      "description": "Run shell commands: tests, builds, linters, scripts. Every command still goes through the approval rules.",
+      "capabilities": ["TESTS_RUN", "TERMINAL_RUN"],
+      "when": {"categories": ["coding", "salesforce", "system"]}
+    },
+    {
+      "id": "github", "label": "GitHub", "kind": "builtin", "enabled": true,
+      "description": "Push branches and work with pull requests and issues (through git and the gh CLI).",
+      "capabilities": ["GIT_PUSH", "NETWORK_ACCESS"],
+      "when": {"keywords": ["\\bpush\\b", "pull request", "\\bpr\\b", "\\bgithub\\b", "\\bissues?\\b", "\\bgh\\b"]}
+    },
+    {
+      "id": "salesforce", "label": "Salesforce", "kind": "builtin", "enabled": true,
+      "description": "Salesforce DX / the sf CLI: metadata, Apex, LWC, orgs.",
+      "capabilities": ["TERMINAL_RUN", "NETWORK_ACCESS"],
+      "when": {"categories": ["salesforce"], "keywords": ["\\bapex\\b", "\\blwc\\b", "\\bsfdx\\b", "\\bsalesforce\\b", "\\bsoql\\b", "sf project"]}
+    },
+    {
+      "id": "web", "label": "Web / Search", "kind": "builtin", "enabled": true,
+      "description": "Search the web and read pages.",
+      "capabilities": ["WEB_ACCESS"],
+      "when": {"categories": ["research"], "keywords": ["\\bsearch (the )?(web|online|internet)\\b", "\\blook (it |this )?up\\b", "\\bgoogle\\b", "\\bdocs?\\b.*\\b(online|latest)\\b", "\\bcurrent\\b.*\\b(version|price|news)\\b"]}
+    },
+    {
+      "id": "browser", "label": "Browser", "kind": "mcp", "enabled": false,
+      "description": "Drive a real browser (open pages, click, fill forms). Not connected yet.",
+      "capabilities": ["WEB_ACCESS", "NETWORK_ACCESS"],
+      "when": {"keywords": ["\\bbrowser\\b", "\\bopen (the )?(site|page|website)\\b", "\\bscreenshot\\b"]},
+      "mcp": null
+    },
+    {
+      "id": "database", "label": "Database", "kind": "mcp", "enabled": false,
+      "description": "Query and change a database. Not connected yet.",
+      "capabilities": ["TERMINAL_RUN", "PRODUCTION"],
+      "when": {"keywords": ["\\bdatabase\\b", "\\bsql\\b", "\\bquery the (db|table)\\b"]},
+      "mcp": null
+    },
+    {
+      "id": "drive", "label": "Google Drive", "kind": "mcp", "enabled": false,
+      "description": "Find and read files in Google Drive. Not connected yet.",
+      "capabilities": ["FILES_READ"],
+      "when": {"keywords": ["\\bgoogle drive\\b", "\\bmy drive\\b"]},
+      "mcp": null
+    },
+    {
+      "id": "slack", "label": "Slack", "kind": "mcp", "enabled": false,
+      "description": "Read and post Slack messages. Not connected yet.",
+      "capabilities": ["NETWORK_ACCESS"],
+      "when": {"keywords": ["\\bslack\\b"]},
+      "mcp": null
+    },
+    {
+      "id": "image_generation", "label": "Image generation", "kind": "builtin", "enabled": true,
+      "description": "Ask an image model for a picture.",
+      "capabilities": ["IMAGE_GENERATE"],
+      "when": {"categories": ["image"]}
+    },
+    {
+      "id": "gmail", "label": "Gmail", "kind": "builtin", "enabled": true, "connection": "google",
+      "description": "Search, read, draft and (with your OK) send email from your connected Google account.",
+      "capabilities": ["EMAIL_READ", "EMAIL_DRAFT", "EMAIL_SEND"],
+      "when": {"categories": ["assistant"], "keywords": ["\\be-?mails?\\b", "\\binbox\\b", "\\bgmail\\b"]}
+    },
+    {
+      "id": "calendar", "label": "Calendar", "kind": "builtin", "enabled": true, "connection": "google",
+      "description": "Read your calendar, check availability, create and change events.",
+      "capabilities": ["CALENDAR_READ", "CALENDAR_CREATE", "CALENDAR_UPDATE", "CALENDAR_DELETE", "CALENDAR_INVITE"],
+      "when": {"categories": ["assistant"], "keywords": ["\\bcalendar\\b", "\\bmeetings?\\b", "\\bschedule\\b", "\\bavailability\\b"]}
+    },
+    {
+      "id": "reminders", "label": "Reminders", "kind": "builtin", "enabled": true,
+      "description": "Set, list and cancel reminders that ping your phone.",
+      "capabilities": ["REMINDER_READ", "REMINDER_WRITE"],
+      "when": {"categories": ["assistant"], "keywords": ["\\bremind\\b", "\\breminders?\\b"]}
+    },
+    {
+      "id": "coding_handoff", "label": "Hand off to Coding Agent", "kind": "builtin", "enabled": true,
+      "description": "Queue a Claude Code task in one of your projects from a personal-assistant request.",
+      "capabilities": ["AGENT_CODING"],
+      "when": {"keywords": ["\\bfix\\b.*\\b(bug|issue)\\b", "\\bimplement\\b"]}
+    },
+    {
+      "id": "workspace", "label": "Octopus workspace", "kind": "builtin", "enabled": true,
+      "description": "Octopus's own queue, projects and backlog: status, stop, continue, add to backlog.",
+      "capabilities": ["PROJECT_READ", "TASK_CONTROL", "TODO_WRITE"],
+      "when": {"categories": ["control", "project"], "keywords": ["\\bqueue\\b", "\\bbacklog\\b", "\\bmy tasks?\\b", "\\btask #?\\d+\\b", "\\bapprovals?\\b"]}
+    },
+    {
+      "id": "ai_models", "label": "AI models", "kind": "builtin", "enabled": true,
+      "description": "Let the Personal Assistant hand a piece of writing, a web-grounded answer or an image to the app's own models (models.json).",
+      "capabilities": ["AI_MODEL_USE", "WEB_ACCESS", "IMAGE_GENERATE"],
+      "when": {"keywords": ["\\b(?:using|with|via|ask|use)\\s+(?:gpt|gemini|claude|chatgpt)", "\\b(?:another|different|the writing|the research) (?:model|agent)\\b"]}
+    }
+  ]
+}

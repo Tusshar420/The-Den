@@ -7,6 +7,7 @@ for a heavier DB. Keeping this dependency-free (sqlite3 is stdlib).
 """
 
 import json
+import re
 import sqlite3
 import threading
 from datetime import datetime, timedelta, timezone
@@ -21,7 +22,10 @@ CREATE TABLE IF NOT EXISTS projects (
     name TEXT UNIQUE NOT NULL,
     path TEXT NOT NULL,
     active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'work',
+    -- not_started | in_progress | need_info | on_hold | completed (PROJECT_STATUSES)
+    status TEXT NOT NULL DEFAULT 'not_started'
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -69,7 +73,18 @@ CREATE TABLE IF NOT EXISTS tasks (
     queue_pos REAL,
     -- The last thing the agent reported doing ("Running npm test"), for
     -- the dashboard's live progress line. Full history is in task_events.
-    current_step TEXT
+    current_step TEXT,
+    -- The chat's short name, shown everywhere instead of the full prompt.
+    -- Every message in a thread carries its root's title. title_by:
+    -- text (quick cut of the prompt, a model may still rename it) | ai |
+    -- recipe | user | kept (the model couldn't do better - leave it).
+    title TEXT,
+    title_by TEXT,
+    -- Cached "Summarise" output on the root task; summary_key records the
+    -- thread state it was made from, so it's only regenerated after the
+    -- thread changes.
+    summary TEXT,
+    summary_key TEXT
 );
 
 -- What an agent task did, step by step (one row per tool call, parsed
@@ -126,7 +141,9 @@ CREATE TABLE IF NOT EXISTS project_settings (
     -- JSON list of command prefixes the approval server allows without asking
     allow_commands TEXT NOT NULL DEFAULT '[]',
     -- Monthly cap on real (api lane) spend; hitting it pauses the project.
-    budget_usd REAL NOT NULL DEFAULT 20
+    budget_usd REAL NOT NULL DEFAULT 20,
+    -- Automation: move the project's status to in_progress when a task under it starts.
+    auto_in_progress INTEGER NOT NULL DEFAULT 1
 );
 
 -- Small global key/value store (JSON values): dashboard toggles, the last
@@ -177,6 +194,100 @@ CREATE TABLE IF NOT EXISTS todos (
     task_id INTEGER REFERENCES tasks(id),
     created_at TEXT NOT NULL
 );
+
+-- What you've told Octopus about a project: guidelines, requirements, plain
+-- notes. Added one at a time from the project's Notes tab, and handed to every
+-- task run for that project (see project_notes_prompt).
+CREATE TABLE IF NOT EXISTS project_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    -- guideline | requirement | note
+    kind TEXT NOT NULL DEFAULT 'note',
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+-- Personal assistant (see assistant/). One row per connected account. The
+-- OAuth tokens themselves are NOT here - they live in the Keychain
+-- (assistant/token_store.py); this is only what the dashboard may show.
+-- status: connected | reauth_required | disconnected
+CREATE TABLE IF NOT EXISTS connections (
+    provider TEXT PRIMARY KEY,
+    account TEXT,
+    status TEXT NOT NULL,
+    scopes TEXT NOT NULL DEFAULT '[]',
+    connected_at TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL
+);
+
+-- Every external action the assistant took or asked to take. No message
+-- bodies and no tokens: `target` is a short label (recipient, event title,
+-- search query) and `ref` an opaque provider id (a draft id, an event id).
+-- approval: not_required | requested | approved | denied | expired | trusted
+-- result:   ok | error | pending | denied
+CREATE TABLE IF NOT EXISTS assistant_activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT,
+    approval TEXT NOT NULL DEFAULT 'not_required',
+    result TEXT NOT NULL DEFAULT 'ok',
+    error TEXT,
+    task_id INTEGER,
+    approval_id INTEGER,
+    ref TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_activity_created ON assistant_activity(created_at);
+
+-- What a conversation has been talking about (the events and emails a tool
+-- just returned, with their ids), so "move it to 4" can be resolved. One row
+-- per chat, keyed by the thread's root task.
+CREATE TABLE IF NOT EXISTS assistant_context (
+    thread_id INTEGER PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- Local reminders: fired by the scheduler loop as a push to the phone.
+-- status: pending | fired | cancelled
+CREATE TABLE IF NOT EXISTS reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    due_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    fired_at TEXT,
+    task_id INTEGER
+);
+
+-- Octopus's routing log: one row per request it understood - what was asked,
+-- the plan it made (classification, project, agent, model, tools, permissions,
+-- how each candidate model scored) and what became of it. The Routing page and
+-- the plan preview read this; `plan` is the JSON built by octopus/plan.py.
+-- status: proposed (waiting for Run / Cancel) | needs_input (e.g. which
+-- project?) | queued (a task was made) | done (answered on the spot) |
+-- cancelled | expired
+CREATE TABLE IF NOT EXISTS routing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    -- dashboard | voice | api | shortcut | schedule | recipe
+    source TEXT NOT NULL DEFAULT 'api',
+    request TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    category TEXT,
+    agent_id TEXT,
+    model_id TEXT,
+    project_id INTEGER,
+    risk TEXT,
+    plan TEXT NOT NULL,
+    task_id INTEGER,
+    -- auto (Octopus chose) | user (chose or overrode in the plan card)
+    decided_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_routing_created ON routing(created_at);
 """
 
 # Every query - reads included - must go through this lock. FastAPI runs
@@ -193,11 +304,54 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# SQL condition on a task aliased `t`: its chat has nothing running and no
+# earlier message still waiting - a chat's messages run one at a time, in the
+# order they were sent, each resuming the session the one before it left.
+CHAT_FREE = """NOT EXISTS (
+    SELECT 1 FROM tasks c
+    WHERE COALESCE(c.thread_id, c.id) = COALESCE(t.thread_id, t.id) AND c.id != t.id
+      AND (c.status = 'running' OR (c.id < t.id AND c.status IN ('queued', 'rate_limited'))))"""
+
+TITLE_MAX_CHARS = 60
+
+
+def quick_title(prompt: str) -> str:
+    """A readable name straight from the prompt, no model needed: its first
+    sentence of real text, markdown stripped, cut at a word boundary."""
+    text = ""
+    for line in (prompt or "").splitlines():
+        line = re.sub(r"^\s*((#+|[-*>]|\d+[.)])\s+)+", "", line)
+        line = re.sub(r"[*_`#]+", "", line).strip()
+        if line and not re.fullmatch(r"[-=~\s]+", line):
+            text = line
+            break
+    # End of the first sentence - a word then . ! or ?, so "1. Work" or
+    # "e.g. this" don't count.
+    text = re.split(r"(?<=[A-Za-z]{2}[.!?])\s", text, maxsplit=1)[0].rstrip(".!? ")
+    text = re.sub(r"\s+", " ", text)
+    if not text:
+        return "Untitled task"
+    if len(text) > TITLE_MAX_CHARS:
+        text = text[:TITLE_MAX_CHARS].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
+    return text[0].upper() + text[1:]
+
+
 def _migrate(conn: sqlite3.Connection) -> None:
     """CREATE TABLE IF NOT EXISTS won't add new columns to a table that
     already exists from before this column was introduced - patch those
     in by hand, guarded so this is a no-op on a fresh or already-migrated
     database."""
+    # Projects predate the Work / Personal split. Everything already
+    # registered starts as 'personal' so nothing leaks into a Work view
+    # until it has been sorted on purpose.
+    project_cols = {r["name"] for r in conn.execute("PRAGMA table_info(projects)").fetchall()}
+    if "category" not in project_cols:
+        conn.execute("ALTER TABLE projects ADD COLUMN category TEXT NOT NULL DEFAULT 'personal'")
+    if "status" not in project_cols:
+        conn.execute("ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'not_started'")
+    setting_cols = {r["name"] for r in conn.execute("PRAGMA table_info(project_settings)").fetchall()}
+    if "auto_in_progress" not in setting_cols:
+        conn.execute("ALTER TABLE project_settings ADD COLUMN auto_in_progress INTEGER NOT NULL DEFAULT 1")
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()}
     if "thread_id" not in cols:
         conn.execute("ALTER TABLE tasks ADD COLUMN thread_id INTEGER REFERENCES tasks(id)")
@@ -215,9 +369,41 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("cost_usd", "REAL"),
         ("queue_pos", "REAL"),
         ("current_step", "TEXT"),
+        ("title", "TEXT"),
+        ("title_by", "TEXT"),
+        ("summary", "TEXT"),
+        ("summary_key", "TEXT"),
+        ("run_now", "INTEGER NOT NULL DEFAULT 0"),
+        # 1 = held by the user: a queued task is skipped by the worker until
+        # played, a running one is frozen mid-run. Status doesn't change.
+        ("paused", "INTEGER NOT NULL DEFAULT 0"),
+        ("permission_mode", "TEXT"),
+        # Octopus (see octopus/): which agent handled it, the tools it was given
+        # (JSON list of tool ids), the routing-log row that made it, where the
+        # request came from, its risk read, the live plan the agent reported
+        # (JSON list of {content, status}), the git state when it started
+        # (JSON), and files it produced (JSON list, e.g. generated images).
+        ("agent_id", "TEXT"),
+        ("tools", "TEXT"),
+        ("routing_id", "INTEGER"),
+        ("source", "TEXT"),
+        ("risk", "TEXT"),
+        ("plan_steps", "TEXT"),
+        ("git_base", "TEXT"),
+        ("artifacts", "TEXT"),
+        # Pictures the user attached to this message: JSON list of upload ids (see uploads.py).
+        ("images", "TEXT"),
     ):
         if name not in cols:
             conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {decl}")
+    # Tasks from before titles existed: roots get a quick name from their
+    # prompt (the namer loop upgrades these), replies take their root's.
+    for r in conn.execute("SELECT id, prompt FROM tasks WHERE title IS NULL AND thread_id IS NULL").fetchall():
+        conn.execute("UPDATE tasks SET title = ?, title_by = 'text' WHERE id = ?", (quick_title(r["prompt"]), r["id"]))
+    conn.execute(
+        "UPDATE tasks SET title = (SELECT r.title FROM tasks r WHERE r.id = tasks.thread_id), title_by = 'thread' "
+        "WHERE title IS NULL AND thread_id IS NOT NULL"
+    )
     approval_cols = {r["name"] for r in conn.execute("PRAGMA table_info(approvals)").fetchall()}
     if "note" not in approval_cols:
         conn.execute("ALTER TABLE approvals ADD COLUMN note TEXT")
@@ -271,8 +457,19 @@ def get_conn() -> sqlite3.Connection:
         return _conn
 
 
+# tasks columns that hold JSON (see _migrate) - handed to callers as Python values.
+_JSON_COLUMNS = ("tools", "plan_steps", "git_base", "artifacts", "images")
+
+
 def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
-    return {k: row[k] for k in row.keys()}
+    out = {k: row[k] for k in row.keys()}
+    for k in _JSON_COLUMNS:
+        if isinstance(out.get(k), str):
+            try:
+                out[k] = json.loads(out[k])
+            except ValueError:
+                out[k] = None
+    return out
 
 
 def _get_setting(conn: sqlite3.Connection, key: str, default: Any = None) -> Any:
@@ -295,12 +492,26 @@ GENERAL_PROJECT_NAME = "General"
 def is_general_project(project: Optional[dict[str, Any]]) -> bool:
     return bool(project) and project["name"] == GENERAL_PROJECT_NAME
 
-def add_project(name: str, path: str) -> dict[str, Any]:
+PROJECT_CATEGORIES = ("work", "personal")
+
+# Where a project stands, set by hand from the dashboard. The one automation:
+# a project whose auto_in_progress setting is on moves to in_progress when a
+# task under it starts (see _auto_in_progress).
+PROJECT_STATUSES = ("not_started", "in_progress", "need_info", "on_hold", "completed")
+
+# Claude Code --permission-mode values a task may run under (Claude Code lane
+# only). None on a task means DEFAULT_PERMISSION_MODE. bypassPermissions and
+# dontAsk are left out on purpose: unattended, they'd skip the phone approvals.
+PERMISSION_MODES = ("acceptEdits", "plan", "auto", "manual")
+DEFAULT_PERMISSION_MODE = "acceptEdits"
+
+
+def add_project(name: str, path: str, category: str = "work") -> dict[str, Any]:
     with _lock:
         conn = get_conn()
         cur = conn.execute(
-            "INSERT INTO projects (name, path, active, created_at) VALUES (?, ?, 1, ?)",
-            (name, path, _now()),
+            "INSERT INTO projects (name, path, active, created_at, category) VALUES (?, ?, 1, ?, ?)",
+            (name, path, _now(), category),
         )
         conn.commit()
         return get_project(cur.lastrowid)
@@ -337,6 +548,20 @@ def set_project_active(project_id: int, active: bool) -> None:
         conn.commit()
 
 
+def set_project_category(project_id: int, category: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE projects SET category = ? WHERE id = ?", (category, project_id))
+        conn.commit()
+
+
+def set_project_status(project_id: int, status: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE projects SET status = ? WHERE id = ?", (status, project_id))
+        conn.commit()
+
+
 # ------------------------------------------------------------------- tasks
 
 def _queue_insert_pos(conn: sqlite3.Connection, priority: int) -> float:
@@ -360,6 +585,24 @@ def _queue_front_pos(conn: sqlite3.Connection) -> float:
     return row["m"] - 1 if row["m"] is not None else 0.0
 
 
+def _reply_insert_pos(conn: sqlite3.Connection) -> float:
+    """queue_pos for a reply in an existing chat: it's part of that chat,
+    not a new task, so by default it's next in line: ahead of every queued
+    new task, behind replies already waiting there (so replies keep the
+    order they were sent). It's an ordinary queue item after that - it can
+    be moved anywhere or started right away like any other."""
+    rows = conn.execute(
+        "SELECT queue_pos, thread_id FROM tasks WHERE status = 'queued' AND queue_pos IS NOT NULL "
+        "ORDER BY queue_pos ASC"
+    ).fetchall()
+    prev = None
+    for r in rows:
+        if r["thread_id"] is None:
+            return (prev + r["queue_pos"]) / 2 if prev is not None else r["queue_pos"] - 1
+        prev = r["queue_pos"]
+    return prev + 1 if prev is not None else 0.0
+
+
 def add_task(
     project_id: int,
     prompt: str,
@@ -370,19 +613,43 @@ def add_task(
     category: Optional[str] = None,
     route_reason: Optional[str] = None,
     routed_by: Optional[str] = None,
+    title: Optional[str] = None,
+    permission_mode: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    tools: Optional[list[str]] = None,
+    routing_id: Optional[int] = None,
+    source: Optional[str] = None,
+    risk: Optional[str] = None,
+    images: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """Defaults (agent lane, claude-code) are what every pre-Octopus caller -
-    the plain task endpoint, todos - has always meant."""
+    the plain task endpoint, todos - has always meant. A reply takes its
+    thread's title; a new chat gets `title` if given (a recipe's name),
+    else a quick one from the prompt that the namer loop can improve.
+    agent_id / tools / routing_id / source / risk record Octopus's decision
+    (see octopus/plan.py); a task made without it just leaves them empty."""
     if model_id is None and lane == "agent":
         model_id = "claude-code"
     with _lock:
         conn = get_conn()
+        if thread_id is not None:
+            root = conn.execute("SELECT title FROM tasks WHERE id = ?", (thread_id,)).fetchone()
+            title, title_by = (root["title"] if root and root["title"] else quick_title(prompt)), "thread"
+        elif title:
+            title_by = "recipe"
+        else:
+            title, title_by = quick_title(prompt), "text"
         cur = conn.execute(
             "INSERT INTO tasks (project_id, prompt, priority, status, created_at, thread_id, "
-            "lane, model_id, category, route_reason, routed_by, queue_pos) "
-            "VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)",
+            "lane, model_id, category, route_reason, routed_by, queue_pos, title, title_by, permission_mode, "
+            "agent_id, tools, routing_id, source, risk, images) "
+            "VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (project_id, prompt, priority, _now(), thread_id,
-             lane, model_id, category, route_reason, routed_by, _queue_insert_pos(conn, priority)),
+             lane, model_id, category, route_reason, routed_by,
+             _reply_insert_pos(conn) if thread_id is not None else _queue_insert_pos(conn, priority),
+             title, title_by, permission_mode,
+             agent_id, json.dumps(tools) if tools is not None else None, routing_id, source, risk,
+             json.dumps(images) if images else None),
         )
         conn.commit()
         return get_task(cur.lastrowid)
@@ -425,6 +692,46 @@ def move_to_front(task_id: int) -> None:
         conn.commit()
 
 
+def move_after(task_id: int, after_id: Optional[int]) -> None:
+    """Put a queued task right behind another queued one (None = first in line)."""
+    with _lock:
+        conn = get_conn()
+        order = [r["id"] for r in conn.execute(
+            "SELECT id FROM tasks WHERE status = 'queued' ORDER BY queue_pos ASC, id ASC").fetchall()]
+        if task_id not in order:
+            return
+        order.remove(task_id)
+        order.insert(order.index(after_id) + 1 if after_id in order else 0, task_id)
+    reorder_queue(order)
+
+
+# What an edit may change on a task that hasn't started yet.
+EDITABLE_TASK_FIELDS = ("prompt", "title", "title_by", "priority", "project_id",
+                        "lane", "model_id", "category", "route_reason", "routed_by", "permission_mode")
+
+
+def update_queued_task(task_id: int, fields: dict[str, Any]) -> bool:
+    """Edit a task that's still queued. A new priority re-files it the way a
+    new task of that priority would be; a new title renames the whole chat.
+    False if it had already started (or is gone)."""
+    fields = {k: v for k, v in fields.items() if k in EDITABLE_TASK_FIELDS}
+    with _lock:
+        conn = get_conn()
+        task = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        if not task or task["status"] != "queued":
+            return False
+        if "priority" in fields and fields["priority"] != task["priority"]:
+            conn.execute("UPDATE tasks SET queue_pos = NULL WHERE id = ?", (task_id,))  # don't count itself
+            fields["queue_pos"] = _queue_insert_pos(conn, fields["priority"])
+        if fields:
+            sets = ", ".join(f"{k} = ?" for k in fields)
+            conn.execute(f"UPDATE tasks SET {sets} WHERE id = ?", (*fields.values(), task_id))
+        if "title" in fields and task["thread_id"] is None:
+            conn.execute("UPDATE tasks SET title = ? WHERE thread_id = ?", (fields["title"], task_id))
+        conn.commit()
+        return True
+
+
 REQUEUEABLE = ("error", "needs_review", "cancelled", "rate_limited")
 
 
@@ -441,7 +748,7 @@ def requeue_task(task_id: int, front: bool = True) -> Optional[dict[str, Any]]:
         if front or pos is None:
             pos = _queue_front_pos(conn)
         conn.execute(
-            "UPDATE tasks SET status = 'queued', error_message = NULL, resume_at = NULL, started_at = NULL, "
+            "UPDATE tasks SET status = 'queued', paused = 0, error_message = NULL, resume_at = NULL, started_at = NULL, "
             "finished_at = NULL, current_step = NULL, queue_pos = ? WHERE id = ?",
             (pos, task_id),
         )
@@ -461,7 +768,7 @@ def mark_stopped(task_id: int) -> None:
     with _lock:
         conn = get_conn()
         conn.execute(
-            "UPDATE tasks SET status = 'cancelled', finished_at = ?, error_message = 'Stopped from the dashboard' "
+            "UPDATE tasks SET status = 'cancelled', paused = 0, finished_at = ?, error_message = 'Stopped from the dashboard' "
             "WHERE id = ?",
             (_now(), task_id),
         )
@@ -511,6 +818,58 @@ def get_thread(task_id: int) -> list[dict[str, Any]]:
             (root, root),
         ).fetchall()
         return [_row_to_dict(r) for r in rows]
+
+
+def set_thread_title(root_task_id: int, title: Optional[str], title_by: str,
+                     only_if_by: Optional[str] = None) -> bool:
+    """Rename a chat - the root and every reply, so lists showing any one
+    message show the chat's name. title=None only changes title_by.
+    only_if_by skips the rename if the chat was renamed some other way
+    meanwhile (e.g. the namer loop won't overwrite a recipe's name)."""
+    with _lock:
+        conn = get_conn()
+        guard, args = (" AND title_by = ?", (only_if_by,)) if only_if_by else ("", ())
+        if title is None:
+            cur = conn.execute("UPDATE tasks SET title_by = ? WHERE id = ?" + guard, (title_by, root_task_id, *args))
+        else:
+            cur = conn.execute("UPDATE tasks SET title = ?, title_by = ? WHERE id = ?" + guard,
+                               (title, title_by, root_task_id, *args))
+            if cur.rowcount:
+                conn.execute("UPDATE tasks SET title = ? WHERE thread_id = ?", (title, root_task_id))
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def tasks_needing_titles(limit: int = 5) -> list[dict[str, Any]]:
+    """Chats still named by a quick cut of their prompt, newest first."""
+    with _lock:
+        conn = get_conn()
+        rows = conn.execute(
+            "SELECT id, prompt FROM tasks WHERE thread_id IS NULL AND title_by = 'text' ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def get_thread_model(root_task_id: int) -> Optional[str]:
+    """The model the chat's latest message was sent to. A chat can change models
+    between messages, so a reply that doesn't pick one stays on this - not on
+    whatever the chat started with."""
+    with _lock:
+        conn = get_conn()
+        row = conn.execute(
+            "SELECT model_id FROM tasks WHERE (id = ? OR thread_id = ?) AND model_id IS NOT NULL "
+            "ORDER BY id DESC LIMIT 1",
+            (root_task_id, root_task_id),
+        ).fetchone()
+        return row["model_id"] if row else None
+
+
+def set_thread_summary(root_task_id: int, summary: str, key: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE tasks SET summary = ?, summary_key = ? WHERE id = ?", (summary, key, root_task_id))
+        conn.commit()
 
 
 def get_thread_history(root_task_id: int, before_task_id: int) -> list[dict[str, Any]]:
@@ -610,6 +969,147 @@ def list_all_tasks(
         return [_row_to_dict(r) for r in conn.execute(q, params).fetchall()]
 
 
+CHAT_STATUS_GROUPS = {
+    "active": ("queued", "running", "rate_limited"),
+    "done": ("done",),
+    "error": ("error",),
+    "cancelled": ("cancelled",),
+}
+_SNIPPET_MARGIN = 60
+
+
+def _like(term: str) -> str:
+    return "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def _flat(text: Optional[str], limit: int = 240) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _snippet(text: str, terms: list[str]) -> Optional[str]:
+    """The stretch of `text` around the first search term found in it."""
+    flat = " ".join(text.split())
+    low = flat.lower()
+    hits = [i for i in (low.find(t) for t in terms) if i >= 0]
+    if not hits:
+        return None
+    at = min(hits)
+    start, end = max(0, at - _SNIPPET_MARGIN), min(len(flat), at + _SNIPPET_MARGIN * 2)
+    return ("…" if start else "") + flat[start:end].strip() + ("…" if end < len(flat) else "")
+
+
+def list_chats(q: str = "", status: str = "all", project_ids: Optional[list[int]] = None,
+               lane: Optional[str] = None, limit: int = 40, offset: int = 0) -> dict[str, Any]:
+    """The message centre: one entry per chat (a root task and its replies),
+    the chat with the most recent message first.
+
+    q         every word must appear somewhere in the chat - its title, its
+              project's name, or any prompt / reply / error in it. Case-blind.
+    status    all | needs (waiting on an approval, failed or needing review) |
+              active | done | error | cancelled - judged by the chat's latest message.
+    project_ids / lane   narrow to those projects / one lane (agent, api, assistant).
+    Each entry carries `preview` (the latest message) and, while searching,
+    `snippet` (the newest message that matched, with a little context)."""
+    terms = [w.lower() for w in q.split()][:8]
+    where, args = ["1=1"], []
+    for term in terms:
+        where.append(
+            "(r.title LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' OR EXISTS ("
+            "SELECT 1 FROM tasks x WHERE COALESCE(x.thread_id, x.id) = l.root_id AND ("
+            "x.prompt LIKE ? ESCAPE '\\' OR x.result_summary LIKE ? ESCAPE '\\' OR x.error_message LIKE ? ESCAPE '\\')))"
+        )
+        args += [_like(term)] * 5
+    if status == "needs":
+        where.append(
+            "(lt.status IN ('error', 'needs_review') OR EXISTS (SELECT 1 FROM approvals a JOIN tasks x ON x.id = a.task_id "
+            "WHERE a.status = 'pending' AND COALESCE(x.thread_id, x.id) = l.root_id))"
+        )
+    elif status in CHAT_STATUS_GROUPS:
+        group = CHAT_STATUS_GROUPS[status]
+        where.append(f"lt.status IN ({','.join('?' * len(group))})")
+        args += group
+    if project_ids is not None:
+        where.append(f"r.project_id IN ({','.join('?' * len(project_ids))})")
+        args += project_ids
+    if lane:
+        where.append("r.lane = ?")
+        args.append(lane)
+    frm = (
+        "FROM (SELECT COALESCE(thread_id, id) AS root_id, MAX(id) AS last_id, COUNT(*) AS turns "
+        "      FROM tasks GROUP BY COALESCE(thread_id, id)) l "
+        "JOIN tasks r ON r.id = l.root_id JOIN tasks lt ON lt.id = l.last_id JOIN projects p ON p.id = r.project_id "
+        "WHERE " + " AND ".join(where)
+    )
+    with _lock:
+        conn = get_conn()
+        total = conn.execute("SELECT COUNT(*) " + frm, args).fetchone()[0]
+        page = conn.execute(
+            "SELECT l.root_id, l.last_id, l.turns, p.name AS project_name " + frm
+            + " ORDER BY COALESCE(lt.finished_at, lt.started_at, lt.created_at) DESC, l.last_id DESC LIMIT ? OFFSET ?",
+            [*args, limit, offset],
+        ).fetchall()
+        if not page:
+            return {"chats": [], "total": total}
+        roots = [r["root_id"] for r in page]
+        marks = ",".join("?" * len(roots))
+        msgs = conn.execute(
+            f"SELECT *, COALESCE(thread_id, id) AS root_id FROM tasks WHERE id IN ({marks}) OR thread_id IN ({marks}) ORDER BY id",
+            roots + roots,
+        ).fetchall()
+        waiting = {
+            r["task_id"] for r in conn.execute(
+                "SELECT task_id FROM approvals WHERE status = 'pending' AND task_id IN "
+                f"(SELECT id FROM tasks WHERE id IN ({marks}) OR thread_id IN ({marks}))", roots + roots
+            ).fetchall()
+        }
+    by_root: dict[int, list[Any]] = {}
+    for m in msgs:
+        by_root.setdefault(m["root_id"], []).append(m)
+
+    def reply_of(m) -> Optional[str]:
+        if m["status"] == "done":
+            return m["result_summary"] or "(done, no summary)"
+        if m["status"] in ("error", "needs_review"):
+            return m["error_message"] or "Something went wrong."
+        return None
+
+    chats = []
+    for row in page:
+        thread = by_root[row["root_id"]]
+        root, last = thread[0], thread[-1]
+        reply = reply_of(last)
+        preview = ({"role": "reply", "text": _flat(reply)} if reply is not None
+                   else {"role": "you", "text": _flat(last["prompt"])})
+        snippet = None
+        if terms:
+            for m in reversed(thread):
+                for role, text in (("reply", reply_of(m)), ("you", m["prompt"])):
+                    found = _snippet(text, terms) if text else None
+                    if found:
+                        snippet = {"role": role, "text": found, "task_id": m["id"]}
+                        break
+                if snippet:
+                    break
+        costs = [m["cost_usd"] for m in thread if m["cost_usd"] is not None]
+        chats.append({
+            "id": root["id"],
+            "title": root["title"] or _flat(root["prompt"], 80),
+            "project_id": root["project_id"],
+            "project_name": row["project_name"],
+            "lane": root["lane"],
+            "model_id": root["model_id"],
+            "status": last["status"],
+            "needs_you": last["status"] in ("error", "needs_review") or any(m["id"] in waiting for m in thread),
+            "turns": row["turns"],
+            "last_at": last["finished_at"] or last["started_at"] or last["created_at"],
+            "preview": preview,
+            "snippet": snippet,
+            "cost_usd": sum(costs) if costs else None,
+        })
+    return {"chats": chats, "total": total}
+
+
 def get_next_queued_task(lane: str = "agent", exclude_models: tuple = (),
                          hold_low_priority: bool = False) -> Optional[dict[str, Any]]:
     """Next task to run in this lane, only from active projects: a
@@ -617,11 +1117,14 @@ def get_next_queued_task(lane: str = "agent", exclude_models: tuple = (),
     mid-run), then queued tasks in queue_pos order. exclude_models skips
     tasks for models currently known to be rate-limited, so the api lane
     doesn't keep hitting a limited model. hold_low_priority leaves Low
-    (priority < 0) tasks waiting - "save the session for urgent work"."""
+    (priority < 0) tasks waiting - "save the session for urgent work".
+    A chat's messages run one at a time and in the order they were sent, so
+    a message waits while its chat has one running or an earlier one pending
+    (see CHAT_FREE)."""
     with _lock:
         conn = get_conn()
         now = _now()
-        q = """
+        q = f"""
             SELECT t.* FROM tasks t
             JOIN projects p ON p.id = t.project_id
             WHERE p.active = 1
@@ -630,6 +1133,8 @@ def get_next_queued_task(lane: str = "agent", exclude_models: tuple = (),
                     t.status = 'queued'
                     OR (t.status = 'rate_limited' AND t.resume_at IS NOT NULL AND t.resume_at <= ?)
                   )
+              AND t.paused = 0
+              AND {CHAT_FREE}
         """
         params: list[Any] = [lane, now]
         if exclude_models:
@@ -642,13 +1147,74 @@ def get_next_queued_task(lane: str = "agent", exclude_models: tuple = (),
         return _row_to_dict(row) if row else None
 
 
+def _auto_in_progress(conn: sqlite3.Connection, task_id: int) -> None:
+    """Call just before a task's status becomes 'running'. If this is its first
+    start (a resume after a rate limit keeps started_at), and its project has
+    auto_in_progress on (the default), move the project to in_progress."""
+    conn.execute(
+        "UPDATE projects SET status = 'in_progress' "
+        "WHERE id = (SELECT project_id FROM tasks WHERE id = ? AND started_at IS NULL) "
+        "AND status != 'in_progress' "
+        "AND COALESCE((SELECT auto_in_progress FROM project_settings WHERE project_id = projects.id), 1) = 1",
+        (task_id,),
+    )
+
+
 def mark_running(task_id: int) -> None:
     with _lock:
         conn = get_conn()
+        _auto_in_progress(conn, task_id)
         conn.execute(
-            "UPDATE tasks SET status = 'running', started_at = ?, resume_at = NULL WHERE id = ?",
+            "UPDATE tasks SET status = 'running', started_at = ?, resume_at = NULL, run_now = 0 WHERE id = ?",
             (_now(), task_id),
         )
+        conn.commit()
+
+
+def running_task_ids(lanes: tuple[str, ...]) -> list[int]:
+    with _lock:
+        rows = get_conn().execute(
+            f"SELECT id FROM tasks WHERE status = 'running' AND lane IN ({','.join('?' * len(lanes))}) ORDER BY id",
+            lanes,
+        ).fetchall()
+    return [r["id"] for r in rows]
+
+
+def claim_task(task_id: int) -> bool:
+    """mark_running, but only if the task is still waiting - so the queue
+    and a "Proceed now" can never both start the same task."""
+    with _lock:
+        conn = get_conn()
+        waiting = conn.execute(
+            "SELECT 1 FROM tasks WHERE id = ? AND status IN ('queued', 'rate_limited') AND paused = 0", (task_id,)
+        ).fetchone()
+        if waiting:
+            _auto_in_progress(conn, task_id)
+        cur = conn.execute(
+            "UPDATE tasks SET status = 'running', started_at = ?, resume_at = NULL, run_now = 0 "
+            "WHERE id = ? AND status IN ('queued', 'rate_limited') AND paused = 0",
+            (_now(), task_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def run_now_tasks() -> list[dict[str, Any]]:
+    """Queued tasks the user asked to start right away, alongside whatever
+    is already running (still one at a time within a chat)."""
+    with _lock:
+        conn = get_conn()
+        rows = conn.execute(
+            f"SELECT t.* FROM tasks t JOIN projects p ON p.id = t.project_id "
+            f"WHERE t.run_now = 1 AND t.status = 'queued' AND t.paused = 0 AND p.active = 1 AND {CHAT_FREE} ORDER BY t.id ASC"
+        ).fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def set_run_now(task_id: int) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE tasks SET run_now = 1, paused = 0 WHERE id = ? AND status = 'queued'", (task_id,))
         conn.commit()
 
 
@@ -656,7 +1222,7 @@ def mark_done(task_id: int, result_summary: str) -> None:
     with _lock:
         conn = get_conn()
         conn.execute(
-            "UPDATE tasks SET status = 'done', result_summary = ?, finished_at = ? WHERE id = ?",
+            "UPDATE tasks SET status = 'done', paused = 0, result_summary = ?, finished_at = ? WHERE id = ?",
             (result_summary, _now(), task_id),
         )
         conn.commit()
@@ -667,7 +1233,7 @@ def mark_error(task_id: int, error_message: str, needs_review: bool = True) -> N
         conn = get_conn()
         status = "needs_review" if needs_review else "error"
         conn.execute(
-            "UPDATE tasks SET status = ?, error_message = ?, finished_at = ? WHERE id = ?",
+            "UPDATE tasks SET status = ?, paused = 0, error_message = ?, finished_at = ? WHERE id = ?",
             (status, error_message, _now(), task_id),
         )
         conn.commit()
@@ -677,17 +1243,33 @@ def mark_rate_limited(task_id: int, resume_at_iso: str) -> None:
     with _lock:
         conn = get_conn()
         conn.execute(
-            "UPDATE tasks SET status = 'rate_limited', resume_at = ? WHERE id = ?",
+            "UPDATE tasks SET status = 'rate_limited', paused = 0, resume_at = ? WHERE id = ?",
             (resume_at_iso, task_id),
         )
         conn.commit()
+
+
+PAUSABLE = ("queued", "rate_limited", "running")
+
+
+def set_paused(task_id: int, paused: bool) -> bool:
+    """Hold or release a task without changing its status or its place in the
+    queue. False if it isn't in a state that can be held (it already finished)."""
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute(
+            f"UPDATE tasks SET paused = ? WHERE id = ? AND status IN ({','.join('?' * len(PAUSABLE))})",
+            (int(paused), task_id, *PAUSABLE),
+        )
+        conn.commit()
+        return cur.rowcount > 0
 
 
 def cancel_task(task_id: int) -> None:
     with _lock:
         conn = get_conn()
         conn.execute(
-            "UPDATE tasks SET status = 'cancelled', finished_at = ? WHERE id = ? AND status IN ('queued', 'rate_limited')",
+            "UPDATE tasks SET status = 'cancelled', paused = 0, finished_at = ? WHERE id = ? AND status IN ('queued', 'rate_limited')",
             (_now(), task_id),
         )
         conn.commit()
@@ -718,7 +1300,7 @@ def list_pending_approvals() -> list[dict[str, Any]]:
     with _lock:
         conn = get_conn()
         rows = conn.execute(
-            "SELECT a.*, t.prompt AS task_prompt, t.project_id, t.model_id, t.lane FROM approvals a "
+            "SELECT a.*, t.prompt AS task_prompt, t.title AS task_title, t.project_id, t.model_id, t.lane FROM approvals a "
             "JOIN tasks t ON t.id = a.task_id "
             "WHERE a.status = 'pending' ORDER BY a.created_at ASC"
         ).fetchall()
@@ -845,6 +1427,68 @@ def reorder_todos(project_id: int, ordered_ids: list[int]) -> list[dict[str, Any
         return list_todos(project_id)
 
 
+# ------------------------------------------------------------- project notes
+
+NOTE_KINDS = ("guideline", "requirement", "note")
+_NOTE_HEADINGS = (("guideline", "Guidelines"), ("requirement", "Requirements"), ("note", "Notes"))
+
+
+def list_project_notes(project_id: int) -> list[dict[str, Any]]:
+    with _lock:
+        conn = get_conn()
+        rows = conn.execute("SELECT * FROM project_notes WHERE project_id = ? ORDER BY id ASC", (project_id,)).fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def get_project_note(note_id: int) -> Optional[dict[str, Any]]:
+    with _lock:
+        conn = get_conn()
+        row = conn.execute("SELECT * FROM project_notes WHERE id = ?", (note_id,)).fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def add_project_note(project_id: int, text: str, kind: str = "note") -> dict[str, Any]:
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("INSERT INTO project_notes (project_id, kind, text, created_at) VALUES (?, ?, ?, ?)",
+                           (project_id, kind if kind in NOTE_KINDS else "note", text, _now()))
+        conn.commit()
+        return get_project_note(cur.lastrowid)
+
+
+def update_project_note(note_id: int, text: Optional[str] = None, kind: Optional[str] = None) -> Optional[dict[str, Any]]:
+    with _lock:
+        conn = get_conn()
+        if text is not None:
+            conn.execute("UPDATE project_notes SET text = ? WHERE id = ?", (text, note_id))
+        if kind in NOTE_KINDS:
+            conn.execute("UPDATE project_notes SET kind = ? WHERE id = ?", (kind, note_id))
+        conn.commit()
+        return get_project_note(note_id)
+
+
+def delete_project_note(note_id: int) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("DELETE FROM project_notes WHERE id = ?", (note_id,))
+        conn.commit()
+
+
+def project_notes_prompt(project_id: Optional[int]) -> str:
+    """The project's notes as a block of instructions, grouped by kind, for
+    whatever model is about to work on it. Empty when there are none."""
+    notes = list_project_notes(project_id) if project_id else []
+    sections = []
+    for kind, heading in _NOTE_HEADINGS:
+        items = [n["text"].strip() for n in notes if n["kind"] == kind]
+        if items:
+            sections.append(f"{heading}:\n" + "\n".join(f"- {t.replace(chr(10), chr(10) + '  ')}" for t in items))
+    if not sections:
+        return ""
+    return ("The user has recorded these notes about this project. Treat them as standing "
+            "instructions and keep them in mind for everything you do here.\n\n" + "\n\n".join(sections))
+
+
 def run_checked_todos(project_id: int) -> list[dict[str, Any]]:
     """Convert every checked, not-yet-run todo (in position order) into a
     real queued task - see add_task. Already queued/done/error ones are
@@ -869,10 +1513,20 @@ def run_checked_todos(project_id: int) -> list[dict[str, Any]]:
 def queue_status() -> dict[str, Any]:
     with _lock:
         conn = get_conn()
+        # One count per chat, by its latest message - a reply is part of its
+        # chat, not another task. Except 'queued', which counts queue items
+        # (a waiting reply is one), so it matches the queue the dashboard lists.
         counts = {
             r["status"]: r["n"]
-            for r in conn.execute("SELECT status, COUNT(*) as n FROM tasks GROUP BY status").fetchall()
+            for r in conn.execute(
+                "SELECT status, COUNT(*) as n FROM tasks "
+                "WHERE id IN (SELECT MAX(id) FROM tasks GROUP BY COALESCE(thread_id, id)) GROUP BY status"
+            ).fetchall()
         }
+        counts.pop("queued", None)
+        n_queued = conn.execute("SELECT COUNT(*) AS n FROM tasks WHERE status = 'queued'").fetchone()["n"]
+        if n_queued:
+            counts["queued"] = n_queued
         # "running" stays the agent lane's own task for older clients;
         # running_all adds whatever the api lane is doing alongside it.
         running = conn.execute(
@@ -972,10 +1626,41 @@ def usage_summary(days: int = 30) -> dict[str, Any]:
 
 # Global toggles the dashboard can change. monthly_budget_usd is the
 # "of $100 this month" line - real (api lane) spend across all projects.
+# Starter quick buttons (Home). Each fills the Ask box with `prompt`; `pic` also opens the
+# picture picker. The list is edited from the dashboard and saved whole as the "quick_buttons" setting.
+QUICK_BUTTON_DEFAULTS: list[dict[str, Any]] = [
+    {"id": "q-sanskrit", "icon": "📜", "label": "Sanskrit exam paper", "pic": True,
+     "prompt": "Convert the attached photo of a Sanskrit exam paper into clean, typed Devanagari text. "
+               "Keep every question number, marks and instruction exactly as written, and lay it out like a printable question paper."},
+    {"id": "q-photo-text", "icon": "📷", "label": "Photo to text", "pic": True,
+     "prompt": "Read the attached photo and type out all the text in it, keeping the original layout and order."},
+    {"id": "q-summarize", "icon": "📝", "label": "Summarize", "pic": False,
+     "prompt": "Summarize this in a few short points:\n\n"},
+    {"id": "q-reply", "icon": "💬", "label": "Write a reply", "pic": False,
+     "prompt": "Write a polite, short reply to this message:\n\n"},
+    {"id": "q-translate", "icon": "🌐", "label": "Translate", "pic": False,
+     "prompt": "Translate this into English (or into Hindi if it is already in English):\n\n"},
+    {"id": "q-fix", "icon": "✏️", "label": "Fix spelling", "pic": False,
+     "prompt": "Fix the spelling and grammar in this, changing nothing else:\n\n"},
+]
+
 SETTINGS_DEFAULTS: dict[str, Any] = {
+    "quick_buttons": QUICK_BUTTON_DEFAULTS,
     "notify_on_resume": False,       # ping once when a rate-limit pause ends
     "hold_low_when_busy": True,      # hold Low tasks while the 5-hour window is over 85%
+    "sleep_mode": None,              # {"since", "until"} while "I'm going to sleep" is on - see sleep_mode_active
+    "notify_weekly_pace": True,      # warn when the weekly limit is being used up too fast
     "monthly_budget_usd": 100.0,
+    # Octopus (see octopus/autonomy.py). autonomy: assist | execute | autonomous.
+    # plan_review: when the plan card is shown before anything runs -
+    # risky (default: only for higher-risk requests) | always | never.
+    "autonomy": "execute",
+    "plan_review": "risky",
+    # Voice (see octopus/voice/). Providers are ids from octopus.voice.
+    "voice_stt": "browser",
+    "voice_tts": "browser",
+    "voice_tts_voice": "",           # a macOS voice name for tts 'macos'; "" = system default
+    "voice_speak_replies": True,
 }
 
 
@@ -995,6 +1680,29 @@ def get_settings() -> dict[str, Any]:
     return {k: get_setting(k) for k in SETTINGS_DEFAULTS}
 
 
+SLEEP_DEFAULT_HOURS = 8.0
+
+
+def sleep_mode_active() -> bool:
+    """True while "I'm going to sleep" is on. It ends by itself at "until", so a
+    forgotten toggle can't leave the queue in overnight mode for good."""
+    sm = get_setting("sleep_mode")
+    if not sm or not sm.get("until"):
+        return False
+    return datetime.fromisoformat(sm["until"]) > datetime.now(timezone.utc)
+
+
+def start_sleep_mode(hours: float = SLEEP_DEFAULT_HOURS) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    sm = {"since": now.isoformat(), "until": (now + timedelta(hours=hours)).isoformat()}
+    set_setting("sleep_mode", sm)
+    return sm
+
+
+def end_sleep_mode() -> None:
+    set_setting("sleep_mode", None)
+
+
 # ------------------------------------------------------- project settings
 
 PROJECT_SETTINGS_DEFAULTS: dict[str, Any] = {
@@ -1005,8 +1713,9 @@ PROJECT_SETTINGS_DEFAULTS: dict[str, Any] = {
     "quiet_hours": False,
     "allow_commands": [],
     "budget_usd": 20.0,
+    "auto_in_progress": True,
 }
-_BOOL_SETTINGS = ("notify_approvals", "notify_failures", "notify_completions", "quiet_hours")
+_BOOL_SETTINGS = ("notify_approvals", "notify_failures", "notify_completions", "quiet_hours", "auto_in_progress")
 
 
 def get_project_settings(project_id: int) -> dict[str, Any]:
@@ -1211,7 +1920,7 @@ def spend_summary(days: int = 7) -> dict[str, Any]:
         rows = get_conn().execute(
             "SELECT t.project_id, p.name AS project_name, t.cost_usd, COALESCE(t.finished_at, t.created_at) AS at "
             "FROM tasks t JOIN projects p ON p.id = t.project_id "
-            "WHERE t.lane = 'api' AND t.cost_usd IS NOT NULL AND COALESCE(t.finished_at, t.created_at) >= ?",
+            "WHERE t.lane IN ('api', 'assistant') AND t.cost_usd IS NOT NULL AND COALESCE(t.finished_at, t.created_at) >= ?",
             (_utc_iso(since),),
         ).fetchall()
     by_day = {(week0 + timedelta(days=i)).date().isoformat(): 0.0 for i in range(days)}
@@ -1243,8 +1952,368 @@ def project_month_spend(project_id: int) -> float:
     month0 = datetime.now().astimezone().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     with _lock:
         row = get_conn().execute(
-            "SELECT COALESCE(SUM(cost_usd), 0) AS s FROM tasks WHERE project_id = ? AND lane = 'api' "
+            "SELECT COALESCE(SUM(cost_usd), 0) AS s FROM tasks WHERE project_id = ? AND lane IN ('api', 'assistant') "
             "AND COALESCE(finished_at, created_at) >= ?",
             (project_id, _utc_iso(month0)),
         ).fetchone()
         return float(row["s"])
+
+
+# ------------------------------------------------------- personal assistant
+# Storage for assistant/: connected accounts (no tokens), the activity log,
+# per-chat working memory, reminders, and the few task/approval helpers the
+# assistant lane needs. Approvals themselves reuse the `approvals` table:
+# tool_name 'assistant:<tool>.<action>', tool_input a JSON payload.
+
+def get_connection(provider: str) -> Optional[dict[str, Any]]:
+    with _lock:
+        row = get_conn().execute("SELECT * FROM connections WHERE provider = ?", (provider,)).fetchone()
+        if not row:
+            return None
+        out = _row_to_dict(row)
+        out["scopes"] = json.loads(out["scopes"] or "[]")
+        return out
+
+
+def save_connection(provider: str, account: Optional[str], status: str, scopes: Optional[list[str]] = None,
+                    error: Optional[str] = None) -> dict[str, Any]:
+    now = _now()
+    with _lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO connections (provider, account, status, scopes, connected_at, last_error, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(provider) DO UPDATE SET "
+            "account = COALESCE(excluded.account, account), status = excluded.status, "
+            "scopes = CASE WHEN excluded.scopes = '[]' THEN scopes ELSE excluded.scopes END, "
+            "connected_at = CASE WHEN excluded.status = 'connected' THEN excluded.connected_at ELSE connected_at END, "
+            "last_error = excluded.last_error, updated_at = excluded.updated_at",
+            (provider, account, status, json.dumps(scopes or []), now if status == "connected" else None,
+             (error or "")[:300] or None, now),
+        )
+        conn.commit()
+        return get_connection(provider)  # type: ignore[return-value]
+
+
+def delete_connection(provider: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("DELETE FROM connections WHERE provider = ?", (provider,))
+        conn.commit()
+
+
+def add_activity(tool: str, action: str, target: Optional[str] = None, approval: str = "not_required",
+                 result: str = "ok", error: Optional[str] = None, task_id: Optional[int] = None,
+                 approval_id: Optional[int] = None, ref: Optional[str] = None) -> int:
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute(
+            "INSERT INTO assistant_activity (created_at, tool, action, target, approval, result, error, "
+            "task_id, approval_id, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (_now(), tool, action, (target or "")[:200] or None, approval, result, (error or "")[:300] or None,
+             task_id, approval_id, (ref or "")[:200] or None),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def list_activity(limit: int = 100, tool: Optional[str] = None, action: Optional[str] = None) -> list[dict[str, Any]]:
+    q, params = "SELECT * FROM assistant_activity WHERE 1=1", []  # type: (str, list[Any])
+    if tool:
+        q += " AND tool = ?"
+        params.append(tool)
+    if action:
+        q += " AND action = ?"
+        params.append(action)
+    q += " ORDER BY id DESC LIMIT ?"
+    params.append(max(1, min(limit, 500)))
+    with _lock:
+        return [_row_to_dict(r) for r in get_conn().execute(q, params).fetchall()]
+
+
+def get_assistant_context(thread_id: int) -> dict[str, Any]:
+    with _lock:
+        row = get_conn().execute("SELECT data FROM assistant_context WHERE thread_id = ?", (thread_id,)).fetchone()
+        return json.loads(row["data"]) if row else {}
+
+
+def set_assistant_context(thread_id: int, data: dict[str, Any]) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("INSERT INTO assistant_context (thread_id, data, updated_at) VALUES (?, ?, ?) "
+                     "ON CONFLICT(thread_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+                     (thread_id, json.dumps(data), _now()))
+        conn.commit()
+
+
+def add_reminder(text: str, due_at_iso: str, task_id: Optional[int] = None) -> dict[str, Any]:
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("INSERT INTO reminders (text, due_at, status, created_at, task_id) VALUES (?, ?, 'pending', ?, ?)",
+                           (text.strip()[:300], due_at_iso, _now(), task_id))
+        conn.commit()
+        return get_reminder(cur.lastrowid)  # type: ignore[return-value]
+
+
+def get_reminder(reminder_id: int) -> Optional[dict[str, Any]]:
+    with _lock:
+        row = get_conn().execute("SELECT * FROM reminders WHERE id = ?", (reminder_id,)).fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def list_reminders(statuses: Optional[list[str]] = None, limit: int = 100) -> list[dict[str, Any]]:
+    q, params = "SELECT * FROM reminders WHERE 1=1", []  # type: (str, list[Any])
+    if statuses:
+        q += f" AND status IN ({','.join('?' * len(statuses))})"
+        params += statuses
+    q += " ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, due_at ASC LIMIT ?"
+    params.append(limit)
+    with _lock:
+        return [_row_to_dict(r) for r in get_conn().execute(q, params).fetchall()]
+
+
+def cancel_reminder(reminder_id: int) -> bool:
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("UPDATE reminders SET status = 'cancelled' WHERE id = ? AND status = 'pending'", (reminder_id,))
+        conn.commit()
+        return cur.rowcount == 1
+
+
+def due_reminders() -> list[dict[str, Any]]:
+    """Pending reminders whose time has come. A reminder missed while the Mac
+    slept fires once, late, on wake."""
+    with _lock:
+        rows = get_conn().execute("SELECT * FROM reminders WHERE status = 'pending' AND due_at <= ? ORDER BY due_at ASC",
+                                  (_now(),)).fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def mark_reminder_fired(reminder_id: int) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE reminders SET status = 'fired', fired_at = ? WHERE id = ? AND status = 'pending'",
+                     (_now(), reminder_id))
+        conn.commit()
+
+
+def claim_approval(approval_id: int, approved: bool, note: Optional[str] = None) -> bool:
+    """Decide a pending approval and say whether *this* call is the one that
+    decided it - so an action is executed exactly once even if two clicks race."""
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute(
+            "UPDATE approvals SET status = ?, decided_at = ?, note = ? WHERE id = ? AND status = 'pending'",
+            ("approved" if approved else "denied", _now(), (note or "").strip()[:500] or None, approval_id),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+
+
+def set_approval_input(approval_id: int, tool_input: str) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE approvals SET tool_input = ? WHERE id = ?", (tool_input, approval_id))
+        conn.commit()
+
+
+def expire_assistant_approvals(older_than_iso: str) -> list[dict[str, Any]]:
+    """Time out assistant approvals nobody answered. Returns the rows expired."""
+    with _lock:
+        conn = get_conn()
+        rows = conn.execute(
+            "SELECT * FROM approvals WHERE status = 'pending' AND tool_name LIKE 'assistant:%' AND created_at < ?",
+            (older_than_iso,)).fetchall()
+        for r in rows:
+            conn.execute("UPDATE approvals SET status = 'timed_out', decided_at = ? WHERE id = ?", (_now(), r["id"]))
+        conn.commit()
+        return [_row_to_dict(r) for r in rows]
+
+
+def append_task_result(task_id: int, text: str) -> None:
+    """Add a line to a finished task's answer (e.g. "Sent" after an approval)."""
+    with _lock:
+        conn = get_conn()
+        conn.execute("UPDATE tasks SET result_summary = COALESCE(result_summary, '') || ? WHERE id = ?",
+                     ("\n\n" + text.strip(), task_id))
+        conn.commit()
+
+
+def recent_assistant_thread(within_minutes: int = 15) -> Optional[int]:
+    """Root task id of the assistant chat that was last active within the
+    window - what a voice request with no thread attaches to."""
+    since = (datetime.now(timezone.utc) - timedelta(minutes=within_minutes)).isoformat()
+    with _lock:
+        row = get_conn().execute(
+            "SELECT COALESCE(thread_id, id) AS root FROM tasks WHERE lane = 'assistant' AND created_at >= ? "
+            "ORDER BY id DESC LIMIT 1", (since,)).fetchone()
+        return row["root"] if row else None
+
+
+# ------------------------------------------------- Octopus: routing log & plans
+
+def add_routing(request: str, plan: dict[str, Any], status: str = "proposed", source: str = "api",
+                decided_by: str = "auto", task_id: Optional[int] = None) -> dict[str, Any]:
+    """Log a request and the plan Octopus made for it (see octopus/plan.py)."""
+    with _lock:
+        conn = get_conn()
+        now = _now()
+        cur = conn.execute(
+            "INSERT INTO routing (created_at, updated_at, source, request, status, category, agent_id, model_id, "
+            "project_id, risk, plan, task_id, decided_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (now, now, source, request, status, plan.get("category"), (plan.get("agent") or {}).get("id"),
+             (plan.get("model") or {}).get("id"), (plan.get("project") or {}).get("id"), plan.get("risk"),
+             json.dumps(plan), task_id, decided_by))
+        conn.commit()
+        return get_routing(cur.lastrowid)
+
+
+def _routing_row(row: sqlite3.Row) -> dict[str, Any]:
+    out = _row_to_dict(row)
+    try:
+        out["plan"] = json.loads(out.get("plan") or "{}")
+    except ValueError:
+        out["plan"] = {}
+    return out
+
+
+def get_routing(routing_id: int) -> Optional[dict[str, Any]]:
+    with _lock:
+        row = get_conn().execute("SELECT * FROM routing WHERE id = ?", (routing_id,)).fetchone()
+        return _routing_row(row) if row else None
+
+
+def update_routing(routing_id: int, plan: Optional[dict[str, Any]] = None, **fields: Any) -> Optional[dict[str, Any]]:
+    """Change a logged plan's status / task / decided_by. A new `plan` replaces
+    the stored one and refreshes the columns copied out of it."""
+    allowed = {k: v for k, v in fields.items() if k in ("status", "task_id", "decided_by", "source")}
+    if plan is not None:
+        allowed.update(plan=json.dumps(plan), category=plan.get("category"), agent_id=(plan.get("agent") or {}).get("id"),
+                       model_id=(plan.get("model") or {}).get("id"), project_id=(plan.get("project") or {}).get("id"),
+                       risk=plan.get("risk"))
+    if not allowed:
+        return get_routing(routing_id)
+    allowed["updated_at"] = _now()
+    with _lock:
+        conn = get_conn()
+        sets = ", ".join(f"{k} = ?" for k in allowed)
+        conn.execute(f"UPDATE routing SET {sets} WHERE id = ?", (*allowed.values(), routing_id))
+        conn.commit()
+        return get_routing(routing_id)
+
+
+def claim_routing(routing_id: int, to_status: str, from_statuses: tuple = ("proposed", "needs_input")) -> bool:
+    """Move a plan out of 'waiting' exactly once - so a double-tapped Run
+    (or a Run racing a Cancel) can't queue the same request twice."""
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute(
+            f"UPDATE routing SET status = ?, updated_at = ? WHERE id = ? AND status IN ({','.join('?' * len(from_statuses))})",
+            (to_status, _now(), routing_id, *from_statuses))
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def list_routing(limit: int = 100, status: Optional[str] = None, category: Optional[str] = None) -> list[dict[str, Any]]:
+    """Newest first, each row joined with what became of its task."""
+    with _lock:
+        q = ("SELECT r.*, t.status AS task_status, t.duration_ms, t.cost_usd, t.input_tokens, t.output_tokens, "
+             "t.error_message AS task_error, t.title AS task_title, t.lane AS task_lane, "
+             "SUBSTR(COALESCE(t.result_summary, ''), 1, 240) AS result_excerpt, p.name AS project_name "
+             "FROM routing r LEFT JOIN tasks t ON t.id = r.task_id LEFT JOIN projects p ON p.id = r.project_id WHERE 1=1")
+        params: list[Any] = []
+        if status:
+            q += " AND r.status = ?"
+            params.append(status)
+        if category:
+            q += " AND r.category = ?"
+            params.append(category)
+        q += " ORDER BY r.id DESC LIMIT ?"
+        params.append(limit)
+        return [_routing_row(r) for r in get_conn().execute(q, params).fetchall()]
+
+
+def pending_plan(within_minutes: int = 30) -> Optional[dict[str, Any]]:
+    """The newest plan still waiting on the human (Run / Cancel, or an answer
+    to "which project?") - what a spoken "yes, go ahead" refers to."""
+    since = (datetime.now(timezone.utc) - timedelta(minutes=within_minutes)).isoformat()
+    with _lock:
+        row = get_conn().execute(
+            "SELECT * FROM routing WHERE status IN ('proposed', 'needs_input') AND created_at >= ? "
+            "ORDER BY id DESC LIMIT 1", (since,)).fetchone()
+        return _routing_row(row) if row else None
+
+
+def expire_old_plans(older_than_minutes: int = 120) -> int:
+    since = (datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)).isoformat()
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("UPDATE routing SET status = 'expired', updated_at = ? "
+                           "WHERE status IN ('proposed', 'needs_input') AND created_at < ?", (_now(), since))
+        conn.commit()
+        return cur.rowcount
+
+
+def _set_task_json(task_id: int, column: str, value: Any) -> None:
+    assert column in _JSON_COLUMNS
+    with _lock:
+        conn = get_conn()
+        conn.execute(f"UPDATE tasks SET {column} = ? WHERE id = ?", (json.dumps(value), task_id))
+        conn.commit()
+
+
+def set_task_plan_steps(task_id: int, steps: list[dict[str, Any]]) -> None:
+    """The live plan an agent reported (Claude Code's todo list): [{content, status}]."""
+    _set_task_json(task_id, "plan_steps", steps)
+
+
+def set_task_git_base(task_id: int, base: dict[str, Any]) -> None:
+    _set_task_json(task_id, "git_base", base)
+
+
+def set_task_artifacts(task_id: int, artifacts: list[dict[str, Any]]) -> None:
+    _set_task_json(task_id, "artifacts", artifacts)
+
+
+def model_category_stats(days: int = 30) -> dict[str, dict[str, int]]:
+    """{"model_id|category": {"n", "done", "failed"}} over the last `days` -
+    the "historical success" the router weighs."""
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    with _lock:
+        rows = get_conn().execute(
+            "SELECT model_id, category, COUNT(*) AS n, SUM(status = 'done') AS done, "
+            "SUM(status IN ('error', 'needs_review')) AS failed FROM tasks "
+            "WHERE created_at >= ? AND model_id IS NOT NULL AND status IN ('done', 'error', 'needs_review') "
+            "GROUP BY model_id, category", (since,)).fetchall()
+        return {f"{r['model_id']}|{r['category']}": {"n": r["n"], "done": r["done"] or 0, "failed": r["failed"] or 0}
+                for r in rows}
+
+
+def recent_thread(within_minutes: int = 15, lanes: Optional[tuple] = None) -> Optional[int]:
+    """Root task id of the chat that saw the most recent activity within the
+    window, in any lane (or only `lanes`) - what a follow-up like "fix the
+    second one" attaches to. Instant control replies never count."""
+    since = (datetime.now(timezone.utc) - timedelta(minutes=within_minutes)).isoformat()
+    lane_sql = f" AND lane IN ({','.join('?' * len(lanes))})" if lanes else " AND lane != 'control'"
+    with _lock:
+        row = get_conn().execute(
+            "SELECT COALESCE(thread_id, id) AS root, COALESCE(finished_at, started_at, created_at) AS at FROM tasks "
+            f"WHERE COALESCE(finished_at, started_at, created_at) >= ?{lane_sql} ORDER BY at DESC, id DESC LIMIT 1",
+            (since, *(lanes or ()))).fetchone()
+        return row["root"] if row else None
+
+
+def list_task_approvals(task_id: int) -> list[dict[str, Any]]:
+    with _lock:
+        return [_row_to_dict(r) for r in get_conn().execute(
+            "SELECT * FROM approvals WHERE task_id = ? ORDER BY id ASC", (task_id,)).fetchall()]
+
+
+def list_recent_events(limit: int = 60) -> list[dict[str, Any]]:
+    """What Octopus did lately, across every task, newest first - the raw
+    material for the Command Center's activity feed."""
+    with _lock:
+        rows = get_conn().execute(
+            "SELECT e.*, t.title AS task_title, t.project_id, t.lane, t.model_id, p.name AS project_name "
+            "FROM task_events e JOIN tasks t ON t.id = e.task_id JOIN projects p ON p.id = t.project_id "
+            "ORDER BY e.id DESC LIMIT ?", (limit,)).fetchall()
+        return [_row_to_dict(r) for r in rows]

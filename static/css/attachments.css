@@ -1,0 +1,19 @@
+/* Pictures attached to a prompt: the thumbnail row above a box, and thumbnails in a sent message. */
+
+.attach-strip { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 2px 2px; }
+.palette .attach-strip, .sheet .attach-strip { padding: 0 16px 10px; }
+.composer > .attach-strip { padding: 0 4px 8px; }
+
+.attach-thumb { position: relative; width: 56px; height: 56px; flex: none; border-radius: 11px; overflow: hidden; background: var(--surface-2, var(--surface)); border: 1px solid var(--line-strong); }
+.attach-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.attach-thumb.is-uploading img { opacity: .45; }
+.attach-thumb.is-error { border-color: rgba(255, 84, 112, .6); }
+.attach-thumb.is-error img { opacity: .35; }
+.attach-thumb .spinner { position: absolute; inset: 0; margin: auto; }
+.attach-thumb__err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 20px/1 var(--font-ui); color: var(--err); }
+.attach-thumb__x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: none; padding: 0; background: rgba(0, 0, 0, .62); color: #fff; font: 600 14px/1 var(--font-ui); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+.msg-you__imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.msg-you__imgs a { display: block; line-height: 0; }
+.attach-thumb--sent { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; }
+.attach-thumb--wait { display: inline-block; opacity: .5; }

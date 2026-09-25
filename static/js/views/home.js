@@ -2,13 +2,17 @@
 // scheduled, usage, models, recent. Onboarding replaces it when there are no projects.
 
 import { rollups } from '../api.js';
-import { agoShort, startedAgo, hms, money, modelState, usageSummary, priorityLabel, plural } from '../format.js';
+import { agoShort, startedAgo, hms, money, modelState, PERMISSION_MODES, modeInfo, usageSummary, priorityLabel, plural, taskName } from '../format.js';
 import { projectById, projectColor, orderedProjects, threadSummaries, finishedAt, generalProject } from '../data.js';
 import { commandOf, limitWindowWords } from '../derive.js';
 import { octopusSVG } from '../octopus.js';
-import { esc, octo, spinner, chipFor, icon, toggle, clock, dayWord, histRow, laneColor, modelLabel } from '../ui.js';
+import { esc, octo, spinner, chipFor, icon, toggle, clock, dayWord, histRow, laneColor, modelLabel, bulkBar } from '../ui.js';
 import { sessionColor } from './shell.js';
+import { isAssistant, previewOf } from './assistant-card.js';
 import { FEATURES } from '../features.js';
+import { imageStrip } from '../attach.js';
+import { octopusPanel, askControls, askAgentMenu, askVoiceStatus, askVoiceMenu } from './octopus-panel.js';
+import { quickSection } from './quick.js';
 
 const tildify = p => (p || '').replace(/^\/Users\/[^/]+/, '~');
 const CADENCE = { once: 'Once', daily: 'Every day', weekdays: 'Weekdays' };
@@ -48,7 +52,8 @@ function hero(c) {
 // ---------------------------------------------------------------- ask box
 const chev = '<svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 
-export function modelStates(c) { return c.d.models.map(m => modelState(m, c.now)); }
+// Instant commands (lane control) aren't a model you can pick - they only label the tasks they answered.
+export function modelStates(c) { return c.d.models.filter(m => m.lane !== 'control').map(m => modelState(m, c.now)); }
 
 function ask(c) {
   const a = c.ui.ask, d = c.d;
@@ -57,6 +62,7 @@ function ask(c) {
   const target = a.projectId == null ? null : projectById(a.projectId);
   const targetLabel = !target || target.is_general ? 'no project (General)' : 'in ' + target.name;
   const dis = a.sending ? ' disabled' : '';
+  const mode = modeInfo(a.mode);
   const empty = !a.text.trim();
   const res = a.result;
   const polishBusy = c.ui.polishing === 'ask';
@@ -69,6 +75,12 @@ function ask(c) {
       ${opts.map(o => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${a.model === o.id}" data-action="askPick" data-id="${o.id}"${o.ok ? '' : ' aria-disabled="true"'}>
         <span class="dot" style="--c:${o.dot}"></span><span class="menu__two"><span class="menu__main">${esc(o.l)}</span><span class="menu__sub">${esc(o.sub)}</span></span><span class="menu__check">${a.model === o.id ? '✓' : ''}</span></button>`).join('')}
       </div>`;
+  } else if (a.menu === 'mode') {
+    menu = `<div class="menu-scrim" data-action="closeMenus"></div>
+      <div class="menu menu--model" role="menu"><span class="menu__label">HOW CLAUDE CODE WORKS</span>
+      ${PERMISSION_MODES.map(o => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${modeInfo(a.mode).id === o.id}" data-action="askMode" data-id="${o.id}">
+        <span class="dot" style="--c:${o.dot}"></span><span class="menu__two"><span class="menu__main">${esc(o.label)}</span><span class="menu__sub">${esc(o.sub)}</span></span><span class="menu__check">${modeInfo(a.mode).id === o.id ? '✓' : ''}</span></button>`).join('')}
+      </div>`;
   } else if (a.menu === 'target') {
     const gen = generalProject(d);
     const opts = [{ id: '', l: 'No project (General)', color: 'var(--p-general)', on: a.projectId == null || (gen && a.projectId === gen.id) },
@@ -78,18 +90,26 @@ function ask(c) {
       ${opts.map(o => `<button class="menu__opt" role="menuitemradio" aria-checked="${o.on}" data-action="askTarget" data-id="${o.id}"><span class="nav-proj__swatch" style="background:${o.color}"></span><span class="grow truncate">${esc(o.l)}</span><span class="menu__check">${o.on ? '✓' : ''}</span></button>`).join('')}
       </div>`;
   }
+  if (a.menu === 'agent') menu = askAgentMenu(c);
+  if (a.menu === 'voice') menu = askVoiceMenu(c);
   let status = '';
   if (a.sending) status = `<div class="ask__status ask__status--routing">${octo('dance', 22)}Routing… picking a model</div>`;
   else if (res && res.error) status = `<div class="ask__status ask__status--error">Could not send: ${esc(res.error)}</div>`;
+  else if (res && res.answer) status = `<div class="ask__status ask__status--answer">${octo('idle', 22)}<span class="ask__answer">${esc(res.answer)}</span></div>`;
   else if (res) status = `<div class="ask__status"><span>→</span><b class="lane-${res.lane}">${esc(res.model)}</b><span>·</span><span>${esc(res.why)}</span><span>·</span><button class="ask__open" data-action="openChat" data-id="${res.id}">open #${res.id}</button></div>`;
+  const voiceLine = askVoiceStatus(c);
+  if (voiceLine) status = voiceLine;
   return `<section class="ask reveal" style="--i:30" data-key="ask">
     <div class="ask__wrap">
       <div class="ask__box${a.sending ? ' is-sending' : ''}${res && res.error ? ' is-error' : ''}">
         <textarea id="askInput" class="ask__input" rows="1" placeholder="🐙 Ask Octopus anything…" aria-label="Ask Octopus" data-input="ask" data-enter="submitAsk" data-autogrow="180" data-live-style${dis}>${esc(a.text)}</textarea>
+        ${imageStrip(a.images, 'ask')}
         <div class="ask__controls">
           <button class="ask__model" data-action="askMenu" data-menu="pick" aria-label="Model"${dis}><span class="dot" style="--c:${pick ? pick.dot : 'var(--text)'};width:7px;height:7px"></span>${esc(pick ? pick.label : 'Auto')}${chev}</button>
-          ${FEATURES.images ? `<label class="tool-btn" aria-label="Attach image"><input type="file" accept="image/*" multiple hidden>${icon('image', 18)}</label>` : ''}
+          ${pick && pick.lane !== 'agent' ? '' : `<button class="ask__model ask__mode" data-action="askMenu" data-menu="mode" title="${esc(mode.label + ' - ' + mode.sub)}" aria-label="Mode: ${esc(mode.label)}"${dis}><span class="dot" style="--c:${mode.dot};width:7px;height:7px"></span>${esc(mode.short)}${chev}</button>`}
+          ${FEATURES.images ? `<label class="tool-btn" title="Attach picture" aria-label="Attach picture"><input type="file" accept="image/*" multiple hidden data-attach="ask"${dis}>${icon('image', 18)}</label>` : ''}
           <button class="tool-btn" data-action="polish" data-target="ask" title="Polish text" aria-label="Polish text"${empty || polishBusy || a.sending ? ' disabled' : ''}>${polishBusy ? '<span class="spinner spinner--tool"></span>' : icon('polish', 18, { strokeWidth: 1.6 })}</button>
+          ${askControls(c)}
           <button class="ask__target" data-action="askMenu" data-menu="target"${dis}>${esc(targetLabel)} ▾</button>
           <button class="ask__send" data-action="submitAsk" aria-label="Send"${empty || a.sending ? ' disabled' : ''}>${a.sending ? spinner() : '↑'}</button>
         </div>
@@ -127,17 +147,19 @@ function approvalCard(c, n) {
   const a = n.approval, t = { ...n.task, _since: a.created_at };
   const p = projectById(t.project_id);
   const busy = c.ui.busy['ap' + a.id];
+  const pa = isAssistant(a), pv = pa ? previewOf(a) : null;
   return `<div class="swipe" data-key="ap${a.id}">
     <div class="swipe__reveal" data-live-style><span></span><span></span></div>
     <div class="swipe__card need need--approval" data-swipe data-id="${a.id}" data-live-style>
       ${needHead('approval', 'APPROVE', t)}
-      <span class="need__title">${esc(t.prompt)}</span>
-      <div class="cmd"><span><span class="cmd__prompt">$</span> ${esc(commandOf(a))}</span>${p ? `<span class="cmd__cwd">in ${esc(tildify(p.path))}</span>` : ''}</div>
-      ${riskChips(c.d.approvalCtx[a.id])}
+      <span class="need__title">${esc(taskName(t))}</span>
+      ${pa ? `<div class="pa-inline"><span class="pa-inline__title">${esc(pv ? pv.title : 'APPROVAL')}</span><span>${esc(commandOf(a))}</span></div>`
+        : `<div class="cmd"><span><span class="cmd__prompt">$</span> ${esc(commandOf(a))}</span>${p ? `<span class="cmd__cwd">in ${esc(tildify(p.path))}</span>` : ''}</div>
+      ${riskChips(c.d.approvalCtx[a.id])}`}
       <div class="need__actions">
         <button class="btn btn--ghost" data-action="openApproval" data-id="${a.id}">Details</button>
         <button class="btn btn--ghost" data-action="deny" data-id="${a.id}">Deny</button>
-        <button class="btn btn--approve" data-action="approve" data-id="${a.id}"${busy ? ' disabled' : ''}>${busy ? spinner() + 'Approving…' : `Approve<span class="btn__hint">${c.desk ? 'A' : 'or swipe →'}</span>`}</button>
+        <button class="btn btn--approve" data-action="approve" data-id="${a.id}"${busy ? ' disabled' : ''}>${busy ? spinner() + 'Approving…' : `${pa && pv && pv.approve ? esc(pv.approve) : 'Approve'}<span class="btn__hint">${c.desk ? 'A' : 'or swipe →'}</span>`}</button>
       </div>
     </div>
   </div>`;
@@ -147,7 +169,7 @@ function errorCard(c, t) {
   const busy = c.ui.busy['rt' + t.id];
   return `<div class="need need--error" data-key="er${t.id}">
     ${needHead('error', 'FAILED', t)}
-    <span class="need__title">${esc(t.prompt)}</span>
+    <span class="need__title">${esc(taskName(t))}</span>
     <span class="need__err">${esc((t.error_message || 'Failed').slice(0, 400))}</span>
     <div class="need__row">
       <button class="btn btn--danger btn--44" data-action="retry" data-id="${t.id}"${busy ? ' disabled' : ''}>${busy ? '<span class="spinner spinner--err"></span>Retrying…' : 'Retry'}</button>
@@ -161,7 +183,7 @@ function reviewCard(c, t) {
   const note = t.result_summary || t.error_message || 'Octopus flagged this for a human look.';
   return `<div class="need need--review" data-key="rv${t.id}">
     ${needHead('review', 'REVIEW', t)}
-    <span class="need__title">${esc(t.prompt)}</span>
+    <span class="need__title">${esc(taskName(t))}</span>
     <span class="need__note hide-compact">${esc(note.slice(0, 300))}</span>
     <div class="need__row">
       <button class="btn btn--ghost btn--44" data-action="openChat" data-id="${t.id}">Open</button>
@@ -189,14 +211,15 @@ function runningNow(c) {
       const agent = t.lane !== 'api';
       const waiting = c.w.apTask.has(t.id);
       const step = waiting ? 'Waiting for your OK' : t.current_step;
-      return `<button class="running__row" data-action="openChat" data-id="${t.id}" data-key="r${t.id}">
-        <span class="spinner spinner--run${agent ? '' : ' spinner--api'}"></span>
+      const on = !!t.paused;
+      return `<div class="running__item${on ? ' is-paused' : ''}" data-key="r${t.id}"><button class="running__row" data-action="openChat" data-id="${t.id}">
+        ${on ? `<span class="running__pause">${icon('pause', 14)}</span>` : `<span class="spinner spinner--run${agent ? '' : ' spinner--api'}"></span>`}
         <span class="running__body">
-          <span class="running__title truncate">${esc(t.prompt)}</span>
-          <span class="meta-row"><span class="nowrap">${esc(p ? p.name : '?')}</span>${chipFor(t)}<span class="truncate">· ${t.started_at ? startedAgo(t.started_at, c.now) : 'starting'}</span></span>
+          <span class="running__title truncate">${esc(taskName(t))}</span>
+          <span class="meta-row"><span class="nowrap">${esc(p ? p.name : '?')}</span>${chipFor(t)}<span class="truncate">· ${on ? 'paused' : t.started_at ? startedAgo(t.started_at, c.now) : 'starting'}</span></span>
           ${agent && step ? `<span class="running__step truncate hide-compact">› ${esc(step)}</span>` : ''}
         </span>
-      </button>`;
+      </button>${agent && !waiting ? `<button class="running__hold" title="${on ? 'Play - carry on' : 'Pause - freeze it here'}" aria-label="${on ? 'Play' : 'Pause'}" data-action="${on ? 'playTask' : 'pauseTask'}" data-id="${t.id}">${icon(on ? 'play' : 'pause', 16)}</button>` : ''}</div>`;
     }).join('')}</div>` : `<div class="empty">Nothing running</div>`}
   </section>`;
 }
@@ -211,7 +234,7 @@ function rateLimitedCard(c) {
     <div class="section__head"><span class="section__title">Now</span></div>
     <div class="sleep-card">
       <div class="need__head"><span class="need__kind" style="color:var(--sleep)">RATE-LIMITED</span><span>·</span><span class="need__project">${esc(p ? p.name : '?')}</span></div>
-      <span class="need__title">${esc(t.prompt)}</span>
+      <span class="need__title">${esc(taskName(t))}</span>
       <div class="sleep-card__timer"><span class="sleep-card__count">${hms(left)}</span><span class="meta">until ${clock(t.resume_at)}${t.current_step ? ' · paused at: ' + esc(t.current_step) : ''}</span></div>
       <div class="sleep-card__bar"></div>
       <span class="sleep-card__text">${esc(limitWindowWords(c.d).full)} I'll resume this exact session automatically, so you don't need to do anything.</span>
@@ -224,7 +247,7 @@ function rateLimitedCard(c) {
 }
 
 // ---------------------------------------------------------------- up next
-function upNext(c) {
+export function upNext(c) {
   const { w } = c;
   if (w.empty) return '';
   const q = w.queue;
@@ -234,18 +257,20 @@ function upNext(c) {
   else if (q.length) note = c.desk ? 'drag ⋮⋮ to reorder' : 'drag to reorder';
   return `<section class="section reveal" style="--i:180" data-key="upnext">
     <div class="section__head"><span class="section__title">Up next <span class="section__count">${q.length || ''}</span></span><span class="section__note" style="color:${noteColor}">${note}</span></div>
+    ${bulkBar(q, 'bulk-upnext')}
     ${q.length ? `<div class="list list--queue" data-drag-list="queue">${q.map((t, i) => {
       const p = projectById(t.project_id);
       const held = w.isPaused(t);
-      const rest = priorityLabel(t.priority) + (t.thread_id ? ' · reply' : '') + (held ? ' · skipped, project paused' : '');
-      return `<div class="qrow${held ? ' is-held' : ''}" data-id="${t.id}" data-key="q${t.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
+      const on = !!t.paused;
+      const rest = priorityLabel(t.priority) + (t.thread_id ? ' · reply' : '') + (t.run_now ? ' · starting now' : '') + (on ? ' · paused' : '') + (held ? ' · skipped, project paused' : '');
+      return `<div class="qrow${held ? ' is-held' : ''}${on ? ' is-paused' : ''}" data-id="${t.id}" data-key="q${t.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
         <span class="handle" aria-label="Drag to reorder">⋮⋮</span>
         <span class="qrow__swatch" style="background:${projectColor(p)}"></span>
         <div class="qrow__body" data-action="openChat" data-id="${t.id}">
-          <span class="qrow__title truncate">${esc(t.prompt)}</span>
+          <span class="qrow__title truncate">${esc(taskName(t))}</span>
           <div class="meta-row"><span class="nowrap">${esc(p ? p.name : '?')}</span>${chipFor(t)}<span class="truncate">· ${esc(rest)}</span></div>
         </div>
-        <div class="qrow__acts"><button title="Move to top" aria-label="Move to top" data-action="toTop" data-id="${t.id}">↑</button><button title="Cancel" aria-label="Cancel" data-action="cancelQueued" data-id="${t.id}">✕</button></div>
+        <div class="qrow__acts">${on ? `<button title="Play - put it back in line" aria-label="Play" data-action="playTask" data-id="${t.id}">${icon('play', 16)}</button>` : `<button title="Proceed now - start alongside what's running" aria-label="Proceed now" data-action="runNow" data-id="${t.id}">▶</button><button title="Pause - skip it until played" aria-label="Pause" data-action="pauseTask" data-id="${t.id}">${icon('pause', 16)}</button>`}<button title="Edit" aria-label="Edit" data-action="editTask" data-id="${t.id}">✎</button><button title="Move to top" aria-label="Move to top" data-action="toTop" data-id="${t.id}">↑</button><button title="Cancel" aria-label="Cancel" data-action="cancelQueued" data-id="${t.id}">✕</button></div>
       </div>`;
     }).join('')}</div>` : `<div class="empty"><span>Queue's empty.</span><button class="btn btn--sm" data-action="openPalette">Queue something</button></div>`}
   </section>`;
@@ -316,18 +341,19 @@ function models(c) {
 }
 
 function recent(c) {
+  const hide = c.ui.hideDone;
   const rows = threadSummaries(c.d).filter(t => t.status === 'done' || t.status === 'cancelled')
     .sort((a, b) => finishedAt(b).localeCompare(finishedAt(a))).slice(0, 4);
   return `<section class="section reveal" style="--i:240" data-key="recent">
-    <div class="section__head"><span class="section__title">Recent</span><button class="btn--text" data-action="go" data-view="activity">All activity</button></div>
-    ${rows.length ? `<div class="list">${rows.map(t => histRow(t)).join('')}</div>` : `<div class="empty">Nothing finished yet.</div>`}
+    <div class="section__head"><span class="section__title">Recent</span><span><button class="btn--text" data-action="toggleHideDone" aria-pressed="${hide}">${hide ? 'Show' : 'Hide'}</button> <button class="btn--text" data-action="go" data-view="activity">All activity</button></span></div>
+    ${hide ? `<div class="empty">Completed items hidden.</div>` : rows.length ? `<div class="list">${rows.map(t => histRow(t)).join('')}</div>` : `<div class="empty">Nothing finished yet.</div>`}
   </section>`;
 }
 
 // ---------------------------------------------------------------- onboarding (no projects)
 function onboarding(c) {
   const ob = c.ui.onboard, busy = c.ui.busy.addProject;
-  const topic = c.d.settings && c.d.settings.ntfy_topic;
+  const pushOn = c.d.settings && c.d.settings.push_configured;
   return `<div class="onboard" data-key="onboard">
     <div class="onboard__octo">${octo('sleep', 150)}</div>
     <span class="onboard__title">Give me something to hold.</span>
@@ -346,8 +372,8 @@ function onboarding(c) {
       </div>
       <div class="step step--off step--row">
         <span class="step__n">3</span>
-        <div class="grow"><span class="step__t">Get pinged</span><span class="meta">${topic ? 'ntfy topic · ' + esc(topic) : 'set NTFY_TOPIC in the launchd plist'}</span></div>
-        ${topic ? `<button class="btn--text btn--muted" data-action="testPush">Send test push</button>` : ''}
+        <div class="grow"><span class="step__t">Get pinged</span><span class="meta">${pushOn ? 'ActivitySmith · connected' : 'set ACTIVITYSMITH_API_KEY in the launchd plist'}</span></div>
+        ${pushOn ? `<button class="btn--text btn--muted" data-action="testPush">Send test push</button>` : ''}
       </div>
     </div>
   </div>`;
@@ -356,7 +382,7 @@ function onboarding(c) {
 export function home(c) {
   if (c.w.empty) return `<div class="page page--onboard" data-key="page-onboard">${onboarding(c)}</div>`;
   return `<div class="page page--home" data-key="page-home">
-    <div class="page__col">${hero(c)}${ask(c)}${rollupsHTML(c)}${needsYou(c)}${runningNow(c)}${rateLimitedCard(c)}${upNext(c)}</div>
+    <div class="page__col">${hero(c)}${ask(c)}${quickSection(c)}${octopusPanel(c)}${rollupsHTML(c)}${needsYou(c)}${runningNow(c)}${rateLimitedCard(c)}${upNext(c)}</div>
     <div class="page__col">${scheduled(c)}${usage(c)}${models(c)}${recent(c)}</div>
   </div>`;
 }

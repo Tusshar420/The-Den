@@ -1,10 +1,15 @@
-// App chrome: topbar, desktop sidebar, phone tab bar + FAB, toast, skeletons.
+// App chrome: topbar (with the notification bell), desktop sidebar, phone tab bar + FAB, skeletons.
 
-import { money, plural } from '../format.js';
-import { orderedProjects, projectColor, queuedTasks } from '../data.js';
-import { esc, icon, octo, sk } from '../ui.js';
+import { plural } from '../format.js';
+import { orderedProjects, projectColor, queuedTasks, pendingApprovals, SCOPES } from '../data.js';
+import { isAssistant } from './assistant-card.js';
+import { searchBox } from './search.js';
+import { esc, icon, octo, sk, scopeSwitch, clock, dayWord, spinner } from '../ui.js';
 
-const TITLES = { home: 'Home', projects: 'Projects', recipes: 'Recipes & schedules', activity: 'Activity' };
+const TITLES = { home: 'Command Center', projects: 'Projects', recipes: 'Recipes & schedules', activity: 'Activity', personal: 'Personal assistant', messages: 'Messages',
+  routing: 'Routing', providers: 'AI Providers', settings: 'Settings' };
+const OCTOPUS_NAV = [['providers', 'AI Providers'], ['routing', 'Routing'], ['settings', 'Settings']];
+const PERSONAL_NAV = [['email', 'Email'], ['calendar', 'Calendar'], ['reminders', 'Reminders'], ['connections', 'Connections']];
 
 export function viewTitle(c) {
   const { ui, desk } = c;
@@ -14,22 +19,50 @@ export function viewTitle(c) {
   return TITLES[ui.view] || 'Workspace';
 }
 
-const densityIcon = compact => compact
-  ? '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 5.5h12M3 9h12M3 12.5h12"/></svg>'
-  : '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3.5h12M3 9h12M3 14.5h12"/></svg>';
-
 const sessionColor = pct => (pct >= 95 ? 'var(--sleep)' : pct >= 80 ? 'var(--wait)' : 'var(--run)');
 export { sessionColor };
 
+function usageRow(label, u, color, resetText) {
+  const pct = u ? u.pct : 0;
+  return `<div class="usage-pill__row"><span class="usage-pill__lbl">${label}</span>
+    <div class="bar4"><div style="width:${pct}%;background:${color}"></div></div>
+    <span class="usage-pill__pct">${u ? pct + '%' : '–'}</span>
+    <span class="usage-pill__reset">${u && u.resets ? resetText(u.resets) : ''}</span></div>`;
+}
+
+// Phone project page: the two-row pill squeezes the title, so show just the 5h session as a ring
+// (the weekly figure is still in the Usage sheet this opens).
+function usageRing(w) {
+  const u = w.session;
+  const pct = u ? Math.max(0, Math.min(100, u.pct)) : 0;
+  const r = 15, circ = 2 * Math.PI * r;
+  return `<button class="usage-ring" data-action="openSheet" data-sheet="usage" aria-label="Usage: ${u ? pct + '% of the 5 hour session used' : 'unknown'}">
+    <svg viewBox="0 0 36 36" aria-hidden="true"><circle class="usage-ring__track" cx="18" cy="18" r="${r}"/>
+      <circle class="usage-ring__arc" cx="18" cy="18" r="${r}" stroke="${u ? sessionColor(pct) : 'var(--text-meta)'}" stroke-dasharray="${(circ * pct / 100).toFixed(1)} ${circ.toFixed(1)}"/></svg>
+    <span class="usage-ring__pct">${u ? pct : '–'}</span></button>`;
+}
+
 function usagePill(c) {
-  const { w, d } = c;
-  const bars = w.session
-    ? `<div class="usage-pill__bars">
-        <div class="bar4"><div style="width:${w.session.pct}%;background:${sessionColor(w.session.pct)}"></div></div>
-        <div class="bar4"><div style="width:${w.week ? w.week.pct : 0}%;background:var(--text-meta)"></div></div>
-      </div>` : '';
-  const today = d.spend ? d.spend.today_usd : 0;
-  return `<button class="usage-pill" data-action="openSheet" data-sheet="usage" aria-label="Usage">${bars}<span class="usage-pill__val">${money(today)}</span></button>`;
+  const { w } = c;
+  if (!c.desk && c.ui.view === 'project') return usageRing(w);
+  const hm = r => clock(r.toISOString());
+  const rows = w.session || w.week
+    ? usageRow('5h', w.session, w.session ? sessionColor(w.session.pct) : 'var(--text-meta)', r => '<i>resets </i>' + hm(r))
+      + usageRow('wk', w.week, 'var(--text-meta)', r => '<i>resets </i>' + r.toLocaleDateString([], { weekday: 'short' }) + ' ' + hm(r))
+    : '<span class="usage-pill__reset">usage</span>';
+  return `<button class="usage-pill" data-action="openSheet" data-sheet="usage" aria-label="Usage">${rows}</button>`;
+}
+
+// Restart Octopus: reload the service's code, then this page. On phone it lives in the Usage sheet.
+export function restartText(r) {
+  if (!r) return 'Loads the latest code, then reloads this page. If something is running, it finishes first.';
+  return r.waitingOn.length
+    ? `Waiting for ${r.waitingOn.map(id => '#' + id).join(', ')} to finish, then restarting. Nothing new starts meanwhile.`
+    : "Restarting… this page reloads when it's back.";
+}
+function restartButton(c) {
+  const r = c.ui.restart;
+  return `<button class="icon-btn${r ? ' is-on' : ''}" data-action="restartOctopus" aria-label="Restart Octopus" title="${r ? esc(restartText(r)) : 'Restart Octopus · load the latest code'}"${r ? ' disabled' : ''}>${r ? spinner() : icon('restart', 18)}</button>`;
 }
 
 export function topbar(c) {
@@ -39,13 +72,24 @@ export function topbar(c) {
   const eyebrow = !desk ? `<span class="topbar__eyebrow">${ui.view === 'home' ? "TUSHAR'S" : 'WORKSPACE'}</span>` : '';
   const live = !(onProject && !desk)
     ? (d.error ? `<span class="live live--off">offline</span>` : `<span class="live">live</span>`) : '';
-  return `<header class="topbar">
+  // Phone: the sidebar is a drawer, opened from here (a project page has the back button instead).
+  const menu = (desk ? !c.navOpen : !onProject)
+    ? `<button class="icon-btn topbar__menu" data-action="toggleSidebar" aria-label="${desk ? 'Expand sidebar' : 'Open menu'}" title="Expand sidebar · [" aria-expanded="false" aria-controls="sidebar">${icon('sidebar', 20)}</button>` : '';
+  // #bell stays empty here: NotificationCenter owns its contents and classes, and morph
+  // leaves anything it didn't create alone. The data-key keeps it the same element.
+  // On a phone the open search takes over the whole header (CSS hides the rest, the bell included -
+  // it has to stay in the DOM, see above).
+  const searching = !desk && ui.search.open;
+  return `<header class="topbar${searching ? ' topbar--searching' : ''}" data-key="topbar">
+    ${menu}
     ${back}
     <div class="topbar__titles">${eyebrow}<span class="topbar__title">${esc(viewTitle(c))}</span></div>
+    ${desk ? searchBox(c) : ''}
     <span class="topbar__spacer"></span>
     ${live}
     ${usagePill(c)}
-    <button class="icon-btn${c.compact ? ' is-on' : ''}" data-action="toggleDensity" aria-label="Compact layout" title="Compact layout">${densityIcon(c.compact)}</button>
+    ${desk ? restartButton(c) : searchBox(c)}
+    <button id="bell" data-key="bell"></button>
     ${desk ? `<button class="topbar__new" data-action="openPalette">+ New task<span>⌘K</span></button>` : ''}
   </header>`;
 }
@@ -62,29 +106,67 @@ function projectMeta(p, c) {
   return qn ? [qn + ' queued', 'var(--text-meta)'] : ['', 'var(--text-meta)'];
 }
 
+// Quick glance at the bottom of the sidebar: live counts, 5h usage, next schedule, and the
+// compact-layout switch.
+function sidebarDetails(c) {
+  const { w } = c;
+  const stat = (label, n, color) => `<div class="sidebar__stat"><span class="sidebar__stat-n" style="color:${n ? color : 'var(--text-meta)'}">${n}</span><span class="sidebar__stat-l">${label}</span></div>`;
+  const s = w.session;
+  const next = w.nextSched;
+  return `<div class="sidebar__details">
+    <div class="sidebar__stats">${stat('running', w.running.length, 'var(--run)')}${stat('queued', w.nq, 'var(--text)')}${stat('need you', w.needs.length, 'var(--wait)')}</div>
+    ${s ? `<div class="sidebar__row"><span class="usage-pill__lbl">5h</span><div class="bar4"><div style="width:${s.pct}%;background:${sessionColor(s.pct)}"></div></div><span class="usage-pill__pct">${s.pct}%</span></div>` : ''}
+    ${next ? `<div class="sidebar__row sidebar__row--meta"><span>Next schedule</span><span>${esc(dayWord(next.next_run_at))} ${clock(next.next_run_at)}</span></div>` : ''}
+    <div class="sidebar__row sidebar__row--meta"><span>Compact layout</span><button class="toggle" role="switch" aria-checked="${c.compact}" data-action="toggleDensity" aria-label="Compact layout"></button></div>
+  </div>`;
+}
+
 export function sidebar(c) {
   const { ui, d, w } = c;
-  const nav = [['home', 'Home', '1'], ['projects', 'Projects', '2'], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4']];
+  const nav = [['home', 'Command Center', '1'], ['projects', 'Projects', '2'], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4'], ['messages', 'Messages', '6']];
   const needs = w.needs.length;
-  return `<nav class="sidebar" aria-label="Workspace">
-    <button class="sidebar__brand" data-action="go" data-view="home">${octo(w.mood, 42)}<span class="sidebar__brand-text"><span class="sidebar__brand-top">TUSHAR'S</span><span class="sidebar__brand-name">Workspace</span></span></button>
+  return `<div class="sidebar-scrim${c.navOpen && c.navOverlay ? ' is-on' : ''}" data-action="toggleSidebar" data-key="sidebar-scrim" aria-hidden="true"></div>
+  <nav class="sidebar${c.navOpen ? '' : ' is-collapsed'}${c.navOverlay ? ' sidebar--overlay' : ''}" id="sidebar" data-key="sidebar" aria-label="Workspace"${c.navOpen ? '' : ' inert'}>
+    <div class="sidebar__head">
+      <button class="sidebar__brand" data-action="go" data-view="home">${octo(w.mood, 42)}<span class="sidebar__brand-text"><span class="sidebar__brand-top">TUSHAR'S</span><span class="sidebar__brand-name">Workspace</span></span></button>
+      <button class="icon-btn icon-btn--ghost sidebar__toggle" data-action="toggleSidebar" aria-label="Collapse sidebar" title="Collapse sidebar · [" aria-expanded="${c.navOpen}" aria-controls="sidebar">${icon('sidebar', 20)}</button>
+    </div>
     <button class="sidebar__status" data-action="go" data-view="home"><span class="dot dot--pulse" style="--c:${w.hero.color}"></span><span class="grow">${esc(w.hero.short)}</span></button>
+    ${scopeSwitch(ui.scope, 'setScope', SCOPES)}
     <div class="sidebar__group">
       ${nav.map(([v, l, k]) => `<button class="nav-item${ui.view === v ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span>${v === 'home' && needs ? `<span class="count-badge count-badge--sm">${needs}</span>` : ''}<span class="nav-item__key">${k}</span></button>`).join('')}
     </div>
     <div class="sidebar__group">
-      <span class="sidebar__label">PROJECTS</span>
-      ${orderedProjects(d).map(p => {
+      <span class="sidebar__label">OCTOPUS</span>
+      ${OCTOPUS_NAV.map(([v, l]) => `<button class="nav-item${ui.view === v ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span></button>`).join('')}
+    </div>
+    <div class="sidebar__group">
+      <span class="sidebar__label">PERSONAL ASSISTANT</span>
+      ${PERSONAL_NAV.map(([k, l]) => {
+        const n = pendingApprovals(d).filter(a => isAssistant(a) && a.tool_name.startsWith('assistant:' + k + '.')).length;
+        return `<button class="nav-item${ui.view === 'personal' && ui.personalTab === k ? ' is-active' : ''}" data-action="goPersonal" data-tab="${k}"><span class="grow">${l}</span>${n ? `<span class="count-badge count-badge--sm">${n}</span>` : ''}</button>`;
+      }).join('')}
+    </div>
+    <div class="sidebar__group">
+      ${(() => {
+        const navProj = p => {
         const [meta, mc] = projectMeta(p, c);
         const on = ui.view === 'project' && ui.projectId === p.id;
         return `<button class="nav-item nav-proj${on ? ' is-active' : ''}" data-action="openProject" data-id="${p.id}" data-key="np${p.id}">
           ${p.is_general ? octo('idle', 18, ';margin:0 -5px') : `<span class="nav-proj__swatch" style="background:${projectColor(p)}"></span>`}
           <span class="grow truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span>
           <span class="nav-proj__meta" style="color:${mc}">${meta}</span></button>`;
-      }).join('')}
+        };
+        const all = orderedProjects(d);
+        if (ui.scope !== 'all') return `<span class="sidebar__label">${ui.scope === 'work' ? 'WORK' : 'PERSONAL'}</span>${all.map(navProj).join('')}`;
+        const sec = (label, list) => list.length ? `<span class="sidebar__label">${label}</span>${list.map(navProj).join('')}` : '';
+        return sec('GENERAL', all.filter(p => p.is_general)) + sec('WORK', all.filter(p => !p.is_general && p.category === 'work'))
+          + sec('PERSONAL', all.filter(p => !p.is_general && p.category !== 'work'));
+      })()}
       <button class="nav-item nav-add" data-action="openSheet" data-sheet="addProject">+ Add project</button>
     </div>
     <div class="sidebar__foot">
+      ${sidebarDetails(c)}
       <button class="sidebar__new" data-action="openPalette">New task<span>⌘K</span></button>
       <button class="sidebar__keys" data-action="openSheet" data-sheet="keys">Keyboard shortcuts · ?</button>
     </div>
@@ -95,20 +177,16 @@ export function tabbar(c) {
   const { ui, w } = c;
   const tab = (v, l, ic) => {
     const on = ui.view === v || (v === 'projects' && ui.view === 'project');
-    const badge = v === 'home' && w.needs.length ? `<span class="tab__badge">${w.needs.length}</span>` : '';
+    const paPending = pendingApprovals(c.d).filter(isAssistant).length;
+    const badge = v === 'home' && w.needs.length ? `<span class="tab__badge">${w.needs.length}</span>`
+      : v === 'personal' && paPending ? `<span class="tab__badge">${paPending}</span>` : '';
     return `<button class="tab${on ? ' is-active' : ''}" data-action="go" data-view="${v}">${icon(ic, 22)}${l}${badge}</button>`;
   };
   return `<nav class="tabbar" aria-label="Views">
-    ${tab('home', 'Home', 'home')}${tab('projects', 'Projects', 'projects')}
+    ${tab('home', 'Home', 'home')}${tab('projects', 'Projects', 'projects')}${tab('recipes', 'Recipes', 'recipes')}
     <button class="fab" data-action="openPalette" aria-label="New task">+</button>
-    ${tab('recipes', 'Recipes', 'recipes')}${tab('activity', 'Activity', 'activity')}
+    ${tab('activity', 'Activity', 'activity')}${tab('personal', 'Personal', 'personal')}${tab('messages', 'Messages', 'messages')}
   </nav>`;
-}
-
-export function toast(c) {
-  const t = c.ui.toast;
-  if (!t) return '';
-  return `<div class="toast" role="status" data-key="toast${t.id}"><span class="truncate">${esc(t.text)}</span>${t.action ? `<button class="toast__action" data-action="toastAction">${esc(t.action)}</button>` : ''}</div>`;
 }
 
 // ---------------------------------------------------------------- skeletons (≈520ms after every view change)

@@ -32,24 +32,31 @@ import risk  # noqa: E402
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
-TASK_ID = int(os.environ["CLAUDE_QUEUE_TASK_ID"])
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC")
+# CLAUDE_QUEUE_TASK_ID: pre-rename name, still set by a worker that predates the rename
+TASK_ID = int(os.environ.get("THE_DEN_TASK_ID") or os.environ["CLAUDE_QUEUE_TASK_ID"])
+ACTIVITYSMITH_API_KEY = os.environ.get("ACTIVITYSMITH_API_KEY")
 TIMEOUT_SECONDS = int(os.environ.get("APPROVAL_TIMEOUT_SECONDS", str(60 * 60)))
 POLL_SECONDS = 3
+# While "I'm going to sleep" is on, nobody is there to answer: don't wake the phone,
+# and give up quickly so the queue moves on to work that doesn't need a yes.
+SLEEP_TIMEOUT_SECONDS = int(os.environ.get("SLEEP_APPROVAL_TIMEOUT_SECONDS", str(5 * 60)))
 
-mcp = FastMCP("claude-queue-approval")
+mcp = FastMCP("the-den-approval")
 
 
 def notify_phone(title: str, message: str) -> None:
-    if not NTFY_TOPIC:
+    if not ACTIVITYSMITH_API_KEY:
         return
     try:
-        # Priority 5 arrives as time-sensitive on iOS, so it can break
-        # through a Focus mode - an approval blocks the whole queue.
+        # time-sensitive can break through a Focus mode - an approval
+        # blocks the whole queue.
+        body = {"title": title, "message": message, "interruption_level": "time-sensitive"}
         req = urllib.request.Request(
-            f"https://ntfy.sh/{NTFY_TOPIC}",
-            data=message.encode("utf-8"),
-            headers={"Title": title, "Tags": "warning", "Priority": "5"},
+            "https://activitysmith.com/api/push-notification",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Authorization": f"Bearer {ACTIVITYSMITH_API_KEY}", "Content-Type": "application/json",
+                     # Cloudflare rejects urllib's default User-Agent (error 1010)
+                     "User-Agent": "the-den/1.0"},
             method="POST",
         )
         urllib.request.urlopen(req, timeout=10)
@@ -59,7 +66,7 @@ def notify_phone(title: str, message: str) -> None:
 
 @mcp.tool()
 def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
-    """Ask a human, via the claude-queue dashboard, to approve or deny a tool call."""
+    """Ask a human, via The Den dashboard, to approve or deny a tool call."""
     command = str(input.get("command", json.dumps(input)))
     task = db.get_task(TASK_ID)
     project = db.get_project(task["project_id"]) if task else None
@@ -71,15 +78,16 @@ def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
             db.add_task_event(TASK_ID, "approval", f"Allowed without asking ({entry} is always allowed)")
             return {"behavior": "allow", "updatedInput": input}
 
+    asleep = db.sleep_mode_active()
     approval = db.create_approval(TASK_ID, tool_name, json.dumps(input))
     db.add_task_event(TASK_ID, "approval", "Waiting for your OK: " + command[:160])
-    if settings is None or settings["notify_approvals"]:
+    if not asleep and (settings is None or settings["notify_approvals"]):
         notify_phone(
             "Approval needed",
             f"{project['name'] if project else 'task #' + str(TASK_ID)}: {command[:150]}",
         )
 
-    deadline = time.time() + TIMEOUT_SECONDS
+    deadline = time.time() + (min(TIMEOUT_SECONDS, SLEEP_TIMEOUT_SECONDS) if asleep else TIMEOUT_SECONDS)
     while time.time() < deadline:
         time.sleep(POLL_SECONDS)
         current = db.get_approval(approval["id"])
@@ -89,7 +97,7 @@ def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
         if current["status"] == "denied":
             note = (current.get("note") or "").strip()
             db.add_task_event(TASK_ID, "approval", "You denied" + (f': "{note}"' if note else ""))
-            message = "Denied from the claude-queue dashboard."
+            message = "Denied from The Den dashboard."
             if note:
                 message += f" The user said: {note}"
             return {"behavior": "deny", "message": message}
@@ -97,6 +105,10 @@ def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
             break  # the task was stopped from the dashboard
 
     db.timeout_approval(approval["id"])
+    if asleep:
+        db.add_task_event(TASK_ID, "approval", "You were asleep · denied automatically")
+        return {"behavior": "deny", "message": "The user is asleep, so this was denied automatically. Do not retry it: "
+                "carry on with the parts of the task that don't need it, and list what you skipped in your final summary."}
     return {"behavior": "deny", "message": "No response within the approval window; denied automatically."}
 
 

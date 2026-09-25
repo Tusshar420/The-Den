@@ -3,6 +3,7 @@
 
 /**
  * @typedef {'queued'|'running'|'done'|'error'|'needs_review'|'rate_limited'|'cancelled'} TaskStatus
+ * (a task also has `paused` - 0/1 - set while it is held: a queued one is skipped, a running one frozen)
  * @typedef {'agent'|'api'} Lane                 agent = Claude Code (acts on project), api = answer-only model
  * @typedef {'coding'|'general'|'simple'|'manual'} RouteCategory
  */
@@ -69,7 +70,7 @@
  * @property {string}      text
  * @property {number|null} project_id   null → General
  * @property {'auto'|string} model      "auto" or a model id
- * @property {string[]}    [images]     NEW (optional) · uploaded image ids/urls, see README › Backend gaps
+ * @property {string[]}    [images]     optional · upload ids from POST /uploads, see README › Attaching pictures
  *
  * @typedef {Object} SendResponse
  * @property {Task} task

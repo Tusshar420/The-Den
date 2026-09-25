@@ -1,0 +1,38 @@
+/* ================================================================ header search (views/search.js) */
+.tsearch { position: relative; flex: 100 1 180px; min-width: 150px; max-width: 440px; margin-left: 8px; }
+.tsearch__box { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 12px; border-radius: var(--r-btn); background: var(--inset); border: 1px solid var(--line-strong); color: var(--text-meta); transition: border-color var(--t), background var(--t); }
+.tsearch.is-open .tsearch__box, .tsearch__box:focus-within { border-color: rgba(255, 123, 92, .5); }
+.tsearch__box > svg { flex: none; }
+.tsearch input { flex: 1; min-width: 0; height: 100%; border: none; background: none; outline: none; color: var(--text); font: 500 14px var(--font-ui); }
+.tsearch input::-webkit-search-cancel-button { display: none; }
+.tsearch__kbd { font: 600 11px var(--font-mono); padding: 2px 7px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line-strong); margin-right: 3px; }
+.tsearch__x { width: 28px; height: 28px; border: none; border-radius: var(--r-md); background: none; color: var(--text-meta); font: 500 13px var(--font-ui); flex: none; }
+.tsearch__x:hover { background: var(--surface-2); color: var(--text); }
+.tsearch__cancel { height: 32px; padding: 0 10px; border: none; border-radius: var(--r-md); background: none; color: var(--coral); font: 600 14px var(--font-ui); flex: none; }
+
+.spanel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 8; width: max(100%, min(560px, 92vw)); max-height: min(70vh, 520px); overflow-y: auto; overscroll-behavior: contain; padding: 6px;
+  border-radius: var(--r-card-sm); background: var(--surface-2); border: 1px solid var(--line-menu); box-shadow: var(--sh-menu); animation: rise var(--t-fast) ease; }
+.spanel__group { display: flex; flex-direction: column; }
+.spanel__label { padding: 8px 10px 4px; font: 600 var(--fs-eyebrow) var(--font-mono); color: var(--text-faint); letter-spacing: .08em; }
+.spanel__empty { display: flex; flex-direction: column; gap: 6px; padding: 18px 12px; font: 500 14px var(--font-ui); color: var(--text-3); }
+.spanel__empty span { font: 400 12.5px/1.4 var(--font-ui); color: var(--text-meta); }
+
+.srow { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 6px 10px; border: none; border-radius: var(--r-md); background: none; text-align: left; color: var(--text); }
+.srow:hover, .srow.is-sel { background: var(--surface-3); }
+.srow .dot { flex: none; }
+.srow__body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.srow__title { font: 600 14px var(--font-ui); }
+.srow__sub { display: flex; align-items: baseline; gap: 8px; font: 400 12.5px var(--font-ui); color: var(--text-meta); }
+.srow__meta { display: inline-flex; gap: 8px; flex: none; }
+.srow__meta::before { content: "·"; }
+.srow__tag { flex: none; font: 500 10px var(--font-mono); color: var(--text-faint); letter-spacing: .06em; }
+.tsearch mark { padding: 0 2px; border-radius: 3px; background: var(--coral-tint-2); color: var(--coral-hover); }
+
+/* Phone: the open search is the whole header, and its results drop from under it. */
+@media (max-width: 899px) {
+  .topbar--searching > :not(.tsearch) { display: none !important; }
+  .topbar--searching .tsearch { flex: 1; max-width: none; margin-left: 0; position: static; }
+  .topbar--searching .tsearch__box { height: 44px; }
+  .topbar--searching .tsearch input { font-size: 16px; }   /* 16px stops iOS zooming in on focus */
+  .topbar--searching .spanel { left: 8px; right: 8px; width: auto; top: 100%; max-height: calc(100dvh - 120px); }
+}

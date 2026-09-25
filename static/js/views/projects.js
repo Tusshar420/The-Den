@@ -1,13 +1,13 @@
 // Projects: quick filter chips, sort / filter / search toolbar, expandable rows
 // listing each project's tasks as titles only. General is always pinned first.
 
-import { QUICK_FILTERS, statusOf } from '../format.js';
-import { projectColor, queuedTasks } from '../data.js';
-import { esc, icon } from '../ui.js';
+import { QUICK_FILTERS, statusOf, taskName } from '../format.js';
+import { projectColor, queuedTasks, SCOPES, projectStatus } from '../data.js';
+import { esc, icon, scopeSwitch, bulkBar } from '../ui.js';
 import { octopusSVG } from '../octopus.js';
 
 const ACTIVE = ['approval', 'running', 'rate_limited', 'needs_review', 'error'];
-const SORTS = [['activity', 'Most active'], ['recent', 'Recently used'], ['queued', 'Most queued'], ['name', 'Name A–Z']];
+const SORTS = [['activity', 'Most active'], ['recent', 'Recently used'], ['queued', 'Most queued'], ['name', 'Name A–Z'], ['newest', 'Newest on top']];
 const chev = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 
 export function projectRows(c) {
@@ -31,7 +31,7 @@ export function projectRows(c) {
     if (p.is_general && status === 'quiet') status = 'answers only · pinned';
     const nameHit = !q || p.name.toLowerCase().includes(q) || (p.path || '').toLowerCase().includes(q);
     let items = itemsFor(p.id, cur.statuses);
-    if (!nameHit) items = items.filter(t => t.prompt.toLowerCase().includes(q));
+    if (!nameHit) items = items.filter(t => (taskName(t) + ' ' + t.prompt).toLowerCase().includes(q));
     const visible = (nameHit || items.length > 0) && (pl.showPaused || p.active) && (!cur.statuses || items.length > 0)
       && (!pl.onlyActive || itemsFor(p.id, null).length > 0);
     const open = pl.open[p.id] ?? (pl.quick !== 'all' || (!!q && !nameHit));
@@ -43,10 +43,38 @@ export function projectRows(c) {
       emptyText: cur.statuses ? `No ${cur.label.toLowerCase()} tasks.` : 'Nothing in the queue.',
     };
   }).filter(r => r.visible);
-  const sorters = { activity: (a, b) => b.score - a.score || b.qn - a.qn, name: (a, b) => a.p.name.localeCompare(b.p.name), queued: (a, b) => b.qn - a.qn || b.score - a.score, recent: (a, b) => b.last - a.last };
+  const sorters = { activity: (a, b) => b.score - a.score || b.qn - a.qn, name: (a, b) => a.p.name.localeCompare(b.p.name), queued: (a, b) => b.qn - a.qn || b.score - a.score, recent: (a, b) => b.last - a.last, newest: (a, b) => b.p.id - a.p.id };
   rows.sort(sorters[pl.sort] || sorters.activity);
   rows.sort((a, b) => (b.p.is_general ? 1 : 0) - (a.p.is_general ? 1 : 0));
   return rows;
+}
+
+function rowHTML(r, i, w) {
+  const p = r.p;
+      const avatar = p.is_general
+        ? `<span class="avatar avatar--general">${octopusSVG('idle')}</span>`
+        : `<span class="avatar" style="background:${projectColor(p)};opacity:${p.active ? 1 : 0.55}">${esc(p.name.charAt(0).toUpperCase())}</span>`;
+      return `<div class="prow" data-key="p${p.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
+        <div class="prow__head">
+          <button class="prow__main" data-action="openProject" data-id="${p.id}">${avatar}
+            <span class="prow__text"><span class="prow__name truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span><span class="prow__status" style="--c:${r.color}">${p.is_general ? '' : `<span class="pstat" style="--c:${projectStatus(p)[2]}">${projectStatus(p)[1]}</span> · `}${esc(r.status)}</span></span></button>
+          <button class="prow__toggle" aria-expanded="${r.open}" aria-label="Show queue" data-action="plToggle" data-id="${p.id}" data-open="${r.open}">${r.items.length || ''}${chev}</button>
+        </div>
+        ${r.open ? `<div class="prow__items">${r.items.length ? r.items.map(t => {
+          const st = w.uiStatus(t);
+          const color = st === 'approval' ? 'var(--wait)' : statusOf(t).color;
+          const act = st === 'approval' ? `data-action="openApprovalForTask" data-id="${t.id}"` : `data-action="openChat" data-id="${t.id}"`;
+          return `<button class="prow__item" ${act} data-key="pi${t.id}"><span class="dot" style="--c:${color}"></span><span class="grow truncate">${esc(taskName(t))}</span></button>`;
+        }).join('') : `<span class="prow__empty">${r.emptyText}</span>`}</div>` : ''}
+      </div>`;
+}
+
+// General first, then Work and Personal under their own headings (one plain list when a side is picked).
+function sections(rows, scope) {
+  if (scope !== 'all') return [['', rows]];
+  const part = f => rows.filter(f);
+  return [['', part(r => r.p.is_general)], ['WORK', part(r => !r.p.is_general && r.p.category === 'work')],
+    ['PERSONAL', part(r => !r.p.is_general && r.p.category !== 'work')]].filter(([, l]) => l.length);
 }
 
 export function projects(c) {
@@ -70,6 +98,7 @@ export function projects(c) {
   const rows = projectRows(c);
   const hasProj = d.projects.length > 0;
   return `<div class="page page--narrow page--projects" data-key="page-projects">
+    ${c.desk ? '' : scopeSwitch(ui.scope, 'setScope', SCOPES)}
     <div class="chip-row" data-noswipe>${chips}</div>
     <div class="toolbar">
       <button class="toolbar__btn${pl.menu === 'sort' || pl.sort !== 'activity' ? ' is-active' : ''}" data-action="plMenu" data-menu="sort">${icon('sort', 16)}${sortLabel}</button>
@@ -79,25 +108,8 @@ export function projects(c) {
       ${menu}
     </div>
     ${pl.searchOpen ? `<div class="search">${icon('search', 16, { strokeWidth: 1.8 })}<input id="plSearch" type="search" placeholder="Search projects and tasks" value="${esc(pl.q)}" data-input="pl.q" aria-label="Search projects and tasks"><button class="search__x" data-action="plSearchClose" aria-label="Close search">✕</button></div>` : ''}
-    ${rows.length ? `<div class="list">${rows.map((r, i) => {
-      const p = r.p;
-      const avatar = p.is_general
-        ? `<span class="avatar avatar--general">${octopusSVG('idle')}</span>`
-        : `<span class="avatar" style="background:${projectColor(p)};opacity:${p.active ? 1 : 0.55}">${esc(p.name.charAt(0).toUpperCase())}</span>`;
-      return `<div class="prow" data-key="p${p.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
-        <div class="prow__head">
-          <button class="prow__main" data-action="openProject" data-id="${p.id}">${avatar}
-            <span class="prow__text"><span class="prow__name truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span><span class="prow__status" style="--c:${r.color}">${esc(r.status)}</span></span></button>
-          <button class="prow__toggle" aria-expanded="${r.open}" aria-label="Show queue" data-action="plToggle" data-id="${p.id}" data-open="${r.open}">${r.items.length || ''}${chev}</button>
-        </div>
-        ${r.open ? `<div class="prow__items">${r.items.length ? r.items.map(t => {
-          const st = w.uiStatus(t);
-          const color = st === 'approval' ? 'var(--wait)' : statusOf(t).color;
-          const act = st === 'approval' ? `data-action="openApprovalForTask" data-id="${t.id}"` : `data-action="openChat" data-id="${t.id}"`;
-          return `<button class="prow__item" ${act} data-key="pi${t.id}"><span class="dot" style="--c:${color}"></span><span class="grow truncate">${esc(t.prompt)}</span></button>`;
-        }).join('') : `<span class="prow__empty">${r.emptyText}</span>`}</div>` : ''}
-      </div>`;
-    }).join('')}</div>`
+    ${pl.quick === 'queue' ? bulkBar(rows.flatMap(r => r.items), 'bulk-projects') : ''}
+    ${rows.length ? sections(rows, ui.scope).map(([label, list]) => `${label ? `<div class="plist-head">${label}</div>` : ''}<div class="list">${list.map((r, i) => rowHTML(r, i, w)).join('')}</div>`).join('')
     : `<div class="empty"><span>${hasProj ? 'No projects match.' : 'No projects yet.'}</span><button class="btn btn--sm" data-action="${hasProj ? 'plClear' : 'openSheet'}" data-sheet="addProject">${hasProj ? 'Clear filters' : 'Add project'}</button></div>`}
   </div>`;
 }

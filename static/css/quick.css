@@ -1,0 +1,14 @@
+/* Quick buttons on Home, and their Add sheet. */
+.qb-tools { display: flex; gap: 14px; }
+.qb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 8px; }
+.qb { position: relative; display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 8px 12px; border-radius: var(--r-card-sm); background: var(--surface); border: 1px solid var(--line-strong); color: var(--text); font: 500 13.5px var(--font-ui); text-align: left; min-width: 0; transition: background var(--t), border-color var(--t); }
+.qb:hover { background: var(--surface-2); }
+.qb__icon { font-size: 18px; line-height: 1; flex: none; }
+.qb__label { flex: 1; min-width: 0; }
+.qb__pic { font-size: 12px; opacity: .55; flex: none; }
+.qb.is-editing { border-style: dashed; }
+.qb__x { flex: none; font-size: 18px; line-height: 1; color: var(--err); }
+.qb-name { display: flex; gap: 8px; }
+.qb-name__icon { width: 56px; flex: none; text-align: center; }
+.qb-pic { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 2px; font: 500 14px var(--font-ui); }
+.qb-pic > span { display: flex; flex-direction: column; gap: 2px; }

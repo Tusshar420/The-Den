@@ -28,6 +28,11 @@ export function usageSummary(u) {
   return `${u.tasks} tasks · ${Math.round((u.done / u.tasks) * 100)}% ok · ${fmtCost(u.cost_usd)}`;
 }
 
+// ---------------------------------------------------------------- task name
+// A task's display name: its chat's title (every reply carries its root's), else the
+// prompt. Approval rows carry it as task_title.
+export const taskName = t => (t && (t.title || t.task_title || t.prompt)) || '';
+
 // ---------------------------------------------------------------- task status
 // Backend statuses: queued | running | done | error | needs_review | rate_limited | cancelled
 // plus the UI-only 'approval' (a task with a pending row in /approvals).
@@ -41,7 +46,8 @@ export const STATUS = {
   done:         { label: 'Done',           color: 'var(--ok)',        glyph: '✓' },
   cancelled:    { label: 'Cancelled',      color: 'var(--cancelled)', glyph: '–' },
 };
-export const statusOf = t => STATUS[t.status] || { label: t.status, color: 'var(--text-meta)', glyph: '·' };
+const PAUSED = { label: 'Paused', color: 'var(--text-meta)', glyph: '⏸' };
+export const statusOf = t => (t.paused && ['queued', 'running', 'rate_limited'].includes(t.status) ? PAUSED : STATUS[t.status]) || { label: t.status, color: 'var(--text-meta)', glyph: '·' };
 
 // Projects page quick filters → which statuses they match.
 export const QUICK_FILTERS = [
@@ -62,7 +68,7 @@ export const priorityLabel = p => (p > 0 ? 'Urgent' : p < 0 ? 'Low' : 'Normal');
 export function modelChip(task, models) {
   const m = models.find(x => x.id === task.model_id) || { label: 'Claude Code', lane: task.lane || 'agent' };
   const lane = task.lane || m.lane || 'agent';
-  return { label: m.label, lane, glyph: lane === 'agent' ? '›_' : '“', className: 'model-chip model-chip--' + lane };
+  return { label: m.label, lane, glyph: lane === 'agent' ? '›_' : lane === 'assistant' ? '✦' : '“', className: 'model-chip model-chip--' + lane };
 }
 export const modelChipHTML = c => `<span class="${c.className}"><span class="model-chip__glyph">${c.glyph}</span>${escapeHTML(c.label)}</span>`;
 
@@ -75,11 +81,23 @@ export function modelState(m, now = Date.now()) {
   if (rate) status = 'rate limited · back in ' + waitFmt((until - now) / 1000);
   else if (!m.enabled) status = m.unavailable_reason || 'disabled in models.json';
   else if (!m.available) status = m.unavailable_reason || 'unavailable';
-  else status = m.lane === 'agent' ? 'agent · runs in the project' : 'api · answers only';
+  else status = m.lane === 'agent' ? 'agent · runs in the project' : m.lane === 'assistant' ? 'tools · your email, calendar, reminders'
+    : m.lane === 'control' ? 'instant · commands about Octopus' : m.modality === 'image' ? 'api · makes images' : 'api · answers only';
   const dot = rate ? 'var(--sleep)' : available ? 'var(--ok)' : 'var(--offline)';
   const pickerSuffix = rate ? ' (rate limited)' : !available ? ' (unavailable)' : '';
   return { ...m, rate, available, status, dot, pickerSuffix };
 }
+
+// Claude Code permission modes a task can run under (mirrors db.PERMISSION_MODES). A task with none runs as 'acceptEdits'.
+export const PERMISSION_MODES = [
+  { id: 'acceptEdits', label: 'Accept edits', short: 'Edits', sub: 'edits files on its own, asks before commands', dot: 'var(--ok)' },
+  { id: 'plan', label: 'Plan', short: 'Plan', sub: 'reads and plans only, changes nothing', dot: 'var(--sleep)' },
+  { id: 'auto', label: 'Auto', short: 'Auto', sub: 'Claude decides what is safe to run unasked', dot: 'var(--coral)' },
+  { id: 'manual', label: 'Ask first', short: 'Ask', sub: 'asks before every edit and command', dot: 'var(--text)' },
+];
+export const modeInfo = id => PERMISSION_MODES.find(m => m.id === (id || 'acceptEdits')) || PERMISSION_MODES[0];
+// The mode a chat last ran under - what its next reply starts on.
+export const threadMode = tasks => ((tasks || []).slice().reverse().find(t => t.permission_mode) || {}).permission_mode || null;
 
 // Chat reply footer: "Done · 2m ago · GPT-6 Luna · 2.1s · <$0.01" (missing values are dropped)
 export function replyFooter(task, modelLabel, now) {

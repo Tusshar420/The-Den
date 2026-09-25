@@ -1,0 +1,121 @@
+{
+  "_readme": [
+    "Octopus agents. An agent is a job description, not a program: who is doing the work, with what, and under which rules.",
+    "Re-read whenever this file changes - edit and save, no restart.",
+    "  categories        which kinds of request (see routing.categories in models.json) this agent takes",
+    "  instructions      extra system prompt. null = none. For answer-only agents it replaces the default assistant prompt;",
+    "                    for a Claude Code agent it is added with --append-system-prompt (leave null to keep Claude Code exactly as it was)",
+    "  preferred_models  ordered model ids (models.json). Used when a category has no 'candidates' of its own, and when you pick this agent by hand",
+    "  tools             every tool id (tools.json) this agent may ever be given. A task gets only the ones it needs.",
+    "  permissions       capabilities (assistant/capabilities.py) the agent may exercise; a plan needing anything else is flagged.",
+    "                    For the 'personal' agent, tools and permissions are enforced on every call (assistant/scope.py): remove one and the assistant can no longer use it",
+    "  context           needs_project: must run inside a registered project.  history: session (resume the Claude session) | thread (earlier messages) | none",
+    "  execution         lane: agent (Claude Code in the project) | api (a plain model call) | assistant (email/calendar/reminders) | control (instant, no model)",
+    "                    permission_mode: Claude Code mode per autonomy level (assist / execute / autonomous)",
+    "                    show_plan: risky | always | never - when the plan card appears before it runs (the global plan_review setting can only make this stricter)",
+    "                    max_cost_usd: a plan estimated above this asks first"
+  ],
+  "agents": [
+    {
+      "id": "coding",
+      "label": "Coding Agent",
+      "description": "Reads and changes code in one of your projects, runs its tests, uses git. This is the Claude Code worker.",
+      "categories": ["coding", "salesforce"],
+      "instructions": null,
+      "preferred_models": ["claude-code"],
+      "tools": ["filesystem", "git", "terminal", "github", "salesforce", "web"],
+      "permissions": ["FILES_READ", "FILES_WRITE", "TESTS_RUN", "GIT_READ", "GIT_WRITE", "GIT_PUSH", "PACKAGE_INSTALL",
+                      "NETWORK_ACCESS", "TERMINAL_RUN", "DEPLOY", "DESTRUCTIVE", "PRODUCTION", "SYSTEM_ADMIN", "WEB_ACCESS"],
+      "context": {"needs_project": true, "history": "session"},
+      "execution": {"lane": "agent", "show_plan": "risky",
+                    "permission_mode": {"assist": "plan", "execute": "acceptEdits", "autonomous": "acceptEdits"}}
+    },
+    {
+      "id": "writing",
+      "label": "Writing Agent",
+      "description": "Essays, articles, emails-as-text, rewrites, summaries, translations - anything where the words are the product.",
+      "categories": ["writing"],
+      "instructions": "You are Octopus's Writing Agent, working for Tushar. Produce polished, well-structured writing that matches the requested length, tone and audience, and follow any word count closely. Return the finished piece itself, with no preamble or commentary unless asked. You cannot read files, browse the web or run anything - if the request needs facts you don't have, write around them or say what is missing.",
+      "preferred_models": ["gemini-3.8-flash", "gpt-6-sol", "gpt-6-luna", "claude-code"],
+      "tools": [],
+      "permissions": [],
+      "context": {"needs_project": false, "history": "thread"},
+      "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 1.0}
+    },
+    {
+      "id": "research",
+      "label": "Research Agent",
+      "description": "Looks things up on the web and answers with sources.",
+      "categories": ["research"],
+      "instructions": "You are Octopus's Research Agent, working for Tushar. Answer with current, checked information and give sources (title and URL) for factual claims you got from the web. Say plainly what you could not verify. Keep long answers organised under short headings. You cannot read the user's files or run commands.",
+      "preferred_models": ["gemini-3.8-flash", "gpt-6-sol", "claude-code"],
+      "tools": ["web"],
+      "permissions": ["WEB_ACCESS"],
+      "context": {"needs_project": false, "history": "thread"},
+      "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 1.0}
+    },
+    {
+      "id": "creative",
+      "label": "Creative Agent",
+      "description": "Generates images from a description.",
+      "categories": ["image"],
+      "instructions": null,
+      "preferred_models": ["gpt-image-1", "gemini-image"],
+      "tools": ["image_generation"],
+      "permissions": ["IMAGE_GENERATE"],
+      "context": {"needs_project": false, "history": "none"},
+      "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 0.5}
+    },
+    {
+      "id": "general",
+      "label": "General Assistant",
+      "description": "Questions, explanations, analysis and small talk where everything needed is in the message.",
+      "categories": ["general", "simple"],
+      "instructions": "You are Octopus, Tushar's personal AI assistant. Answer directly and clearly.\nYou are answering through a chat on a dashboard, not inside a project: you cannot read the user's files,\nrun commands or change anything. If the request truly needs that, say so briefly so the user can resend\nit as a coding task.",
+      "preferred_models": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
+      "tools": [],
+      "permissions": [],
+      "context": {"needs_project": false, "history": "thread"},
+      "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 0.5}
+    },
+    {
+      "id": "personal",
+      "label": "Personal Assistant",
+      "description": "Your email, calendar and reminders through your own connected accounts, plus Octopus's queue and projects and the app's AI models.",
+      "categories": ["assistant"],
+      "instructions": null,
+      "preferred_models": ["octopus-tools"],
+      "tools": ["gmail", "calendar", "reminders", "coding_handoff", "workspace", "ai_models"],
+      "permissions": ["EMAIL_READ", "EMAIL_DRAFT", "EMAIL_SEND", "CALENDAR_READ", "CALENDAR_CREATE", "CALENDAR_UPDATE",
+                      "CALENDAR_DELETE", "CALENDAR_INVITE", "REMINDER_READ", "REMINDER_WRITE", "AGENT_CODING",
+                      "PROJECT_READ", "TASK_CONTROL", "TODO_WRITE", "AI_MODEL_USE", "WEB_ACCESS", "IMAGE_GENERATE"],
+      "context": {"needs_project": false, "history": "thread"},
+      "execution": {"lane": "assistant", "show_plan": "never"}
+    },
+    {
+      "id": "operator",
+      "label": "Octopus",
+      "description": "Runs Octopus itself: what's happening, stop / cancel / continue a task, projects and backlog. Instant, no model.",
+      "categories": ["control", "project"],
+      "instructions": null,
+      "preferred_models": ["octopus-control"],
+      "tools": ["workspace"],
+      "permissions": ["PROJECT_READ", "TASK_CONTROL", "TODO_WRITE"],
+      "context": {"needs_project": false, "history": "none"},
+      "execution": {"lane": "control", "show_plan": "never"}
+    },
+    {
+      "id": "system",
+      "label": "System Agent",
+      "description": "Works on this Mac itself (disk space, apps, services). Claude Code in a scratch folder that asks before every edit and command.",
+      "categories": ["system"],
+      "instructions": "You are Octopus's System Agent, working on Tushar's Mac. Inspect first with read-only commands. Say what you are about to change before you change it. Never use sudo, delete files, or touch system settings unless the request asked for exactly that.",
+      "preferred_models": ["claude-code"],
+      "tools": ["terminal", "filesystem"],
+      "permissions": ["FILES_READ", "TERMINAL_RUN", "SYSTEM_ADMIN", "DESTRUCTIVE", "NETWORK_ACCESS"],
+      "context": {"needs_project": false, "history": "session"},
+      "execution": {"lane": "agent", "show_plan": "always",
+                    "permission_mode": {"assist": "plan", "execute": "manual", "autonomous": "manual"}}
+    }
+  ]
+}
