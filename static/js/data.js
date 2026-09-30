@@ -49,6 +49,12 @@ export const more = {
   assistDisconnect: id           => api(`/assistant/connections/${id}`, { method: 'DELETE' }),
   setPolicy:       (cap, policy) => api('/assistant/policies', { method: 'PATCH', body: { [cap]: policy } }),
   cancelReminder:  id            => api(`/assistant/reminders/${id}`, { method: 'DELETE' }),
+  // project calendar and timelines - see timeline.py
+  timeline:        ()            => api('/timeline'),
+  addEvent:        (pid, body)   => api(`/projects/${pid}/timeline`, { method: 'POST', body }),
+  updateEvent:     (id, patch)   => api(`/timeline/${id}`, { method: 'PATCH', body: patch }),
+  deleteEvent:     id            => api(`/timeline/${id}`, { method: 'DELETE' }),
+  briefing:        ()            => api('/briefing'),
 };
 
 // ---------------------------------------------------------------- dismissed failures (client-side)
@@ -65,7 +71,10 @@ Object.assign(store.data, {
   personal: { status: null, email: null, calendar: null, reminders: [], activity: [] },
   projectSettings: {}, todos: {}, notes: {}, approvalCtx: {}, threads: {}, loaded: false, error: null,
   messages: { chats: [], total: 0, loaded: false },
+  timeline: { events: [], health: {}, kinds: {}, today: null, loaded: false }, briefing: null,
 });
+// The pages that show the project calendar (Home's "Coming up", the Calendar, a project's Timeline tab).
+const TIMELINE_VIEWS = new Set(['home', 'calendar', 'project', 'briefing']);
 
 let tick = 0;
 
@@ -117,6 +126,11 @@ export async function refresh() {
   }
   // The Personal page's data is only fetched while it is open (calendar calls Google, so ease off: every 3rd poll).
   if (ui.view === 'personal' && tick % 3 === 0) extras.push(personalInto(d));
+  if (TIMELINE_VIEWS.has(ui.view) && (tick % 3 === 0 || !d.timeline.loaded)) {
+    extras.push(more.timeline().then(v => { d.timeline = { ...v, loaded: true }; }).catch(() => {}));
+  }
+  // The briefing may read Google Calendar: once a minute while it is open.
+  if (ui.view === 'briefing' && tick % 12 === 0) extras.push(more.briefing().then(v => { d.briefing = v; }).catch(() => {}));
   // Approval context runs git in the project, so refresh it less often than the rest.
   for (const a of approvals) {
     if (!d.approvalCtx[a.id] || tick % 3 === 0) {
@@ -209,6 +223,18 @@ export async function loadThread(taskId) {
 export async function loadProject(pid) {
   const [todos, settings, notes] = await Promise.all([endpoints.todos(pid), more.projectSettings(pid), endpoints.notes(pid)]);
   store.data = { ...store.data, todos: { ...store.data.todos, [pid]: todos }, notes: { ...store.data.notes, [pid]: notes }, projectSettings: { ...store.data.projectSettings, [pid]: settings } };
+  store.set({});
+}
+
+export async function loadTimeline() {
+  const v = await more.timeline();
+  store.data = { ...store.data, timeline: { ...v, loaded: true } };
+  store.set({});
+}
+
+export async function loadBriefing() {
+  const v = await more.briefing();
+  store.data = { ...store.data, briefing: v };
   store.set({});
 }
 

@@ -3,7 +3,7 @@
 // keyboard shortcuts and polling.
 
 import { store, subscribe, apiKey, endpoints } from './api.js';
-import { more, refresh, startPolling, loadThread, loadProject, loadPersonal, loadMessages, loadMessagesSoon, loadSearchSoon, dismissTask, projectById, taskById, generalProject,
+import { more, refresh, startPolling, loadThread, loadProject, loadPersonal, loadTimeline, loadBriefing, loadMessages, loadMessagesSoon, loadSearchSoon, dismissTask, projectById, taskById, generalProject,
   realProjects, pendingApprovals, queuedTasks, isGeneral, rootId, projectStatus } from './data.js';
 import { derive, commandOf } from './derive.js';
 import { isAssistant } from './views/assistant-card.js';
@@ -34,8 +34,12 @@ import { searchItems } from './views/search.js';
 import { routing } from './views/routing.js';
 import { providers } from './views/providers.js';
 import { settings } from './views/settings.js';
+import { voiceSettings } from './views/voice-settings.js';
+import { usage as tokenUsage } from './views/usage.js';
 import { octopusActions, octoInput, octoSent } from './octopus-ui.js';
 import { octoApi, startOctopusData, onStoreChange } from './octopus-data.js';
+import { calendarPage, briefingPage } from './views/calendar.js';
+import { timelineActions, timelineInput, calState } from './timeline-ui.js';
 import { setRedraw, addImages, removeImage, clearSent, readyIds, imageProblem, MAX_IMAGES } from './attach.js';
 
 const root = document.getElementById('app');
@@ -46,7 +50,8 @@ const PANE_WIDTH = 'octopus-pane-w';
 const SIDEBAR_PREF = 'octopus-sidebar';
 const SIDEBAR_WIDE = 1280;   // from here the sidebar sits beside the page; below (down to 900) it's a slide-over drawer
 const PANE_DEFAULT = 460, PANE_MIN = 360, MAIN_MIN = 380, SIDEBAR = 250;
-const VIEWS = ['home', 'projects', 'recipes', 'activity', 'personal', 'messages', 'routing', 'providers', 'settings'];
+const VIEWS = ['home', 'projects', 'recipes', 'activity', 'personal', 'messages', 'routing', 'providers', 'settings', 'voice', 'usage', 'calendar', 'briefing'];
+const PROJECT_TABS = ['work', 'timeline', 'notes', 'activity', 'recipes', 'settings'];
 
 // ---------------------------------------------------------------- UI state (on top of api.js's store.ui)
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch {} return null; };
@@ -61,6 +66,8 @@ Object.assign(store.ui, {
   // Header search. open = results showing (on a phone: the header is the search box); sel = highlighted result;
   // chats = the server's message matches for chatsFor.
   search: { q: '', open: false, sel: 0, chats: [], chatsFor: '' },
+  // Project calendar (views/calendar.js): the month on screen, the picked day and project; the add / edit sheet.
+  cal: calState(), evEdit: null, tlShowDone: false,
 });
 store.ui.ask.touched = false;
 const ui = () => store.ui;
@@ -148,19 +155,23 @@ const defaultProjectId = () => {
 // ---------------------------------------------------------------- router (#/home, #/projects, #/project/12, #/recipes, #/activity, #/personal/email)
 let skeletonTimer = 0;
 function parseHash() {
-  const [v, id] = location.hash.replace(/^#\/?/, '').split('/');
-  if (v === 'project' && id && !Number.isNaN(Number(id))) return { view: 'project', projectId: Number(id) };
+  const [v, id, sub] = location.hash.replace(/^#\/?/, '').split('/');
+  // #/project/3/timeline (a deadline push) opens that tab.
+  if (v === 'project' && id && !Number.isNaN(Number(id))) return { view: 'project', projectId: Number(id), projectTab: PROJECT_TABS.includes(sub) ? sub : null };
   if (v === 'personal') return { view: 'personal', projectId: ui().projectId, personalTab: PERSONAL_TABS.some(([k]) => k === id) ? id : 'email' };
   return { view: VIEWS.includes(v) ? v : 'home', projectId: ui().projectId };
 }
 function applyRoute() {
   const r = parseHash();
   const u = ui();
+  const tabOnly = r.view === 'project' && r.view === u.view && r.projectId === u.projectId && r.projectTab && r.projectTab !== u.projectTab;
   const changed = r.view !== u.view || (r.view === 'project' && r.projectId !== u.projectId) || (r.view === 'personal' && r.personalTab !== u.personalTab);
+  if (r.projectTab) history.replaceState(null, '', `#/project/${r.projectId}`);     // the tab is one-shot; the address stays the project's
+  if (tabOnly) return set({ projectTab: r.projectTab });
   if (!changed) return requestRender();
   const patch = { view: r.view, projectId: r.projectId, skeleton: true };
   if (r.view === 'personal') patch.personalTab = r.personalTab;
-  if (r.view === 'project' && r.projectId !== u.projectId) patch.projectTab = 'work';
+  if (r.view === 'project' && (r.projectId !== u.projectId || r.projectTab)) patch.projectTab = r.projectTab || 'work';
   if (!isDesk()) { patch.pane = null; patch.tabs = []; }
   if (r.view === 'project') {
     rememberProject(r.projectId);
@@ -170,14 +181,16 @@ function applyRoute() {
   set(patch);
   if (r.view === 'personal') loadPersonal().catch(() => {});
   if (r.view === 'messages') loadMessages().catch(() => {});
+  if (['home', 'calendar', 'project', 'briefing'].includes(r.view)) loadTimeline().catch(() => {});
+  if (r.view === 'briefing') loadBriefing().catch(() => {});
   const main = document.getElementById('main');
   if (main) main.scrollTop = 0;
   clearTimeout(skeletonTimer);
   skeletonTimer = setTimeout(() => set({ skeleton: false }), SKELETON_MS);
 }
-function navigate(view, projectId) {
-  // for 'personal' the second argument is the tab (email | calendar | reminders | connections)
-  const hash = view === 'project' ? `#/project/${projectId}` : view === 'personal' ? `#/personal/${projectId || ui().personalTab || 'email'}` : `#/${view}`;
+function navigate(view, projectId, tab) {
+  // for 'personal' the second argument is the tab (email | calendar | reminders | connections); for 'project', tab opens one of its tabs
+  const hash = view === 'project' ? `#/project/${projectId}${tab ? '/' + tab : ''}` : view === 'personal' ? `#/personal/${projectId || ui().personalTab || 'email'}` : `#/${view}`;
   if (location.hash !== hash) location.hash = hash; else applyRoute();
 }
 window.addEventListener('hashchange', applyRoute);
@@ -212,6 +225,10 @@ function page(c) {
     case 'routing': return routing(c);
     case 'providers': return providers(c);
     case 'settings': return settings(c);
+    case 'voice': return voiceSettings(c);
+    case 'usage': return tokenUsage(c);
+    case 'calendar': return calendarPage(c);
+    case 'briefing': return briefingPage(c);
     default: return home(c);
   }
 }
@@ -863,6 +880,7 @@ const ACTIONS = {
     const v = el.dataset.view;
     if (el.dataset.filter) store.ui.activityFilter = el.dataset.filter;
     if (el.dataset.quick) store.ui.projectsList = { ...ui().projectsList, quick: el.dataset.quick, open: {} };
+    if (el.closest('.sheet')) store.ui.sheet = null;           // a link inside a sheet (Usage → Token usage) leaves it
     navigate(v);
   },
   goBack: () => navigate('projects'),
@@ -887,8 +905,8 @@ const ACTIONS = {
   openProject: el => navigate('project', Number(el.dataset.id)),
   openPalette: el => openPalette(el.dataset.pid ? { projectId: Number(el.dataset.pid) } : {}),
   openSheet: el => set({ sheet: el.dataset.sheet, onboard: { ...ui().onboard, error: '', ...(el.dataset.sheet === 'addProject' && ui().scope !== 'all' ? { category: ui().scope } : {}) }, focus: el.dataset.sheet === 'addProject' ? 'addName' : null }),
-  closeSheet: () => set({ sheet: null, palette: null, summary: null, edit: null, todoEdit: null, noteEdit: null, quickNew: null }),
-  scrimClose: (el, e) => { if (e.target === el) set({ sheet: null, palette: null, summary: null, edit: null, todoEdit: null, noteEdit: null, quickNew: null }); },
+  closeSheet: () => set({ sheet: null, palette: null, summary: null, edit: null, todoEdit: null, noteEdit: null, quickNew: null, evEdit: null }),
+  scrimClose: (el, e) => { if (e.target === el) set({ sheet: null, palette: null, summary: null, edit: null, todoEdit: null, noteEdit: null, quickNew: null, evEdit: null }); },
   editTask: el => openEdit(Number(el.dataset.id)),
   editProject: el => { const e = ui().edit; if (e) set({ edit: { ...e, projectId: Number(el.dataset.id), error: '' } }); },
   editMode: el => { const e = ui().edit; if (e) set({ edit: { ...e, mode: el.dataset.id, error: '' } }); },
@@ -1234,6 +1252,8 @@ const ACTIONS = {
 
 // Octopus: plans, routing history, providers, settings, voice, task details (octopus-ui.js).
 Object.assign(ACTIONS, octopusActions({ set, toast, fail, again, armAutoOpen, requestRender, navigate, openVoicePane: () => showPane({ type: 'voice' }) }));
+// Project calendar: timeline items, the Calendar page, the Good morning briefing (timeline-ui.js).
+Object.assign(ACTIONS, timelineActions({ set, toast, fail, navigate, openPalette }));
 
 const SUBMITS = {
   saveKey: () => {
@@ -1293,6 +1313,7 @@ root.addEventListener('input', e => {
   else if (path === 'noteEdit.text' && ui().noteEdit) { ui().noteEdit.text = v; ui().noteEdit.error = ''; }
   else if (path === 'palette.text') { if (ui().palette) { ui().palette.text = v; ui().palette.error = ''; } }
   else if (path.startsWith('octo.')) octoInput(path, v, { fail });
+  else if (path.startsWith('ev.') || path.startsWith('set.')) timelineInput(path, v, { fail });
   else if (path === 'onboard.name') { ui().onboard.name = v; ui().onboard.error = ''; }
   else if (path === 'onboard.path') { ui().onboard.path = v; ui().onboard.error = ''; }
   else if (path === 'pl.q') store.ui.projectsList = { ...ui().projectsList, q: v };
@@ -1360,6 +1381,8 @@ window.addEventListener('keydown', e => {
   else if (e.key === '?') set({ sheet: 'keys' });
   else if (e.key === '[' && isDesk()) ACTIONS.toggleSidebar();
   else if (['1', '2', '3', '4', '5', '6'].includes(e.key)) navigate(VIEWS[Number(e.key) - 1]);
+  else if (e.key === '7') navigate('calendar');
+  else if (e.key === 'g') navigate('briefing');
 });
 
 // ---------------------------------------------------------------- clock

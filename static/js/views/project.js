@@ -6,8 +6,9 @@ import { projectColor, queuedTasks, threadSummaries, finishedAt, PROJECT_STATUSE
 import { esc, octo, chipFor, histRow, toggle, glyph, took, scopeSwitch } from '../ui.js';
 import { octopusSVG } from '../octopus.js';
 import { recipeCard } from './recipes.js';
+import { timelineTab } from './calendar.js';
 
-const TABS = [['work', 'Work'], ['notes', 'Notes'], ['activity', 'Activity'], ['recipes', 'Recipes'], ['settings', 'Settings']];
+const TABS = [['work', 'Work'], ['timeline', 'Timeline'], ['notes', 'Notes'], ['activity', 'Activity'], ['recipes', 'Recipes'], ['settings', 'Settings']];
 const chevSVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 const tildify = p => (p || '').replace(/^\/Users\/[^/]+/, '~');
 
@@ -165,7 +166,7 @@ export function project(c) {
   const doneWeek = d.tasks.filter(t => t.project_id === p.id && t.status === 'done' && new Date(t.finished_at || t.created_at).getTime() > weekAgo).length;
   const inQueue = queuedTasks(d).filter(t => t.project_id === p.id).length;
   const avatar = p.is_general ? `<span class="avatar avatar--general">${octopusSVG('idle')}</span>` : `<span class="avatar" style="background:${projectColor(p)}">${esc(p.name.charAt(0).toUpperCase())}</span>`;
-  const body = tab === 'notes' ? notes(c, p) : tab === 'activity' ? activity(c, p) : tab === 'recipes' ? recipes(c, p) : tab === 'settings' ? settings(c, p) : work(c, p);
+  const body = tab === 'timeline' ? timelineTab(c, p) : tab === 'notes' ? notes(c, p) : tab === 'activity' ? activity(c, p) : tab === 'recipes' ? recipes(c, p) : tab === 'settings' ? settings(c, p) : work(c, p);
   return `<div class="page page--project" data-key="page-project-${p.id}">
     <div class="proj-head">${avatar}
       <div class="proj-head__text"><span class="proj-head__name">${esc(p.name)}</span><span class="proj-head__path">${esc(p.is_general ? 'no folder · answers only' : tildify(p.path))}</span></div>

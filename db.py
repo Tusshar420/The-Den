@@ -7,6 +7,7 @@ for a heavier DB. Keeping this dependency-free (sqlite3 is stdlib).
 """
 
 import json
+import logging
 import re
 import sqlite3
 import threading
@@ -292,6 +293,48 @@ CREATE TABLE IF NOT EXISTS routing (
     decided_by TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_routing_created ON routing(created_at);
+
+-- Model calls that aren't a task of their own - naming a chat, summarising
+-- it, classifying a request, polishing a prompt - so the Token usage page
+-- can show what they burn too. A task's own usage stays on the task row.
+-- kind: title | summary | classifier | polish
+CREATE TABLE IF NOT EXISTS usage_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    model_id TEXT,
+    task_id INTEGER,
+    project_id INTEGER,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    cost_usd REAL
+);
+CREATE INDEX IF NOT EXISTS idx_usage_log_created ON usage_log(created_at);
+
+-- The project calendar and timelines: deadlines, milestones, meetings, demos,
+-- dated tasks (see timeline.py, which owns the rules). date is the local
+-- calendar day (YYYY-MM-DD), time an optional local HH:MM. remind_days: JSON
+-- list of how many days ahead to push an alert (NULL = the kind's defaults);
+-- alerts_sent: JSON list of alert keys already pushed ("d3", "soon", "overdue").
+-- status: open | done | cancelled
+CREATE TABLE IF NOT EXISTS project_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    kind TEXT NOT NULL DEFAULT 'deadline',
+    title TEXT NOT NULL,
+    notes TEXT,
+    date TEXT NOT NULL,
+    time TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    remind_days TEXT,
+    alerts_sent TEXT NOT NULL DEFAULT '[]',
+    -- dashboard | octopus | api
+    source TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    done_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_project_events_date ON project_events(date);
 """
 
 # Every query - reads included - must go through this lock. FastAPI runs
@@ -371,6 +414,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("input_tokens", "INTEGER"),
         ("output_tokens", "INTEGER"),
         ("cost_usd", "REAL"),
+        # The part of input_tokens that was prompt cache (read + write) - Claude Code only.
+        ("cache_tokens", "INTEGER"),
         ("queue_pos", "REAL"),
         ("current_step", "TEXT"),
         ("title", "TEXT"),
@@ -893,12 +938,13 @@ def get_thread_history(root_task_id: int, before_task_id: int) -> list[dict[str,
 
 
 def set_task_usage(task_id: int, duration_ms: Optional[int] = None, input_tokens: Optional[int] = None,
-                   output_tokens: Optional[int] = None, cost_usd: Optional[float] = None) -> None:
+                   output_tokens: Optional[int] = None, cost_usd: Optional[float] = None,
+                   cache_tokens: Optional[int] = None) -> None:
     with _lock:
         conn = get_conn()
         conn.execute(
-            "UPDATE tasks SET duration_ms = ?, input_tokens = ?, output_tokens = ?, cost_usd = ? WHERE id = ?",
-            (duration_ms, input_tokens, output_tokens, cost_usd, task_id),
+            "UPDATE tasks SET duration_ms = ?, input_tokens = ?, output_tokens = ?, cost_usd = ?, cache_tokens = ? WHERE id = ?",
+            (duration_ms, input_tokens, output_tokens, cost_usd, cache_tokens, task_id),
         )
         conn.commit()
 
@@ -1257,6 +1303,16 @@ def mark_rate_limited(task_id: int, resume_at_iso: str) -> None:
         conn.commit()
 
 
+def resume_rate_limited_now() -> int:
+    """Let every task waiting out a usage limit try again now - after a switch to
+    another Claude account, whose limit it hasn't hit. Returns how many."""
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("UPDATE tasks SET resume_at = ? WHERE status = 'rate_limited'", (_now(),))
+        conn.commit()
+        return cur.rowcount
+
+
 PAUSABLE = ("queued", "rate_limited", "running")
 
 
@@ -1504,6 +1560,88 @@ def project_notes_prompt(project_id: Optional[int]) -> str:
             "instructions and keep them in mind for everything you do here.\n\n" + "\n\n".join(sections))
 
 
+# ---------------------------------------------------- project events (timeline)
+
+# Columns update_project_event may change (the rules - valid kinds, dates,
+# alert bookkeeping - live in timeline.py).
+_EVENT_FIELDS = ("kind", "title", "notes", "date", "time", "status", "remind_days", "alerts_sent", "done_at", "project_id")
+
+
+def _event_row(row: sqlite3.Row) -> dict[str, Any]:
+    out = {k: row[k] for k in row.keys()}
+    for k, empty in (("remind_days", None), ("alerts_sent", [])):
+        try:
+            out[k] = json.loads(out[k]) if out.get(k) else empty
+        except ValueError:
+            out[k] = empty
+    return out
+
+
+_EVENT_SELECT = "SELECT e.*, p.name AS project_name FROM project_events e JOIN projects p ON p.id = e.project_id"
+
+
+def add_project_event(project_id: int, kind: str, title: str, date: str, time: Optional[str] = None,
+                      notes: Optional[str] = None, remind_days: Optional[list[int]] = None,
+                      alerts_sent: Optional[list[str]] = None, source: Optional[str] = None) -> dict[str, Any]:
+    with _lock:
+        conn = get_conn()
+        now = _now()
+        cur = conn.execute(
+            "INSERT INTO project_events (project_id, kind, title, notes, date, time, remind_days, alerts_sent, source, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (project_id, kind, title, notes, date, time, json.dumps(remind_days) if remind_days is not None else None,
+             json.dumps(alerts_sent or []), source, now, now))
+        conn.commit()
+        return get_project_event(cur.lastrowid)
+
+
+def get_project_event(event_id: int) -> Optional[dict[str, Any]]:
+    with _lock:
+        row = get_conn().execute(_EVENT_SELECT + " WHERE e.id = ?", (event_id,)).fetchone()
+        return _event_row(row) if row else None
+
+
+def list_project_events(project_id: Optional[int] = None, start: Optional[str] = None, end: Optional[str] = None,
+                        statuses: Optional[list[str]] = None) -> list[dict[str, Any]]:
+    """Events in date order (untimed ones first within a day). start / end are
+    YYYY-MM-DD, both inclusive."""
+    where, args = [], []
+    if project_id is not None:
+        where.append("e.project_id = ?"); args.append(project_id)
+    if start:
+        where.append("e.date >= ?"); args.append(start)
+    if end:
+        where.append("e.date <= ?"); args.append(end)
+    if statuses:
+        where.append(f"e.status IN ({','.join('?' * len(statuses))})"); args.extend(statuses)
+    sql = _EVENT_SELECT + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY e.date, COALESCE(e.time, ''), e.id"
+    with _lock:
+        return [_event_row(r) for r in get_conn().execute(sql, args).fetchall()]
+
+
+def update_project_event(event_id: int, **fields: Any) -> Optional[dict[str, Any]]:
+    sets, args = [], []
+    for k, v in fields.items():
+        if k not in _EVENT_FIELDS:
+            raise ValueError(f"unknown event field {k}")
+        sets.append(f"{k} = ?")
+        args.append(json.dumps(v) if k in ("remind_days", "alerts_sent") and v is not None else v)
+    if not sets:
+        return get_project_event(event_id)
+    with _lock:
+        conn = get_conn()
+        conn.execute(f"UPDATE project_events SET {', '.join(sets)}, updated_at = ? WHERE id = ?", (*args, _now(), event_id))
+        conn.commit()
+        return get_project_event(event_id)
+
+
+def delete_project_event(event_id: int) -> None:
+    with _lock:
+        conn = get_conn()
+        conn.execute("DELETE FROM project_events WHERE id = ?", (event_id,))
+        conn.commit()
+
+
 def run_checked_todos(project_id: int, decisions: Optional[dict[int, dict[str, Any]]] = None) -> list[dict[str, Any]]:
     """Convert every checked, not-yet-run todo (in position order) into a
     real queued task - see add_task. Already queued/done/error ones are
@@ -1674,6 +1812,11 @@ SETTINGS_DEFAULTS: dict[str, Any] = {
     "hold_low_when_busy": True,      # hold Low tasks while the 5-hour window is over 85%
     "sleep_mode": None,              # {"since", "until"} while "I'm going to sleep" is on - see sleep_mode_active
     "notify_weekly_pace": True,      # warn when the weekly limit is being used up too fast
+    # Project calendar (see timeline.py): push deadline / milestone / meeting alerts, and the
+    # "Good morning" briefing as a push once a day at briefing_time (local HH:MM).
+    "notify_timeline": True,
+    "briefing_push": True,
+    "briefing_time": "08:30",
     "monthly_budget_usd": 100.0,
     # Octopus (see octopus/autonomy.py). autonomy: assist | execute | autonomous.
     # plan_review: when the plan card is shown before anything runs -
@@ -1684,7 +1827,12 @@ SETTINGS_DEFAULTS: dict[str, Any] = {
     "voice_stt": "browser",
     "voice_tts": "browser",
     "voice_tts_voice": "",           # a macOS voice name for tts 'macos'; "" = system default
+    "voice_manual": "",              # a macOS voice picked by hand in the Ask box; beats the per-language voices. "" = automatic
     "voice_speak_replies": True,
+    "voice_rate": 1.0,               # speaking speed, 0.5 - 2.0
+    "voice_language_voices": {},     # {language code: macOS voice name} - see octopus/voice/languages.py
+    # Which Claude subscription account Claude Code runs on - "mac" (this Mac's own login) or an id from accounts.json. See accounts.py.
+    "claude_account": "mac",
 }
 
 
@@ -1969,6 +2117,174 @@ def spend_summary(days: int = 7) -> dict[str, Any]:
         "monthly_budget_usd": get_setting("monthly_budget_usd"),
         "days": [{"date": d, "cost_usd": c} for d, c in by_day.items()],
         "by_project": sorted(by_project.values(), key=lambda x: -x["cost_usd"]),
+    }
+
+
+def log_usage(kind: str, model_id: Optional[str], input_tokens: Optional[int], output_tokens: Optional[int],
+              cost_usd: Optional[float] = None, task_id: Optional[int] = None, project_id: Optional[int] = None) -> None:
+    """Record a side model call (see the usage_log table). Never raises - a
+    failed write must not break the call it describes."""
+    try:
+        with _lock:
+            conn = get_conn()
+            if project_id is None and task_id is not None:
+                row = conn.execute("SELECT project_id FROM tasks WHERE id = ?", (task_id,)).fetchone()
+                project_id = row["project_id"] if row else None
+            conn.execute(
+                "INSERT INTO usage_log (created_at, kind, model_id, task_id, project_id, input_tokens, output_tokens, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (_now(), kind, model_id, task_id, project_id, input_tokens, output_tokens, cost_usd),
+            )
+            conn.commit()
+    except sqlite3.Error:
+        logging.getLogger(__name__).exception("Couldn't record %s usage", kind)
+
+
+# ------------------------------------------------------------ token usage
+# The Token usage page: every task that reported usage plus the side calls in
+# usage_log, over a local date range, with optional project / model / lane
+# filters. lane "background" means only the usage_log rows. Real spend is the
+# non-Claude-Code cost; Claude Code's cost_usd is an API-price estimate (see
+# "spend" above), so the two are kept apart.
+
+TOKEN_USAGE_MAX_DAYS = 400
+TOKEN_USAGE_MAX_ITEMS = 2000
+
+
+def _local_day_bounds(start: str, end: str) -> tuple[datetime, datetime]:
+    """Local midnight at the start of `start` and after the end of `end` (YYYY-MM-DD, inclusive)."""
+    tz = datetime.now().astimezone().tzinfo
+    d0 = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=tz)
+    d1 = datetime.strptime(end, "%Y-%m-%d").replace(tzinfo=tz) + timedelta(days=1)
+    return d0.astimezone(), d1.astimezone()
+
+
+def _usage_rows(conn: sqlite3.Connection, since: datetime, until: datetime, project_id: Optional[int],
+                model_id: Optional[str], lane: Optional[str]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    if lane != "background":
+        q = ("SELECT t.id, t.thread_id, t.title, t.prompt, t.project_id, p.name AS project_name, t.model_id, t.lane, "
+             "t.category, t.status, t.source, t.input_tokens, t.output_tokens, t.cache_tokens, t.cost_usd, t.duration_ms, "
+             "COALESCE(t.finished_at, t.created_at) AS at "
+             "FROM tasks t LEFT JOIN projects p ON p.id = t.project_id "
+             "WHERE COALESCE(t.finished_at, t.created_at) >= ? AND COALESCE(t.finished_at, t.created_at) < ? "
+             "AND (t.input_tokens IS NOT NULL OR t.output_tokens IS NOT NULL OR t.cost_usd IS NOT NULL)")
+        args: list[Any] = [_utc_iso(since), _utc_iso(until)]
+        if project_id is not None:
+            q += " AND t.project_id = ?"
+            args.append(project_id)
+        if model_id:
+            q += " AND t.model_id = ?"
+            args.append(model_id)
+        if lane:
+            q += " AND t.lane = ?"
+            args.append(lane)
+        for r in conn.execute(q, args).fetchall():
+            d = {k: r[k] for k in r.keys()}
+            prompt = d.pop("prompt") or ""
+            d.update(kind="task", title=d["title"] or prompt[:80], chat_id=d["thread_id"] or d["id"])
+            items.append(d)
+    if not lane or lane == "background":
+        q = ("SELECT u.id, u.task_id, u.kind, u.model_id, u.project_id, p.name AS project_name, u.input_tokens, "
+             "u.output_tokens, u.cost_usd, u.created_at AS at, t.title AS task_title, t.thread_id "
+             "FROM usage_log u LEFT JOIN projects p ON p.id = u.project_id LEFT JOIN tasks t ON t.id = u.task_id "
+             "WHERE u.created_at >= ? AND u.created_at < ?")
+        args = [_utc_iso(since), _utc_iso(until)]
+        if project_id is not None:
+            q += " AND u.project_id = ?"
+            args.append(project_id)
+        if model_id:
+            q += " AND u.model_id = ?"
+            args.append(model_id)
+        for r in conn.execute(q, args).fetchall():
+            d = {k: r[k] for k in r.keys()}
+            task_id, thread_id = d.pop("task_id"), d.pop("thread_id")
+            d.update(id="u" + str(d["id"]), lane="background", category=d["kind"], status="done", source=None,
+                     cache_tokens=None, duration_ms=None, title=d.pop("task_title"),
+                     chat_id=(thread_id or task_id) if task_id else None)
+            items.append(d)
+    for d in items:
+        d["total_tokens"] = (d["input_tokens"] or 0) + (d["output_tokens"] or 0)
+    return items
+
+
+def _usage_totals(items: list[dict[str, Any]]) -> dict[str, Any]:
+    def s(k: str, rows: list[dict[str, Any]]) -> float:
+        return sum(r[k] or 0 for r in rows)
+    agent = [r for r in items if r["lane"] == "agent"]
+    other = [r for r in items if r["lane"] != "agent"]
+    return {
+        "runs": len(items),
+        "input_tokens": int(s("input_tokens", items)),
+        "output_tokens": int(s("output_tokens", items)),
+        "cache_tokens": int(s("cache_tokens", items)),
+        "total_tokens": int(s("total_tokens", items)),
+        "spend_usd": round(s("cost_usd", other), 6),
+        "claude_estimate_usd": round(s("cost_usd", agent), 6),
+    }
+
+
+def _usage_group(items: list[dict[str, Any]], key: str, label_key: Optional[str] = None) -> list[dict[str, Any]]:
+    groups: dict[Any, dict[str, Any]] = {}
+    for r in items:
+        k = r.get(key)
+        g = groups.setdefault(k, {"key": k, "label": r.get(label_key) if label_key else k, "rows": []})
+        g["rows"].append(r)
+    out = [{"key": g["key"], "label": g["label"], **_usage_totals(g["rows"])} for g in groups.values()]
+    return sorted(out, key=lambda x: (-x["total_tokens"], -(x["spend_usd"] + x["claude_estimate_usd"])))
+
+
+def token_usage(start: Optional[str] = None, end: Optional[str] = None, project_id: Optional[int] = None,
+                model_id: Optional[str] = None, lane: Optional[str] = None) -> dict[str, Any]:
+    """Everything the Token usage page shows for one slice. start/end are local
+    YYYY-MM-DD days, both included (default: the last 30 days). Raises
+    ValueError on a bad date or a range over TOKEN_USAGE_MAX_DAYS."""
+    today = datetime.now().astimezone().date()
+    end = end or today.isoformat()
+    start = start or (datetime.strptime(end, "%Y-%m-%d").date() - timedelta(days=29)).isoformat()
+    since, until = _local_day_bounds(start, end)
+    n_days = (until.date() - since.date()).days
+    if n_days < 1:
+        raise ValueError("The start date is after the end date")
+    if n_days > TOKEN_USAGE_MAX_DAYS:
+        raise ValueError(f"Pick a range of at most {TOKEN_USAGE_MAX_DAYS} days")
+    with _lock:
+        conn = get_conn()
+        items = _usage_rows(conn, since, until, project_id, model_id, lane)
+        # The same length of time just before, for the "vs previous" line.
+        prev = _usage_rows(conn, since - (until - since), since, project_id, model_id, lane)
+        months = [r["m"] for r in conn.execute(
+            "SELECT DISTINCT substr(COALESCE(finished_at, created_at), 1, 7) AS m FROM tasks "
+            "WHERE input_tokens IS NOT NULL OR output_tokens IS NOT NULL OR cost_usd IS NOT NULL "
+            "UNION SELECT DISTINCT substr(created_at, 1, 7) FROM usage_log ORDER BY m DESC").fetchall()]
+        projects = [dict(r) for r in conn.execute(
+            "SELECT id, name FROM projects WHERE id IN (SELECT project_id FROM tasks WHERE input_tokens IS NOT NULL "
+            "OR output_tokens IS NOT NULL OR cost_usd IS NOT NULL UNION SELECT project_id FROM usage_log) ORDER BY name COLLATE NOCASE"
+        ).fetchall()]
+        models = [r["m"] for r in conn.execute(
+            "SELECT DISTINCT model_id AS m FROM tasks WHERE model_id IS NOT NULL AND (input_tokens IS NOT NULL "
+            "OR output_tokens IS NOT NULL OR cost_usd IS NOT NULL) UNION SELECT DISTINCT model_id FROM usage_log "
+            "WHERE model_id IS NOT NULL ORDER BY m").fetchall()]
+
+    by_day = {(since.date() + timedelta(days=i)).isoformat(): [] for i in range(n_days)}
+    for r in items:
+        key = _parse_iso(r["at"]).astimezone().date().isoformat()
+        if key in by_day:
+            by_day[key].append(r)
+    items.sort(key=lambda r: (-r["total_tokens"], -(r["cost_usd"] or 0)))
+    return {
+        "start": start, "end": end, "days": n_days,
+        "filters": {"project_id": project_id, "model_id": model_id, "lane": lane},
+        "totals": _usage_totals(items),
+        "previous": _usage_totals(prev),
+        "by_day": [{"date": d, **_usage_totals(rows)} for d, rows in by_day.items()],
+        "by_project": _usage_group(items, "project_id", "project_name"),
+        "by_model": _usage_group(items, "model_id"),
+        "by_lane": _usage_group(items, "lane"),
+        "by_category": _usage_group(items, "category"),
+        "items": items[:TOKEN_USAGE_MAX_ITEMS],
+        "items_truncated": len(items) > TOKEN_USAGE_MAX_ITEMS,
+        "options": {"months": [m for m in months if m], "projects": projects, "models": models},
     }
 
 

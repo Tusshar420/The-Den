@@ -18,13 +18,15 @@ from typing import Literal, Optional
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
+import accounts
 import approval_links
 import db
 import providers
 import risk
 import router
+import timeline
 import titles
 import uploads
 import worker
@@ -32,7 +34,9 @@ from assistant import actions as assistant_actions
 from assistant import api as assistant_api
 from assistant import orchestrator as assistant_orchestrator
 from octopus import api as octopus_api
+from alexa import api as alexa_api
 from octopus import service as octopus_service
+from octopus.voice import languages as voice_languages
 
 DASHBOARD_HTML_PATH = Path(__file__).parent / "dashboard.html"
 LEGACY_DASHBOARD_HTML_PATH = Path(__file__).parent / "dashboard_legacy.html"
@@ -110,6 +114,10 @@ def require_api_key(request: Request, x_api_key: Optional[str] = Header(default=
 app.include_router(assistant_api.build_router(require_api_key))
 # Octopus: plans, routing history, agents, tools, providers, task detail, voice.
 app.include_router(octopus_api.build_router(require_api_key))
+# Alexa: POST /alexa is checked against Amazon's signature instead of X-API-Key; the rest needs the key.
+_alexa_public, _alexa_private = alexa_api.build_routers(require_api_key)
+app.include_router(_alexa_public)
+app.include_router(_alexa_private)
 
 
 class ProjectIn(BaseModel):
@@ -603,6 +611,86 @@ def delete_note(note_id: int):
     return {"ok": True}
 
 
+# ------------------------------------------------- calendar / project timelines
+
+class TimelineEventIn(BaseModel):
+    kind: str = "deadline"
+    title: str
+    date: str                                  # YYYY-MM-DD, local
+    time: Optional[str] = None                 # HH:MM, local; none = all day
+    notes: Optional[str] = None
+    remind_days: Optional[list[int]] = None    # none = the kind's defaults (timeline.KINDS)
+
+
+class TimelineEventUpdateIn(BaseModel):
+    # Only what is sent changes; send time / notes / remind_days as null to clear them.
+    kind: Optional[str] = None
+    title: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    notes: Optional[str] = None
+    remind_days: Optional[list[int]] = None
+    status: Optional[Literal["open", "done", "cancelled"]] = None
+    project_id: Optional[int] = None
+
+
+def _timeline_error(e: timeline.TimelineError) -> HTTPException:
+    return HTTPException(status_code=404 if "not found" in str(e) else 422, detail=str(e))
+
+
+@app.get("/timeline", dependencies=[Depends(require_api_key)])
+def list_timeline(start: Optional[str] = None, end: Optional[str] = None, project_id: Optional[int] = None,
+                  status: str = "open,done"):
+    """The calendar: every project's items between start and end (YYYY-MM-DD,
+    inclusive), plus each active project's on-track / at-risk read."""
+    statuses = [s for s in status.split(",") if s in timeline.STATUSES] or None
+    events = timeline.views(db.list_project_events(project_id, start, end, statuses))
+    health_by = {p["id"]: timeline.health(p["id"]) for p in db.list_projects(active_only=True)
+                 if not db.is_general_project(p) and (project_id is None or p["id"] == project_id)}
+    return {"events": events, "health": health_by, "kinds": timeline.KINDS, "today": timeline.today().isoformat()}
+
+
+@app.get("/projects/{project_id}/timeline", dependencies=[Depends(require_api_key)])
+def project_timeline(project_id: int):
+    if not db.get_project(project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"events": timeline.views(db.list_project_events(project_id)), "health": timeline.health(project_id)}
+
+
+@app.post("/projects/{project_id}/timeline", dependencies=[Depends(require_api_key)])
+def add_timeline_event(project_id: int, body: TimelineEventIn):
+    try:
+        ev = timeline.create(project_id, body.kind, body.title, body.date, body.time, body.notes, body.remind_days)
+    except timeline.TimelineError as e:
+        raise _timeline_error(e)
+    return timeline.view(ev)
+
+
+@app.patch("/timeline/{event_id}", dependencies=[Depends(require_api_key)])
+def update_timeline_event(event_id: int, body: TimelineEventUpdateIn):
+    try:
+        ev = timeline.update(event_id, body.model_dump(exclude_unset=True))
+    except timeline.TimelineError as e:
+        raise _timeline_error(e)
+    return timeline.view(ev)
+
+
+@app.delete("/timeline/{event_id}", dependencies=[Depends(require_api_key)])
+def delete_timeline_event(event_id: int):
+    if not db.get_project_event(event_id):
+        raise HTTPException(status_code=404, detail="Timeline item not found")
+    db.delete_project_event(event_id)
+    return {"ok": True}
+
+
+@app.get("/briefing", dependencies=[Depends(require_api_key)])
+def get_briefing(calendar: bool = True):
+    """The "Good morning" summary: today's items and meetings, what's overdue,
+    the week ahead, and what is waiting on you. calendar=false skips reading
+    Google Calendar."""
+    return timeline.briefing(calendar=calendar)
+
+
 @app.get("/projects/{project_id}/todos", dependencies=[Depends(require_api_key)])
 def list_todos(project_id: int):
     if not db.get_project(project_id):
@@ -979,6 +1067,10 @@ class SettingsIn(BaseModel):
     notify_on_resume: Optional[bool] = None
     hold_low_when_busy: Optional[bool] = None
     notify_weekly_pace: Optional[bool] = None
+    # Project calendar: deadline / meeting alerts, and the daily "Good morning" push at briefing_time.
+    notify_timeline: Optional[bool] = None
+    briefing_push: Optional[bool] = None
+    briefing_time: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     monthly_budget_usd: Optional[float] = None
     # Octopus: how much it may do without asking, and when it shows its plan first.
     autonomy: Optional[Literal["assist", "execute", "autonomous"]] = None
@@ -987,7 +1079,21 @@ class SettingsIn(BaseModel):
     voice_stt: Optional[str] = None
     voice_tts: Optional[str] = None
     voice_tts_voice: Optional[str] = None
+    voice_manual: Optional[str] = Field(None, max_length=80)
     voice_speak_replies: Optional[bool] = None
+    voice_rate: Optional[float] = Field(None, ge=0.5, le=2.0)
+    # Which macOS voice reads which language: {"hi": "Lekha"}. Saved as a whole; a language left out uses the default voice.
+    voice_language_voices: Optional[dict[str, str]] = None
+
+    @field_validator("voice_language_voices")
+    @classmethod
+    def _known_languages(cls, v):
+        if v is None:
+            return v
+        unknown = sorted(set(v) - set(voice_languages.BY_CODE))
+        if unknown:
+            raise ValueError(f"unknown language: {', '.join(unknown)}")
+        return {k: name.strip() for k, name in v.items() if name.strip() and len(name) <= 80}
 
 
 @app.get("/projects/{project_id}/settings", dependencies=[Depends(require_api_key)])
@@ -1010,7 +1116,7 @@ def _settings_view() -> dict:
     if pace and pace["level"]:
         pace["title"], pace["message"] = worker.weekly_alert_text(pace)
     return {**db.get_settings(), "push_configured": bool(worker.ACTIVITYSMITH_API_KEY), "claude_usage": db.get_setting("claude_usage"),
-            "weekly_pace": pace}
+            "weekly_pace": pace, "claude_account": accounts.active_id(), "claude_accounts": accounts.public_list()}
 
 
 @app.get("/settings", dependencies=[Depends(require_api_key)])
@@ -1042,11 +1148,83 @@ def update_settings(body: SettingsIn):
     return _settings_view()
 
 
+# ---------------------------------------------------------------- Claude accounts (accounts.py)
+
+class AccountIn(BaseModel):
+    label: str = Field(..., max_length=60)
+    token: str = Field(..., max_length=400)   # from `claude setup-token`
+    email: Optional[str] = Field(None, max_length=120)
+
+
+@app.get("/accounts", dependencies=[Depends(require_api_key)])
+def list_accounts():
+    return {"active": accounts.active_id(), "accounts": accounts.public_list()}
+
+
+@app.post("/accounts", dependencies=[Depends(require_api_key)])
+def add_account(body: AccountIn):
+    """Checks the token with one tiny request before saving it (a few seconds)."""
+    try:
+        added = accounts.add(body.label, body.token, body.email)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"account": added, **list_accounts()}
+
+
+@app.delete("/accounts/{account_id}", dependencies=[Depends(require_api_key)])
+def remove_account(account_id: str):
+    try:
+        if not accounts.remove(account_id):
+            raise HTTPException(status_code=404, detail="Account not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return _settings_view()
+
+
+@app.post("/accounts/{account_id}/activate", dependencies=[Depends(require_api_key)])
+def activate_account(account_id: str):
+    """Switch account: new Claude Code runs use it, the usage bars show its limits
+    (refreshed in the background), and tasks waiting out the old account's usage
+    limit may try again at once."""
+    try:
+        accounts.activate(account_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    resumed = db.resume_rate_limited_now()
+    accounts.probe_in_background(account_id)
+    return {**_settings_view(), "resumed": resumed}
+
+
+@app.post("/accounts/{account_id}/refresh", dependencies=[Depends(require_api_key)])
+def refresh_account(account_id: str):
+    """Read this account's live usage now (one tiny Haiku request)."""
+    if account_id != accounts.MAC and not any(a["id"] == account_id for a in accounts.public_list()):
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account_id == accounts.MAC:
+        accounts.mac_login(refresh=True)
+    check = accounts.probe(account_id)
+    if not check["ok"]:
+        raise HTTPException(status_code=502, detail="Couldn't read its usage: " + (check["error"] or "unknown error"))
+    return _settings_view()
+
+
 @app.post("/notify/test", dependencies=[Depends(require_api_key)])
 def send_test_push():
     if not worker.ACTIVITYSMITH_API_KEY:
         raise HTTPException(status_code=409, detail="ACTIVITYSMITH_API_KEY isn't set in the launchd plist")
     return {"sent": worker.notify_phone("Test push from Octopus", "If you can read this, pushes work.")}
+
+
+@app.get("/usage/tokens", dependencies=[Depends(require_api_key)])
+def token_usage(start: Optional[str] = None, end: Optional[str] = None, project_id: Optional[int] = None,
+                model_id: Optional[str] = None, lane: Optional[Literal["agent", "api", "assistant", "background"]] = None):
+    """The Token usage page: tokens and cost over a local date range
+    (YYYY-MM-DD, both days included; default the last 30 days) - totals, per
+    day, per project / model / lane / category, and every run behind them."""
+    try:
+        return db.token_usage(start, end, project_id, model_id, lane)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/usage/summary", dependencies=[Depends(require_api_key)])
@@ -1200,6 +1378,8 @@ def polish_text(body: PolishIn):
         out = providers.complete(model, [{"role": "user", "content": text[:4000]}], POLISH_SYSTEM_PROMPT, 30)
     except providers.ProviderError as e:
         raise HTTPException(status_code=502, detail=str(e))
+    db.log_usage("polish", model["id"], out.input_tokens, out.output_tokens,
+                 providers.estimate_cost(model, out.input_tokens, out.output_tokens))
     return {"text": out.text.strip(), "model_id": model["id"]}
 
 

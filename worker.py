@@ -26,10 +26,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import accounts
 import approval_links
 import db
 import providers
 import router
+import timeline
 import uploads
 from assistant import actions as assistant_actions
 from assistant import orchestrator, planner
@@ -49,14 +51,16 @@ PUSH_LEVEL = {"approval": "time-sensitive", "reminder": "time-sensitive", "failu
               "completion": "active", "info": "active"}
 
 
-def notify_phone(title: str, message: str, kind: str = "info", actions: Optional[list] = None) -> bool:
+def notify_phone(title: str, message: str, kind: str = "info", actions: Optional[list] = None,
+                 open_hash: str = "") -> bool:
+    """open_hash: where tapping it lands in the dashboard ("#/project/3/timeline")."""
     if not ACTIVITYSMITH_API_KEY:
         return False
     try:
         body = {"title": title, "message": message, "interruption_level": PUSH_LEVEL.get(kind, "active")}
         if approval_links.den_url():
             # Tapping the notification itself opens the dashboard.
-            body["redirection"] = approval_links.den_url() + "/dashboard"
+            body["redirection"] = approval_links.den_url() + "/dashboard" + open_hash
         if actions:
             body["actions"] = actions
         req = urllib.request.Request(
@@ -227,20 +231,11 @@ def _epoch_iso(v: Any) -> Optional[str]:
         return None
 
 
-def record_claude_usage(info: dict[str, Any]) -> None:
+def record_claude_usage(info: dict[str, Any], account_id: Optional[str] = None) -> None:
     """Keep the latest 5-hour / weekly utilization Claude Code reported
-    (rate_limit_event), for the dashboard's usage bars."""
-    windows = {}
-    for name, w in (info.get("unifiedWindows") or {}).items():
-        if isinstance(w, dict):
-            windows[name] = {"utilization": w.get("utilization"), "resets_at": _epoch_iso(w.get("resetsAt"))}
-    db.set_setting("claude_usage", {
-        "status": info.get("status"),
-        "limited_window": info.get("rateLimitType"),
-        "resets_at": _epoch_iso(info.get("resetsAt")),
-        "windows": windows,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    })
+    (rate_limit_event) for the account the run was on - the dashboard's
+    usage bars show the active account's (accounts.record_usage)."""
+    accounts.record_usage(account_id or accounts.active_id(), accounts.usage_from_event(info))
 
 
 def _hold_low_priority() -> bool:
@@ -512,6 +507,7 @@ def _usage_from_result(parsed: dict[str, Any]) -> dict[str, Any]:
                         + (u.get("cache_creation_input_tokens") or 0) if u else None,
         "output_tokens": u.get("output_tokens"),
         "cost_usd": parsed.get("total_cost_usd"),
+        "cache_tokens": (u.get("cache_read_input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0) if u else None,
     }
 
 
@@ -551,7 +547,10 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
     cmd += extra_args or []   # the agent's instructions and the tools it was not given (octopus/execution.py)
     log.info("Running: %s (cwd=%s)", " ".join(cmd[:3]) + " ...", project_path)
 
-    env = {**os.environ, "THE_DEN_TASK_ID": str(task_id)}
+    # The Claude account chosen on the dashboard (accounts.py) - fixed for this run even if it's switched meanwhile.
+    account_id = accounts.active_id()
+    env = accounts.env_for(account_id, {**os.environ, "THE_DEN_TASK_ID": str(task_id)})
+    db.add_task_event(task_id, "note", "Claude account: " + accounts.label(account_id))
 
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -603,7 +602,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
                             db.add_task_event(task_id, "tool", text)
             elif kind == "rate_limit_event":
                 info = msg.get("rate_limit_info") or {}
-                record_claude_usage(info)
+                record_claude_usage(info, account_id)
                 check_weekly_pace()
                 if info.get("status") == "rejected" and info.get("resetsAt"):
                     iso = _epoch_iso(info["resetsAt"])
@@ -666,6 +665,17 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
 
     # Only a *failed* run can be a rate limit - a successful summary that
     # happens to say "added rate limiting" is just a summary.
+    if is_error and ((result_msg or {}).get("api_error_status") == 401
+                     or accounts.AUTH_FAILED.search(f"{(summary or '')[:500]}\n{stderr[-500:]}")):
+        detail = (summary or stderr).strip()[-300:]
+        accounts.set_auth_error(account_id, detail)
+        return TaskResult(False, session_id=new_session_id, usage=usage,
+                          error=f"Claude account \"{accounts.label(account_id)}\" couldn't log in ({detail}). "
+                                "Its token may have expired: run `claude setup-token` again and re-add it in Settings › Claude account, "
+                                "or switch to another account.")
+    if not is_error:
+        accounts.set_auth_error(account_id, None)
+
     if is_error:
         if rejected_reset or _looks_rate_limited(f"{summary}\n{stderr}\n{tail}"):
             reset = rejected_reset or _guess_reset_time(f"{summary}\n{stderr}")
@@ -893,8 +903,31 @@ def _api_messages(task: dict, model_cfg: Optional[dict] = None) -> list[dict]:
     return [m for turn in turns for m in turn] + [user_message(task)]
 
 
+# Set while api_worker_loop runs. wake_api_lane() lets a client that is waiting on an
+# answer (Alexa has 8 seconds to reply) skip the rest of the poll interval.
+_api_lane_wake: Optional[tuple[asyncio.AbstractEventLoop, asyncio.Event]] = None
+
+
+def wake_api_lane() -> None:
+    """Safe to call from any thread; does nothing if the lane isn't running."""
+    if _api_lane_wake:
+        loop, event = _api_lane_wake
+        loop.call_soon_threadsafe(event.set)
+
+
+async def _api_lane_nap(event: asyncio.Event, seconds: float) -> None:
+    try:
+        await asyncio.wait_for(event.wait(), seconds)
+    except asyncio.TimeoutError:
+        pass
+    event.clear()
+
+
 async def api_worker_loop(stop_event: asyncio.Event) -> None:
+    global _api_lane_wake
     log.info("API lane started (polling every %ss)", POLL_INTERVAL_SECONDS)
+    wake = asyncio.Event()
+    _api_lane_wake = (asyncio.get_running_loop(), wake)
     while not stop_event.is_set():
         try:
             limited = tuple(m["id"] for m in router.registry().get("models", [])
@@ -906,7 +939,7 @@ async def api_worker_loop(stop_event: asyncio.Event) -> None:
 
         task = None if draining else db.get_next_queued_task("api", exclude_models=limited)
         if not task:
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            await _api_lane_nap(wake, POLL_INTERVAL_SECONDS)
             continue
 
         project = db.get_project(task["project_id"])
@@ -926,9 +959,9 @@ async def api_worker_loop(stop_event: asyncio.Event) -> None:
             instructions = (agent or {}).get("instructions") or API_INSTRUCTIONS
             if project and not db.is_general_project(project):
                 instructions += f"\nThe user currently has the project '{project['name']}' selected."
-            notes = db.project_notes_prompt(task["project_id"])
-            if notes:
-                instructions += "\n\n" + notes
+            for block in (db.project_notes_prompt(task["project_id"]), timeline.prompt_for(task["project_id"])):
+                if block:
+                    instructions += "\n\n" + block
             if model_cfg.get("modality") == "image":
                 completion = await asyncio.to_thread(providers.generate_image, model_cfg, task["prompt"], API_TASK_TIMEOUT_SECONDS)
             else:
@@ -1032,6 +1065,54 @@ def fire_due_reminders() -> int:
     return fired
 
 
+def check_timeline_alerts(now: Optional[datetime] = None) -> int:
+    """Push the project-calendar alerts that are due (deadline in N days, a
+    meeting within the hour, something gone overdue - see timeline.py).
+    Held through quiet hours (not marked sent, so they go out when those
+    end); otherwise marked sent before pushing, so a failed push can't make
+    it ring every tick."""
+    if not db.get_setting("notify_timeline"):
+        return 0
+    local = (now or datetime.now()).astimezone()
+    if in_quiet_hours(local):
+        return 0
+    sent = 0
+    for a in timeline.pending_alerts(now):
+        timeline.mark_alerted(a["event"], a["covered"] + [a["key"]])
+        kind = "reminder" if a["key"] in ("overdue", "soon", "d0") else "info"
+        notify_phone(a["title"], a["message"], kind, open_hash=f"#/project/{a['event']['project_id']}/timeline")
+        sent += 1
+    return sent
+
+
+# How late the morning push may still go out (the Mac was asleep at briefing_time).
+BRIEFING_LATE_HOURS = 3
+
+
+def send_morning_briefing(now: Optional[datetime] = None) -> bool:
+    """The "Good morning" briefing as one push a day, at the briefing_time
+    setting. Marked sent for the day first; skipped (not sent late) if the
+    Mac only wakes long after that time."""
+    if not db.get_setting("briefing_push"):
+        return False
+    local = (now or datetime.now()).astimezone()
+    today = local.date().isoformat()
+    if db.get_setting("briefing_sent_on") == today:
+        return False
+    try:
+        h, m = (int(x) for x in str(db.get_setting("briefing_time") or "08:30").split(":"))
+        at = local.replace(hour=h, minute=m, second=0, microsecond=0)
+    except ValueError:
+        return False
+    if local < at or in_quiet_hours(local):
+        return False
+    db.set_setting("briefing_sent_on", today)
+    if local - at > timedelta(hours=BRIEFING_LATE_HOURS):
+        return False
+    b = timeline.briefing(now)
+    return notify_phone(f"{b['greeting']} ☀️", b["headline"] + " Tap for your briefing.", "info", open_hash="#/briefing")
+
+
 # ----------------------------------------------------------------- scheduler
 
 def queue_prompt(project: dict[str, Any], prompt: str, priority: int = 0, model: str = "auto",
@@ -1068,6 +1149,8 @@ async def scheduler_loop(stop_event: asyncio.Event) -> None:
             for sc in db.due_schedules():
                 await asyncio.to_thread(fire_schedule, sc)  # routing may call the classifier model
             await asyncio.to_thread(fire_due_reminders)
+            await asyncio.to_thread(check_timeline_alerts)
+            await asyncio.to_thread(send_morning_briefing)    # may read Google Calendar
             await asyncio.to_thread(assistant_actions.expire_stale)
         except Exception:
             log.exception("Scheduler tick failed")

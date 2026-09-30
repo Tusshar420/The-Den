@@ -13,14 +13,17 @@ const button = (b, editing) => `<button class="qb${editing ? ' is-editing' : ''}
     ${b.pic && !editing ? '<span class="qb__pic" title="Asks for a picture" aria-hidden="true">📎</span>' : ''}${editing ? '<span class="qb__x" aria-hidden="true">×</span>' : ''}
   </button>`;
 
+// Built in, always first: today's briefing (deadlines, meetings, approvals) - see views/calendar.js.
+const morningButton = editing => editing ? '' : `<button class="qb qb--morning" data-action="go" data-view="briefing" title="Your day: deadlines, meetings, approvals" data-key="qb-morning">
+    <span class="qb__icon" aria-hidden="true">☀️</span><span class="qb__label truncate">Good morning</span></button>`;
+
 export function quickSection(c) {
   const list = quickButtons(c);
   const editing = c.ui.quickEdit;
   const right = `<span class="qb-tools">${list.length ? `<button class="btn--text" data-action="quickEditToggle">${editing ? 'Done' : 'Edit'}</button>` : ''}<button class="btn--text" data-action="quickNew">+ Add</button></span>`;
   return `<section class="section reveal" style="--i:60" data-key="quick">
     <div class="section__head"><span class="section__title">Quick buttons</span>${right}</div>
-    ${list.length ? `<div class="qb-grid" role="group" aria-label="Quick buttons">${list.map(b => button(b, editing)).join('')}</div>`
-      : `<div class="empty"><span>No quick buttons yet.</span><button class="btn btn--sm" data-action="quickNew">Add one</button></div>`}
+    ${list.length || !editing ? `<div class="qb-grid" role="group" aria-label="Quick buttons">${morningButton(editing)}${list.map(b => button(b, editing)).join('')}</div>` : ''}
   </section>`;
 }
 

@@ -3,6 +3,8 @@
 // tools.json - edit and save, no restart.
 
 import { esc } from '../ui.js';
+import { accountsSection } from './accounts.js';
+import { timelineSettings } from './calendar.js';
 
 const AUTONOMY = [
   ['assist', 'Assist', 'Investigates and proposes. Coding tasks run read-only, and anything that would change something asks first.'],
@@ -34,18 +36,8 @@ function permissions(c) {
     </div>`).join('')}</div></div>`).join('');
 }
 
-function voiceSection(c) {
-  const v = c.d.octo.voice, s = c.d.settings || {};
-  if (!v) return '<div class="empty">Loading…</div>';
-  const provider = (kind, key) => `<div class="set-provs">${v[kind].map(p => `<button class="set-prov${(s[key] || v.settings[key]) === p.id ? ' is-on' : ''}${p.available ? '' : ' is-off'}" data-action="voiceProvider" data-key="${key}" data-id="${p.id}"${p.available ? '' : ' aria-disabled="true"'}>
-      <b>${esc(p.label)}</b><span>${esc(p.available ? p.description : p.reason)}</span></button>`).join('')}</div>`;
-  const macos = (s.voice_tts || v.settings.voice_tts) === 'macos';
-  return `<div class="set-group"><span class="set-group__t">Listening (speech to text)</span>${provider('stt', 'voice_stt')}</div>
-    <div class="set-group"><span class="set-group__t">Speaking (text to speech)</span>${provider('tts', 'voice_tts')}
-      ${macos && v.voices.length ? `<label class="set-voice"><span class="meta">macOS voice</span><select class="input" data-input="octo.voice">${'<option value="">System default</option>'}${v.voices.filter(x => x.language.startsWith('en')).concat(v.voices.filter(x => !x.language.startsWith('en'))).map(x =>
-        `<option value="${esc(x.name)}"${(s.voice_tts_voice || '') === x.name ? ' selected' : ''}>${esc(x.name)} (${esc(x.language)})</option>`).join('')}</select></label>` : ''}
-      <div class="set-line"><span class="meta">Voice feeds the same pipeline as typing - same plan, same approvals.</span><button class="btn btn--sm" data-action="voiceTest">Test voice</button></div>
-    </div>`;
+function voiceSection() {
+  return `<div class="set-line"><span class="meta">How Octopus listens and speaks, and which voice reads which language.</span><button class="btn btn--sm" data-action="go" data-view="voice">Voice settings</button></div>`;
 }
 
 function agentsSection(c) {
@@ -73,6 +65,7 @@ function toolsSection(c) {
 export function settings(c) {
   const s = c.d.settings || {};
   return `<div class="page page--narrow page--settings" data-key="page-settings">
+    <section class="section" data-key="set-account"><div class="section__head"><span class="section__title">Claude account</span></div>${accountsSection(c)}</section>
     <section class="section" data-key="set-autonomy"><div class="section__head"><span class="section__title">Autonomy</span></div>
       <span class="meta prov-note">How much Octopus may do without asking. Dangerous things - deploying, deleting, touching production, sending email - stay behind your approval unless you set them to Allow below.</span>
       ${radio('setAutonomy', s.autonomy || 'execute', AUTONOMY)}</section>
@@ -81,7 +74,8 @@ export function settings(c) {
     <section class="section" data-key="set-perms"><div class="section__head"><span class="section__title">Permissions</span></div>
       <span class="meta prov-note">What each kind of action is allowed to do. Claude Code's individual commands are still approved one by one on your phone; these say what a whole kind of action may do.</span>
       ${permissions(c)}</section>
-    <section class="section" data-key="set-voice"><div class="section__head"><span class="section__title">Voice</span></div>${voiceSection(c)}</section>
+    <section class="section" data-key="set-calendar"><div class="section__head"><span class="section__title">Calendar and briefing</span></div>${timelineSettings(c)}</section>
+    <section class="section" data-key="set-voice"><div class="section__head"><span class="section__title">Voice</span></div>${voiceSection()}</section>
     <section class="section" data-key="set-agents"><div class="section__head"><span class="section__title">Agents</span><span class="section__note">agents.json</span></div>${agentsSection(c)}</section>
     <section class="section" data-key="set-tools"><div class="section__head"><span class="section__title">Tools</span><span class="section__note">tools.json</span></div>
       <span class="meta prov-note">A task is only given the tools its request needs - never every tool.</span>${toolsSection(c)}</section>

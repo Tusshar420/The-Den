@@ -10,6 +10,7 @@ import { FEATURES } from '../features.js';
 import { imageStrip } from '../attach.js';
 import { planSheet } from './plan-card.js';
 import { quickSheet } from './quick.js';
+import { eventSheet } from './calendar.js';
 
 export const WHENS = [
   { k: 'now', l: 'Now' },
@@ -95,6 +96,7 @@ function usage(c) {
       </div>
       <div class="card card--pad"><div class="usage-row__head"><span class="card__title">API spend</span><span class="meta">${money(s ? s.month_usd : 0)} / ${money(s ? s.monthly_budget_usd : 100)} this month</span></div>
         <div class="bigbars">${spendBars(s, true)}</div></div>
+      <button class="btn btn--ghost" data-action="go" data-view="usage">See token usage in detail →</button>
       <div class="card card--list"><span class="card__title card__title--list">By project · this month</span>
         ${s && s.by_project.length ? s.by_project.map(x => { const p = projectById(x.project_id); return `<div class="byproj"><span class="truncate">${esc(x.name)}</span><div class="bar6 bar6--soft"><div style="width:${Math.round(x.cost_usd / max * 100)}%;background:${projectColor(p)}"></div></div><span class="mono">${money(x.cost_usd)}</span></div>`; }).join('') : '<span class="card__desc byproj-empty">No API spend yet this month. Claude Code runs on your subscription and isn\'t counted here.</span>'}
       </div>
@@ -122,7 +124,7 @@ function addProject(c) {
 }
 
 // ---------------------------------------------------------------- Shortcuts
-const KEYS = [['⌘K / N', 'New task'], ['/', 'Search everything'],['A', 'Approve the waiting request'], ['D', 'Deny it'], ['1 – 4', 'Home, Projects, Recipes, Activity'], ['6', 'Messages'], ['[', 'Collapse or expand the sidebar'], ['Esc', 'Close the panel'], ['?', 'This list']];
+const KEYS = [['⌘K / N', 'New task'], ['/', 'Search everything'],['A', 'Approve the waiting request'], ['D', 'Deny it'], ['1 – 4', 'Home, Projects, Recipes, Activity'], ['6', 'Messages'], ['7', 'Calendar'], ['G', 'Good morning briefing'], ['[', 'Collapse or expand the sidebar'], ['Esc', 'Close the panel'], ['?', 'This list']];
 function keys() {
   return wrap('keys', `<div class="sheet__body"><div class="sheet__head sheet__head--flush"><span class="sheet__title">Shortcuts</span><button class="icon-btn icon-btn--44" data-action="closeSheet" aria-label="Close">✕</button></div>
     ${KEYS.map(([k, d]) => `<div class="key-row"><span>${d}</span><span class="kbd">${k}</span></div>`).join('')}</div>`, 'Shortcuts');
@@ -233,6 +235,7 @@ export function sheet(c) {
     case 'editTodo': return editTodo(c);
     case 'editNote': return editNote(c);
     case 'quick': return quickSheet(c, wrap);
+    case 'event': return eventSheet(c, wrap);
     default: return '';
   }
 }

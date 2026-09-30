@@ -7,8 +7,8 @@ import { searchBox } from './search.js';
 import { esc, icon, octo, sk, scopeSwitch, clock, dayWord, spinner } from '../ui.js';
 
 const TITLES = { home: 'Command Center', projects: 'Projects', recipes: 'Recipes & schedules', activity: 'Activity', personal: 'Personal assistant', messages: 'Messages',
-  routing: 'Routing', providers: 'AI Providers', settings: 'Settings' };
-const OCTOPUS_NAV = [['providers', 'AI Providers'], ['routing', 'Routing'], ['settings', 'Settings']];
+  routing: 'Routing', providers: 'AI Providers', settings: 'Settings', voice: 'Voice', usage: 'Token usage', calendar: 'Calendar', briefing: 'Good morning' };
+const OCTOPUS_NAV = [['usage', 'Token usage'], ['providers', 'AI Providers'], ['routing', 'Routing'], ['voice', 'Voice'], ['settings', 'Settings']];
 const PERSONAL_NAV = [['email', 'Email'], ['calendar', 'Calendar'], ['reminders', 'Reminders'], ['connections', 'Connections']];
 
 export function viewTitle(c) {
@@ -123,7 +123,7 @@ function sidebarDetails(c) {
 
 export function sidebar(c) {
   const { ui, d, w } = c;
-  const nav = [['home', 'Command Center', '1'], ['projects', 'Projects', '2'], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4'], ['messages', 'Messages', '6']];
+  const nav = [['home', 'Command Center', '1'], ['projects', 'Projects', '2'], ['calendar', 'Calendar', '7'], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4'], ['messages', 'Messages', '6']];
   const needs = w.needs.length;
   return `<div class="sidebar-scrim${c.navOpen && c.navOverlay ? ' is-on' : ''}" data-action="toggleSidebar" data-key="sidebar-scrim" aria-hidden="true"></div>
   <nav class="sidebar${c.navOpen ? '' : ' is-collapsed'}${c.navOverlay ? ' sidebar--overlay' : ''}" id="sidebar" data-key="sidebar" aria-label="Workspace"${c.navOpen ? '' : ' inert'}>

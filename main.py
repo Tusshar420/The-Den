@@ -18,6 +18,7 @@ import uvicorn
 
 from api import app, check_bind_is_safe
 import titles
+from alexa import notifier as alexa_notifier
 import worker
 
 logging.basicConfig(
@@ -68,12 +69,13 @@ async def main() -> None:
     scheduler_task = asyncio.create_task(worker.scheduler_loop(stop_event))
     namer_task = asyncio.create_task(titles.namer_loop(stop_event))
     run_now_task = asyncio.create_task(worker.run_now_loop(stop_event))
+    alexa_task = asyncio.create_task(alexa_notifier.notifier_loop(stop_event))
 
-    log.info("The Den running: API on http://%s:%s , worker + proceed-now + Octopus api lane + assistant lane + scheduler + namer active", HOST, PORT)
+    log.info("The Den running: API on http://%s:%s , worker + proceed-now + Octopus api lane + assistant lane + scheduler + namer + Alexa notifier active", HOST, PORT)
 
     try:
         await asyncio.gather(api_task, worker_task, api_lane_task, assistant_task, scheduler_task, namer_task,
-                             run_now_task)
+                             run_now_task, alexa_task)
     except asyncio.CancelledError:
         pass
     finally:
