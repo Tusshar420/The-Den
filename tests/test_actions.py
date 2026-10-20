@@ -171,6 +171,34 @@ class Gate(TestBase):
                           "Create meeting and send invitation"))
         self.assertTrue(any("Project work" in w for w in card["warnings"]), "warns about the clash with the event just created")
 
+    def test_every_other_day_meeting_asks_once_and_shows_how_it_repeats(self):
+        from datetime import date
+        args = {"title": "Stand-up", "start": "2026-09-25T10:00:00+05:30", "duration_minutes": 15,
+                "attendees": "rahul@example.com", "repeat": "every_other_day", "repeat_until": "2026-10-08"}
+        meeting = self.invoke("calendar", "create_event", args)
+        self.assertEqual(meeting.status, "awaiting_approval")
+        self.assertEqual(self.cal.created, [], "no invitation goes out before approval")
+        card = json.loads(db.get_approval(meeting.approval_id)["tool_input"])["preview"]
+        fields = {f["label"]: f["value"] for f in card["fields"]}
+        self.assertEqual((fields["Date"], fields["Repeats"], fields["Action"]),
+                         ("September 25, 2026 (first)", "Every other day until Thu Oct 8", "Create meeting and send invitation"))
+        result = actions.decide(db.get_approval(meeting.approval_id), True, ctx_factory=self.ctx_obj_factory)
+        made = self.cal.created[-1]
+        self.assertEqual((made["attendees"], made["repeat_days"], made["repeat_until"]), (["rahul@example.com"], 2, date(2026, 10, 8)))
+        self.assertIn("Repeats every other day until Thu Oct 8.", json.dumps(result))
+
+    def test_repeat_without_attendees_runs_and_one_offs_do_not_repeat(self):
+        solo = self.invoke("calendar", "create_event", {"title": "Gym", "start": "2026-09-25T07:00:00+05:30", "repeat": "every other day"})
+        self.assertEqual(solo.status, "ok")
+        once = self.invoke("calendar", "create_event", {"title": "Dentist", "start": "2026-09-26T07:00:00+05:30"})
+        self.assertEqual(once.status, "ok")
+        self.assertEqual([(c["title"], c["repeat_days"], c["repeat_until"]) for c in self.cal.created],
+                         [("Gym", 2, None), ("Dentist", None, None)])
+        for bad in ({"repeat": "weekly"}, {"repeat": "every_other_day", "repeat_until": "2026-09-01"}):
+            out = self.invoke("calendar", "create_event", {"title": "x", "start": "2026-09-25T07:00:00+05:30", **bad})
+            self.assertEqual(out.status, "error", bad)
+        self.assertEqual(len(self.cal.created), 2)
+
     def test_move_and_cancel_ask_and_show_before_and_after(self):
         moved = self.invoke("calendar", "update_event", {"event_id": "e1", "start": "2026-09-25T16:00:00+05:30"})
         self.assertEqual(moved.status, "awaiting_approval")

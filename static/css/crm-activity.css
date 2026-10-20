@@ -1,0 +1,59 @@
+/* CRM activities and follow-ups (views/crm-activity.js): the Activity card on a project's Overview, a client's
+   and a contact's page, follow-up rows on Home and the Calendar, and the contact page's header. */
+
+/* ================================================================ follow-up rows */
+.fu-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px 8px 10px;
+  border-bottom: 1px solid var(--line-soft); position: relative; }
+.fu-row:last-child { border-bottom: none; }
+.fu-row::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--text-faint); }
+.fu-row:hover { background: var(--surface-2); }
+.fu-row .check { margin-left: 2px; }
+.fu-row__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 2px 0; border: none; background: none; text-align: left; color: inherit; cursor: pointer; }
+.fu-row__title { font: 600 var(--fs-row) var(--font-ui); }
+.fu-row__badge { font: 600 12px var(--font-mono); white-space: nowrap; }
+.fu-row.is-overdue::before { background: var(--err); }
+.fu-row.is-overdue .fu-row__title { color: var(--err-soft); }
+.fu-row.is-done .fu-row__title { text-decoration: line-through; color: var(--text-meta); }
+.cal-chip--fu { border-left-style: dashed; }
+
+/* ================================================================ the Activity card */
+.act-card__btns { display: inline-flex; gap: 14px; }
+.act-card .crm-card__head { flex-wrap: wrap; gap: 6px 12px; }
+.act-open { display: flex; flex-direction: column; gap: 4px; }
+.act-open .list { border: 1px solid var(--line); border-radius: var(--r-card-sm); background: var(--surface); overflow: hidden; }
+.act-feed { display: flex; flex-direction: column; }
+.act-day { padding-top: 12px; }
+.act-day:first-child { padding-top: 2px; }
+
+.act-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+.act-item:last-child { border-bottom: none; }
+.act-item__icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--inset); border: 1px solid var(--line); font-size: 13px; line-height: 1; }
+.act-item__body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.act-item__head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; font: 500 13px var(--font-ui); color: var(--text-2); }
+.act-item__head b { color: var(--text); font-weight: 600; }
+.act-item__text { font: 400 14px/1.45 var(--font-ui); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.act-item__outcome { font: 400 13.5px/1.45 var(--font-ui); color: var(--text-2); padding-left: 8px; border-left: 2px solid var(--run); overflow-wrap: anywhere; }
+.act-item__outcome b { font-weight: 600; margin-right: 4px; color: var(--text); }
+.act-item__people { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.act-item__acts { display: flex; gap: 2px; opacity: .55; }
+.act-item:hover .act-item__acts, .act-item:focus-within .act-item__acts { opacity: 1; }
+.act-item__link { padding: 0; border: none; background: none; color: var(--text); font: 500 14px/1.45 var(--font-ui); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.act-item__link:hover { text-decoration: underline; }
+.act-item--task .act-item__icon, .act-item--stage .act-item__icon, .act-item--fu .act-item__icon { background: transparent; }
+.act-on { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface);
+  color: var(--text-2); font: 500 12px/1.7 var(--font-ui); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-on:hover { border-color: var(--text-meta); color: var(--text); }
+
+.act-form { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--inset); }
+.act-form__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.act-form__text { resize: vertical; min-height: 64px; font: 400 14px/1.45 var(--font-ui); }
+.act-people { flex-wrap: wrap; }
+
+/* ================================================================ contact page */
+.cn-name__open { padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.cn-name__open:hover b { text-decoration: underline; }
+.cn-av--lg { width: 52px; height: 52px; font-size: 17px; }
+
+@media (max-width: 600px) {
+  .act-item__acts { opacity: 1; }
+}

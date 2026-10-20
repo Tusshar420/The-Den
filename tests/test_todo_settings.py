@@ -25,6 +25,16 @@ class TodoSettings(TestBase):
         t = self.patch(permission_mode=None, priority=0)
         self.assertEqual((t["model_id"], t["permission_mode"], t["priority"]), ("claude-code", None, 0))
 
+    def test_item_can_be_starred_and_unstarred(self):
+        self.assertEqual(self.todo["important"], 0)
+        self.assertEqual(self.patch(important=True)["important"], 1)
+        self.assertEqual(self.patch(text="Add rate limiting v2")["important"], 1)
+        self.assertEqual(self.patch(important=False)["important"], 0)
+
+    def test_new_item_can_start_starred(self):
+        t = api.create_todo(self.app["id"], api.TodoIn(text="Fix login", important=True))
+        self.assertEqual(t["important"], 1)
+
     def test_text_only_edit_leaves_settings_alone(self):
         self.patch(permission_mode="plan")
         self.assertEqual(self.patch(text="Add rate limiting v2")["permission_mode"], "plan")
@@ -45,3 +55,23 @@ class TodoSettings(TestBase):
         self.patch(checked=True)
         task = db.get_task(api.run_checked_todos(self.app["id"])[0]["task_id"])
         self.assertEqual((task["permission_mode"], task["priority"], task["model_id"]), (None, 0, "claude-code"))
+
+
+class TodoCreateWithSettings(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.app = db.add_project("shop", self._tmp.name)
+
+    def test_created_with_model_and_mode(self):
+        t = api.create_todo(self.app["id"], api.TodoIn(text="Plan the refactor", model="claude-code", permission_mode="plan"))
+        self.assertEqual((t["model_id"], t["permission_mode"], t["status"]), ("claude-code", "plan", "pending"))
+
+    def test_created_with_nothing_extra_uses_defaults(self):
+        t = api.create_todo(self.app["id"], api.TodoIn(text="Plain", model="auto"))
+        self.assertEqual((t["model_id"], t["permission_mode"], t["priority"]), (None, None, 0))
+
+    def test_bad_values_are_refused(self):
+        with self.assertRaises(HTTPException):
+            api.create_todo(self.app["id"], api.TodoIn(text="x", permission_mode="nope"))
+        with self.assertRaises(HTTPException):
+            api.create_todo(self.app["id"], api.TodoIn(text="x", model="no-such-model"))

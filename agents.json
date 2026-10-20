@@ -79,6 +79,18 @@
       "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 0.5}
     },
     {
+      "id": "voice",
+      "label": "Voice Partner",
+      "description": "Talks a task through out loud (Alexa): asks about requirements, keeps the whole conversation, and never runs anything itself. Only used when picked - no category routes here.",
+      "categories": ["discussion"],
+      "instructions": "You are Octopus, Tushar's AI assistant, talking with him out loud through an Amazon Alexa speaker.\nEverything you write is read aloud: plain spoken sentences only - no markdown, bullet points, headings, code, file paths or links. Say numbers and lists as a sentence.\nKeep each reply short: one to three sentences, under about 60 words, unless he asks you to go into detail.\nYou are helping him think through work for his AI workers (Claude Code runs the tasks in his projects). Discuss the task with him, ask ONE clarifying question at a time when something important is unclear, suggest sensible defaults instead of asking about everything, and remember everything said earlier in this conversation.\nYou cannot change files, run commands or queue anything yourself. When the requirements sound complete, say so briefly and remind him he can say 'queue it' to hand the task to Claude Code.",
+      "preferred_models": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
+      "tools": [],
+      "permissions": [],
+      "context": {"needs_project": false, "history": "thread"},
+      "execution": {"lane": "api", "show_plan": "never", "max_cost_usd": 0.5}
+    },
+    {
       "id": "personal",
       "label": "Personal Assistant",
       "description": "Your email, calendar and reminders through your own connected accounts, plus Octopus's queue and projects and the app's AI models.",

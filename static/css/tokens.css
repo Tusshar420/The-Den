@@ -94,6 +94,7 @@
   --card-pad: 14px;          /* (11 compact) */
   --page-pad-x: 14px;        /* phone; 28px desktop */
   --sidebar-w: 250px;
+  --rail-w: 60px;           /* collapsed desktop sidebar */
   --pane-w: 460px;
   --tabbar-h: 96px;          /* incl. FAB overhang; content bottom padding 120px + safe area */
 
@@ -147,6 +148,19 @@ a { color: var(--coral); text-decoration: none; }
 a:hover { color: var(--coral-hover); }
 button { font-family: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; }
-input, textarea { font-family: inherit; color: var(--text); }
+input, textarea, select { font-family: inherit; color: var(--text); }
+select { color-scheme: dark; }
+select:disabled { color: var(--text-ghost); opacity: 1; }
 input::placeholder, textarea::placeholder { color: var(--text-faint); }
 :focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+
+/* scrollbars: slim, dark, transparent track so rounded cards keep their corners */
+:root { color-scheme: dark; }
+* { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: var(--r-pill); border: 3px solid transparent; background-clip: content-box; min-height: 40px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--line-focus); background-clip: content-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+}

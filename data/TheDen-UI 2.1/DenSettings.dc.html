@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1180px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}<sc-if value="{{ t.count }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#93A1B0;">{{ t.count }}</span></sc-if></button></sc-for>
+    </div>
+    <sc-if value="{{ isSet }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1 1 240px; min-width:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search settings — try “timeout” or “shortcut”" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isSet }}" hint-placeholder-val="{{ true }}">
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+      <section style="display:flex; flex-direction:column; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <div style="padding:14px 16px 8px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ g.name }}</div>
+        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:56px; padding:10px 16px; border-top:1px solid rgba(255,255,255,0.04); background:{{ r.bg }};">
+            <div style="flex:1 1 220px; min-width:0;"><div style="font-size:14px; font-weight:600;">{{ r.label }}</div><div style="font-size:12px; color:#93A1B0;">{{ r.hint }}</div></div>
+            <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></sc-if>
+            <sc-if value="{{ r.isSeg }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; padding:0 11px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};">{{ o.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ r.isKey }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.rebind }}" style="flex:none; min-width:64px; height:32px; padding:0 12px; border-radius:9px; cursor:pointer; font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; background:{{ r.kbg }}; color:{{ r.kfg }}; border:1px solid {{ r.kbd }};">{{ r.key }}</button></sc-if>
+          </div>
+        </sc-for>
+      </section>
+    </sc-for>
+    <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}"><div style="padding:36px; border-radius:20px; border:1px dashed rgba(255,255,255,0.1); text-align:center; font-size:13.5px; color:#93A1B0;">No setting matches “{{ q }}”.</div></sc-if>
+  </sc-if>
+
+  <sc-if value="{{ isBin }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+      <div style="flex:1 1 380px; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:8px; padding:12px 14px;"><span style="flex:1; font-size:12.5px; color:#93A1B0;">Items are deleted for good after 30 days.</span><sc-if value="{{ hasBin }}" hint-placeholder-val="{{ true }}"><button onClick="{{ emptyBin }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12px; font-weight:650; color:#FF8FA2;">Empty bin</button></sc-if></div>
+        <sc-for list="{{ bin }}" as="b" hint-placeholder-count="5">
+          <button onClick="{{ b.pick }}" style="display:flex; align-items:center; gap:12px; min-height:58px; padding:8px 14px; border:0; border-top:1px solid rgba(255,255,255,0.04); cursor:pointer; text-align:left; background:{{ b.bg }}; color:#E8EEF3;">
+            <span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ b.tint }}; color:{{ b.tone }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ b.icon }}"></path></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:13.5px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ b.title }}</span><span style="display:block; font-size:11.5px; color:#93A1B0;">{{ b.type }} · deleted {{ b.when }}</span></span>
+            <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:{{ b.expC }};">{{ b.exp }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ binEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:40px 16px; text-align:center; display:flex; flex-direction:column; gap:6px; align-items:center;"><div style="font-size:15px; font-weight:700;">Bin is empty</div><div style="font-size:12.5px; color:#93A1B0;">Cancelled tasks, deleted notes and archived projects land here.</div></div></sc-if>
+      </div>
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PREVIEW · {{ sel.type }}</div>
+          <div style="font-size:18px; font-weight:750;">{{ sel.title }}</div>
+          <div style="padding:14px; border-radius:14px; background:rgba(6,9,13,0.5); border:1px solid rgba(255,255,255,0.05); font-size:13px; line-height:1.7; color:#C2CDD8; white-space:pre-wrap;">{{ sel.preview }}</div>
+          <div style="font-size:12.5px; color:#93A1B0;">Restores to <b style="color:#E8EEF3;">{{ sel.dest }}</b></div>
+          <div style="display:flex; gap:8px;"><button onClick="{{ restore }}" style="flex:1; height:40px; border-radius:12px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13.5px; font-weight:700;">Restore</button><button onClick="{{ purge }}" style="height:40px; padding:0 14px; border-radius:12px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#FF8FA2;">Delete forever</button></div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const BT = { Task:['M5 12l5 5 9-10', C.coral], Note:['M6 3h9l4 4v14H6zM14 3v5h5', C.violet], Project:['M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', C.blue], Recipe:['M13 2L4 14h7l-1 8 9-12h-7z', C.amber], Chat:['M4 5h16v11H8l-4 4z', C.teal] };
+const BIN0 = [
+  { id:1, type:'Task', title:'#831 Draft weekly summary for Abhishek', when:'2h ago', days:30, dest:'General · Up next', preview:'Draft a short weekly summary for Abhishek: what shipped, what is blocked, next week’s plan.\n\nModel: assistant · priority Low' },
+  { id:2, type:'Note', title:'Old launch checklist (v1)', when:'yesterday', days:29, dest:'Notes · Law Accounting site', preview:'DNS · SSL · analytics · 404 page\n(superseded by “Launch checklist”)' },
+  { id:3, type:'Recipe', title:'Hourly inbox sweep', when:'5 days ago', days:25, dest:'Recipes & schedules (paused)', preview:'Every hour 09–19 · summarize new mail → notify me.\nDisabled because it was too noisy.' },
+  { id:4, type:'Chat', title:'#801 Try three logo directions', when:'12 days ago', days:18, dest:'The Den · Chats', preview:'42 messages · 3 images · ended with “park this for now”.' },
+  { id:5, type:'Project', title:'Portfolio site 2024', when:'27 days ago', days:3, dest:'Projects', preview:'~/code/portfolio-2024 · 14 chats · 88 tasks done.\nFiles on disk were never touched.' }
+];
+const KEYS0 = [['Command palette', '⌘K'], ['New task', 'N'], ['Approve next', 'A'], ['Deny next', 'D'], ['Focus view', 'F'], ['Toggle sidebar', '[']];
+class Component extends DCLogic {
+  state = { tab:null, q:'', v:{ theme:'Dark', density:'Comfortable', motion:1, glass:1, timeout:'30m', sleepDeny:1, protect:1, quiet:1, sound:0, start:'Home' }, keys:KEYS0, rebinding:null, bin:BIN0, sel:1 };
+  say(t, s, c) { this.props.say && this.props.say(t, s, c); }
+  componentDidMount() { this.props.onReady && this.props.onReady();
+    this.kd = e => { const r = this.state.rebinding; if (r === null) return; e.preventDefault(); e.stopPropagation(); if (e.key === 'Escape') return this.setState({ rebinding:null });
+      const k = (e.metaKey ? '⌘' : '') + (e.altKey ? '⌥' : '') + (e.shiftKey && e.key.length > 1 ? '⇧' : '') + (e.key.length === 1 ? e.key.toUpperCase() : e.key);
+      const clash = this.state.keys.find((x, i) => x[1] === k && i !== r);
+      this.setState(s => ({ keys:s.keys.map((x, i) => i === r ? [x[0], k] : x), rebinding:null }));
+      this.say(clash ? 'Swapped with “' + clash[0] + '”' : 'Shortcut saved', this.state.keys[r][0] + ' → ' + k, clash ? C.amber : C.green);
+      if (clash) this.setState(s => ({ keys:s.keys.map(x => x[0] === clash[0] ? [x[0], '—'] : x) })); };
+    window.addEventListener('keydown', this.kd, true);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.kd, true); }
+  renderVals() {
+    const s = this.state; const tab = s.tab || this.props.tab || 'settings'; const ql = s.q.trim().toLowerCase(); const v = s.v;
+    const set = (k, val) => this.setState(st => ({ v:{ ...st.v, [k]:val } }));
+    const tog = (k, label, hint) => ({ label, hint, isToggle:true, isSeg:false, isKey:false, track: v[k] ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: v[k] ? 'flex-end' : 'flex-start', toggle:() => set(k, v[k] ? 0 : 1), opts:[] });
+    const seg = (k, label, hint, vals) => ({ label, hint, isToggle:false, isSeg:true, isKey:false, opts: vals.map(o => ({ label:o, pick:() => set(k, o), bg: v[k] === o ? 'rgba(255,255,255,0.1)' : 'transparent', fg: v[k] === o ? '#FFFFFF' : '#93A1B0' })) });
+    const G = [
+      { name:'GENERAL', rows:[seg('start', 'Open to', 'First page when you open the Den', ['Home', 'Projects', 'Inbox']), seg('timeout', 'Task timeout', 'Paused time doesn’t count', ['10m', '30m', '2h'])] },
+      { name:'MONEY', rows:[(() => { const CUR = [['USD', '$ USD'], ['INR', '₹ INR'], ['EUR', '€ EUR'], ['GBP', '£ GBP'], ['AED', 'AED'], ['AUD', 'A$ AUD']]; const curCode = this.props.currency || 'USD'; v.currency = (CUR.find(c => c[0] === curCode) || CUR[0])[1]; const r = seg('currency', 'Currency', 'Used for deals, budgets, API costs and reports across the whole Den. Symbol only — amounts are not converted.', CUR.map(c => c[1])); r.opts.forEach((op, i) => { const p = op.pick; op.pick = () => { p(); this.props.setCurrency && this.props.setCurrency(CUR[i][0]); }; }); return r; })()] },
+      { name:'APPEARANCE', rows:[({ label:'Theme', hint:'Auto follows your device · ⇧T toggles', isToggle:false, isSeg:true, isKey:false, opts:['Dark', 'Light', 'Auto'].map(o => { const cur = this.props.theme || 'Dark'; return { label:o, pick:() => this.props.setTheme && this.props.setTheme(o), bg: cur === o ? 'rgba(255,255,255,0.1)' : 'transparent', fg: cur === o ? '#FFFFFF' : '#93A1B0' }; }) }), seg('density', 'Density', 'Row height and spacing', ['Compact', 'Comfortable']), tog('glass', 'Glass effects', 'Turn off for older phones — faster scrolling'), tog('motion', 'Animations', 'Respects reduce-motion either way')] },
+      { name:'SAFETY', rows:[tog('protect', 'Ask before protected commands', 'git push, rm -rf, deploys, payments'), tog('sleepDeny', 'Auto-deny approvals while asleep', 'After 5 minutes with no answer')] },
+      { name:'NOTIFICATIONS', rows:[tog('quiet', 'Quiet hours 23:00–07:30', 'Only failures and approvals come through'), tog('sound', 'Sounds', 'A soft chime when a task finishes')] },
+      { name:'SHORTCUTS', rows: s.keys.map(([label, key], i) => { const rb = s.rebinding === i; return { label, hint: rb ? 'Press the new key… (Esc to cancel)' : 'Click to rebind', isToggle:false, isSeg:false, isKey:true, key: rb ? '…' : key, opts:[],
+        kbg: rb ? 'rgba(255,123,92,0.16)' : 'rgba(255,255,255,0.05)', kfg: rb ? '#FFA48C' : '#DCE4EB', kbd: rb ? 'rgba(255,123,92,0.5)' : 'rgba(255,255,255,0.1)', rebind:() => this.setState({ rebinding: rb ? null : i }) }; }) }
+    ];
+    const groups = G.map(g => ({ ...g, rows: g.rows.filter(r => !ql || (g.name + r.label + r.hint).toLowerCase().includes(ql)).map(r => ({ ...r, bg: ql ? 'rgba(255,123,92,0.04)' : 'transparent' })) })).filter(g => g.rows.length);
+    const selB = s.bin.find(b => b.id === s.sel);
+    return {
+      tabs:[['settings', 'Settings', ''], ['bin', 'Recycle bin', String(s.bin.length)]].map(([id, label, count]) => ({ label, count, pick:() => this.setState({ tab:id }), bg: tab === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: tab === id ? '#FFFFFF' : '#93A1B0' })),
+      isSet: tab === 'settings', isBin: tab === 'bin', q:s.q, onQ:e => this.setState({ q:e.target.value }), groups, noMatch: !groups.length,
+      bin: s.bin.map(b => { const [icon, tone] = BT[b.type]; return { ...b, icon, tone, tint:tint(tone, 0.13), exp:b.days + 'd left', expC: b.days <= 3 ? '#FF8FA2' : '#6B7A8A', bg: b.id === s.sel ? 'rgba(255,123,92,0.08)' : 'transparent', pick:() => this.setState({ sel:b.id }) }; }),
+      binEmpty: !s.bin.length, hasBin: s.bin.length > 0, hasSel: !!selB, sel: selB ? { ...selB, type:selB.type.toUpperCase() } : { type:'', title:'', preview:'', dest:'' },
+      restore:() => { this.rm(selB.id); this.say('Restored', selB.title + ' → ' + selB.dest, C.green); },
+      purge:() => { this.rm(selB.id); this.say('Deleted forever', selB.title, C.err); },
+      emptyBin:() => { this.setState({ bin:[], sel:null }); this.say('Bin emptied', 'Can’t be undone.', C.err); }
+    };
+  }
+  rm(id) { this.setState(s => { const rest = s.bin.filter(b => b.id !== id); return { bin:rest, sel: rest[0] ? rest[0].id : null }; }); }
+}
+</script>
+</body>
+</html>

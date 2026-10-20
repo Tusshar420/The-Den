@@ -1,0 +1,23 @@
+.sheet--tour .sheet__body, .sheet--help .sheet__body { gap: 12px; padding-top: 18px; text-align: left; }
+.app--desk .sheet--tour { width: 440px; }
+.app--desk .sheet--help { width: 560px; max-height: 84vh; margin-top: 6vh; overflow-y: auto; }
+.tour__art { display: flex; justify-content: center; padding: 4px 0; }
+.tour__title { margin: 0; font-size: 20px; text-align: center; }
+.tour__text { margin: 0; line-height: 1.5; color: var(--text-meta); }
+.sheet--tour .tour__text { text-align: center; }
+.tour__dots { display: flex; justify-content: center; gap: 6px; }
+.tour__dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-btn); }
+.tour__dots i.is-on { background: var(--coral); }
+.tour__nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.tour__help { align-self: center; }
+.help__terms { margin: 0; display: grid; gap: 10px; }
+.help__terms dt { font-weight: 700; }
+.help__terms dd { margin: 2px 0 0; line-height: 1.45; color: var(--text-meta); }
+.set-line__btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Settings > Backup (views/backup.js) */
+.set-line__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bk-warn { display: flex; flex-direction: column; gap: 8px; margin: 8px 4px; padding: 12px; border-radius: var(--r-md, 12px); background: var(--wait-tint); color: var(--wait); font: 500 14px var(--font-ui); }
+.bk-warn code { font-size: 12px; }
+.bk-err { color: var(--err-soft, #d33); padding: 4px; }
+.bk-ok { padding: 4px; }

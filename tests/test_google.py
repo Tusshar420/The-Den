@@ -188,6 +188,28 @@ class Calendar(GoogleBase):
         self.assertEqual(solo["params"]["sendUpdates"], "none")
         self.assertNotIn("attendees", solo["body"])
 
+    def test_every_other_day_meeting_is_a_series_with_invites(self):
+        from datetime import date
+        start = NOW.replace(day=25, hour=15, minute=0)
+        self.cal.create_event("Stand-up", start, start + timedelta(minutes=15), ["rahul@example.com"], repeat_days=2,
+                              repeat_until=date(2026, 10, 8))
+        self.cal.create_event("Gym", start, start + timedelta(hours=1), repeat_days=2)
+        self.cal.create_event("Off", start, start + timedelta(days=1), all_day=True, repeat_days=2, repeat_until=date(2026, 10, 8))
+        self.cal.create_event("Once", start, start + timedelta(hours=1))
+        meeting, solo, all_day, once = [c for c in self.g.calls if c["method"] == "POST"]
+        # 23:59:59 IST on Oct 8 is 18:29:59 UTC; the series keeps its local time zone.
+        self.assertEqual(meeting["body"]["recurrence"], ["RRULE:FREQ=DAILY;INTERVAL=2;UNTIL=20261008T182959Z"])
+        self.assertEqual(meeting["body"]["start"]["timeZone"], "Asia/Kolkata")
+        self.assertEqual((meeting["params"]["sendUpdates"], meeting["body"]["attendees"]), ("all", [{"email": "rahul@example.com"}]))
+        self.assertEqual((solo["body"]["recurrence"], solo["params"]["sendUpdates"]), (["RRULE:FREQ=DAILY;INTERVAL=2"], "none"))
+        self.assertEqual(all_day["body"]["recurrence"], ["RRULE:FREQ=DAILY;INTERVAL=2;UNTIL=20261008"])
+        self.assertNotIn("recurrence", once["body"])
+
+    def test_days_of_a_series_are_marked_recurring(self):
+        self.g.events = [self.ITEM, {**self.ITEM, "id": "ev1_20260927", "recurringEventId": "ev1"}]
+        one, repeat = self.cal.list_events(NOW, NOW + timedelta(days=4))
+        self.assertEqual((one["recurring"], repeat["recurring"]), (False, True))
+
     def test_video_call_requests_a_meet_link(self):
         start = NOW.replace(day=25, hour=15, minute=0)
         self.cal.create_event("Sync", start, start + timedelta(minutes=30), ["a@x.com"], add_video_call=True)

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="min-height:{{ minH }}; display:flex; flex-direction:column; align-items:center; justify-content:{{ justify }}; gap:18px; padding:{{ pad }}; box-sizing:border-box; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3; background:{{ bg }};">
+
+  <sc-if value="{{ isPageCrash }}" hint-placeholder-val="{{ false }}">
+    <div style="width:100%; max-width:640px; display:flex; flex-direction:column; gap:14px; padding:22px; border-radius:20px; background:rgba(255,84,112,0.06); border:1px solid rgba(255,84,112,0.3); backdrop-filter:blur(20px); animation:denRise .3s cubic-bezier(.2,.7,.3,1);">
+      <div style="display:flex; align-items:flex-start; gap:14px;">
+        <span style="flex:none; width:44px; height:44px; display:grid; place-items:center; border-radius:13px; background:rgba(255,84,112,0.14); color:#FF8FA2;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></span>
+        <div style="flex:1; min-width:0;"><div style="font-size:18px; font-weight:750;">{{ pageName }} couldn't load</div><div style="font-size:13px; line-height:1.55; color:#C2CDD8; margin-top:4px;">The rest of the Den is fine — only this page hit an error. Your data is safe.</div></div>
+      </div>
+      <div style="padding:10px 12px; border-radius:12px; background:rgba(6,9,13,0.55); font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.6; color:#FFC7D0; white-space:pre-wrap; word-break:break-word;">{{ errText }}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button onClick="{{ retry }}" style="height:36px; padding:0 14px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#1A0A05;">Try again</button>
+        <button onClick="{{ goHome }}" style="height:36px; padding:0 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB;">Go to Home</button>
+        <button onClick="{{ copyErr }}" style="height:36px; padding:0 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB;">{{ copyLabel }}</button>
+        <button onClick="{{ report }}" style="height:36px; padding:0 14px; border-radius:10px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#C9B8FF;">{{ reportLabel }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCrash }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; max-width:560px; animation:denRise .4s cubic-bezier(.2,.7,.3,1);">
+      <dc-import name="DenOcto" mood="error" size="120" hint-size="120px,120px"></dc-import>
+      <div style="font-size:30px; font-weight:750; letter-spacing:-0.01em;">Something tangled my arms.</div>
+      <div style="font-size:15px; line-height:1.6; color:#C2CDD8; text-wrap:pretty;">The Den hit an error while loading. The server is running and nothing was lost — the queue keeps working in the background.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+        <button onClick="{{ reload }}" style="height:42px; padding:0 18px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; color:#1A0A05;">Reload the Den</button>
+        <button onClick="{{ safeToggle }}" style="height:42px; padding:0 18px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); cursor:pointer; font-family:inherit; font-size:14px; font-weight:650; color:#E8EEF3;">Open in safe mode</button>
+      </div>
+      <sc-if value="{{ safeOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="width:100%; display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:16px; background:rgba(20,28,38,0.6); border:1px solid rgba(255,255,255,0.08); text-align:left;">
+          <div style="font-size:13px; font-weight:700;">Safe mode turns off, just for this visit:</div>
+          <sc-for list="{{ safeOpts }}" as="o" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:10px;"><span style="flex:1; font-size:13px; color:#C2CDD8;">{{ o.label }}</span><button onClick="{{ o.toggle }}" style="flex:none; width:36px; height:22px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ o.track }}; display:flex; justify-content:{{ o.align }};"><span style="width:18px; height:18px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+          <button onClick="{{ enterSafe }}" style="height:38px; border-radius:11px; border:0; background:#E8EEF3; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#0A0E13;">Start in safe mode</button>
+        </div>
+      </sc-if>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;"><button onClick="{{ copyErr }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#93A1B0;">{{ copyLabel }}</button><button onClick="{{ detToggle }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#93A1B0;">{{ detLabel }}</button><button onClick="{{ report }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#C9B8FF;">{{ reportLabel }}</button></div>
+      <sc-if value="{{ detOpen }}" hint-placeholder-val="{{ false }}"><div style="width:100%; padding:12px; border-radius:12px; background:rgba(6,9,13,0.6); border:1px solid rgba(255,255,255,0.06); text-align:left; font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.65; color:#FFC7D0; white-space:pre-wrap; word-break:break-word;">{{ errText }}</div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDown }}" hint-placeholder-val="{{ false }}">
+    <div style="width:100%; max-width:760px; display:flex; flex-direction:column; gap:14px; animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:20px; border-radius:20px; background:{{ dn.bg }}; border:1px solid {{ dn.bd }}; backdrop-filter:blur(20px);">
+        <span style="flex:none; width:14px; height:14px; border-radius:50%; background:{{ dn.c }}; box-shadow:0 0 0 6px {{ dn.ring }}; animation:{{ dn.anim }};"></span>
+        <div style="flex:1 1 260px; min-width:0;"><div style="font-size:20px; font-weight:750;">{{ dn.title }}</div><div style="font-size:13.5px; line-height:1.55; color:#C2CDD8;">{{ dn.sub }}</div></div>
+        <button onClick="{{ restart }}" style="height:40px; display:flex; align-items:center; gap:8px; padding:0 16px; border-radius:12px; border:0; background:{{ dn.btnBg }}; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700; color:{{ dn.btnFg }};"><span style="display:inline-flex; animation:{{ dn.spin }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"></path></svg></span>{{ dn.btn }}</button>
+      </div>
+      <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <div style="padding:12px 16px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">SYSTEM HEALTH · CHECKED {{ checked }}</div>
+        <sc-for list="{{ services }}" as="v" hint-placeholder-count="7">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:52px; padding:8px 16px; border-top:1px solid rgba(255,255,255,0.04);">
+            <span style="flex:none; width:9px; height:9px; border-radius:50%; background:{{ v.c }};"></span>
+            <div style="flex:1 1 200px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ v.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ v.detail }}</div></div>
+            <span style="height:22px; padding:0 9px; display:flex; align-items:center; border-radius:6px; background:{{ v.bg }}; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; letter-spacing:.05em; color:{{ v.c }};">{{ v.state }}</span>
+            <sc-if value="{{ v.action }}" hint-placeholder-val="{{ false }}"><button onClick="{{ v.run }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#DCE4EB;">{{ v.action }}</button></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:14px 16px; border-radius:16px; background:rgba(6,9,13,0.6); border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">OCTOPUS LOG · LAST LINES</span><button onClick="{{ copyLog }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#FF7B5C;">Copy</button></div>
+        <sc-for list="{{ log }}" as="l" hint-placeholder-count="5"><div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.6; color:{{ l.c }}; white-space:pre-wrap; word-break:break-word;">{{ l.t }}</div></sc-for>
+      </div>
+      <div style="display:flex; justify-content:center;"><button onClick="{{ done }}" style="height:38px; padding:0 16px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB;">Back to the Den</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isMaint }}" hint-placeholder-val="{{ false }}">
+    <div style="width:100%; max-width:520px; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; animation:denRise .4s cubic-bezier(.2,.7,.3,1);">
+      <dc-import name="DenOcto" mood="work" size="110" hint-size="110px,110px"></dc-import>
+      <div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.14em; color:#FFB547;">MAINTENANCE</div><div style="font-size:28px; font-weight:750; margin-top:6px;">{{ mt.title }}</div><div style="font-size:14.5px; line-height:1.6; color:#C2CDD8; margin-top:6px;">{{ mt.sub }}</div></div>
+      <div style="width:100%; height:6px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden;"><div style="height:100%; width:{{ mt.pct }}; border-radius:6px; background:linear-gradient(90deg, #FF7B5C, #FFB547); transition:width .5s cubic-bezier(.2,.7,.3,1);"></div></div>
+      <div style="width:100%; display:flex; flex-direction:column; gap:2px; padding:8px; border-radius:16px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06); text-align:left;">
+        <sc-for list="{{ steps }}" as="p" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:10px; min-height:38px; padding:0 8px;"><span style="flex:none; width:20px; height:20px; display:grid; place-items:center; border-radius:50%; background:{{ p.bg }}; color:#06200F; border:1.5px solid {{ p.bd }};"><sc-if value="{{ p.done }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if><sc-if value="{{ p.now }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:#FFB547; animation:denPulse 1.2s infinite;"></span></sc-if></span><span style="flex:1; font-size:13.5px; color:{{ p.fg }};">{{ p.t }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ p.meta }}</span></div></sc-for>
+      </div>
+      <div style="font-size:12.5px; color:#93A1B0;">{{ mt.note }}</div>
+      <sc-if value="{{ mt.finished }}" hint-placeholder-val="{{ false }}"><button onClick="{{ done }}" style="height:42px; padding:0 18px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; color:#1A0A05;">Open the Den</button></sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:720},&quot;page&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;crash&quot;,&quot;pagecrash&quot;,&quot;down&quot;,&quot;maint&quot;],&quot;default&quot;:&quot;crash&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pageName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;CRM&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onDone&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(a:string)=&gt;void&quot;}}">
+const D = window.Den;
+const ST = { ok:['OK', '#6FCF97'], warn:['DEGRADED', '#FFB547'], down:['DOWN', '#FF5470'] };
+const tn = (h, a) => { const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+// The restart screen (the design's "maintenance" page): the Den has no self-updater, so this follows a real restart.
+const STEPS = [['Finishing running tasks', 'nothing new starts meanwhile'], ['Saving the queue', 'waiting tasks are held'], ['Restarting the Den', ''], ['Reconnecting', ''], ['Done', '']];
+class Component extends DCLogic {
+  state = { safe:false, det:false, copied:false, reported:false, so:{ widgets:1, modules:1, custom:1, cache:0 }, rst:'idle', step:0, pct:6 };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); if ((this.props.page || '') === 'maint') this.watchRestart(); }
+  componentWillUnmount() { clearTimeout(this.t); clearTimeout(this.rt); }
+  say(t, s, c) { this.props.say ? this.props.say(t, s || '', c || '#6FCF97') : D.say(t, s, c); }
+  err() { const e = D.lastError && D.lastError(); return e ? e.text : 'No error was recorded in this browser session.'; }
+  // Ask for a restart, then watch: the service stops answering, comes back, and the queue is let go again.
+  watchRestart() {
+    let gone = false; const t0 = Date.now();
+    const poll = () => fetch('/health', { cache:'no-store' }).then(r => r.ok).catch(() => false).then(up => {
+      if (!up) gone = true;
+      const secs = (Date.now() - t0) / 1000;
+      const step = up && gone ? 4 : !up ? 2 : secs > 4 ? 1 : 0;
+      this.setState({ step, pct: step >= 4 ? 100 : Math.min(92, 8 + step * 22 + Math.min(18, secs)) });
+      if (step >= 4) { D.refresh().catch(() => {}); return; }
+      if (secs > 600) return this.setState({ step:4, pct:100, slow:true });
+      this.t = setTimeout(poll, 1500); });
+    D.api('/service/restart', { method:'POST', body:{ hard:false } }).then(r => { if (r && r.waiting_on && r.waiting_on.length) this.setState({ waiting:r.waiting_on.length }); }).catch(() => {}).finally(() => { this.t = setTimeout(poll, 1200); });
+  }
+  renderVals() {
+    const s = this.state; const page = this.props.page || 'crash'; const over = !!this.props.overlay;
+    const ERR = this.err();
+    const copy = (txt, msg) => { try { navigator.clipboard.writeText(txt); } catch (e) {} this.setState({ copied:true }); this.say(msg || 'Error details copied', ''); };
+    const restarting = s.rst === 'run', ok = s.rst === 'ok';
+    const h = page === 'down' ? D.need('health', '/den/health', ok ? 3000 : 15000) : null;
+    const down = !!(h && h.state === 'down'); const held = h ? h.waiting : 0;
+    const go = (id) => this.props.onDone && this.props.onDone(id);
+    const actionOf = i => !i.ok && i.id.startsWith('lane:') ? ['Restart', () => this.restart()] : i.id.startsWith('acct:') ? ['Switch account', () => go('accounts')]
+      : !i.ok && i.id.startsWith('prov:') ? ['Set up', () => go('providers')] : !i.ok && i.id === 'disk' ? ['Free up space', () => this.say('Free up disk space', 'macOS: Apple menu › System Settings › General › Storage', '#7FB2FF')] : ['', () => {}];
+    const services = ((h && h.items) || []).map(i => { const st = i.ok ? 'ok' : i.id.startsWith('lane:') || i.id === 'db' ? 'down' : 'warn'; const [action, run] = actionOf(i);
+      return { name:i.label, detail:i.detail, state:ST[st][0], c:ST[st][1], bg:tn(ST[st][1], 0.12), action, run }; });
+    const logLines = ((h && h.log) || []).slice(-12);
+    const restartedOk = ok && !down;
+    return {
+      isPageCrash: page === 'pagecrash', isCrash: page === 'crash', isDown: page === 'down', isMaint: page === 'maint',
+      minH: page === 'pagecrash' ? 'auto' : over ? '100vh' : '640px', justify: page === 'down' ? 'flex-start' : 'center', pad: page === 'pagecrash' ? '24px 0' : page === 'down' ? '56px 20px 40px' : '40px 20px', bg: page === 'pagecrash' ? 'transparent' : 'radial-gradient(800px 500px at 50% 0%, rgba(255,123,92,0.08), transparent 60%), #0A0E13',
+      pageName: this.props.pageName || 'This page', errText: ERR, copyLabel: s.copied ? 'Copied ✓' : 'Copy error details', reportLabel: s.reported ? 'Sent to Octopus ✓' : 'Report to Octopus',
+      copyErr:() => copy(ERR),
+      report:() => { if (s.reported) return;
+        D.act(() => D.api('/octopus', { method:'POST', body:{ text:'The Den dashboard showed an error on the "' + (this.props.pageName || 'Den') + '" page. Look into it in The Den project and propose a fix (don’t change anything without asking):\n\n' + ERR.slice(0, 3000), source:'dashboard' } }), { ok:['Sent to Octopus', 'It will look into it and propose a fix', '#A58BFF'] }).then(() => this.setState({ reported:true })).catch(() => {}); },
+      retry:() => go('retry'), goHome:() => go('home'),
+      reload:() => { try { sessionStorage.removeItem('den.splash'); } catch (e) {} location.reload(); }, safeToggle:() => this.setState({ safe:!s.safe }), safeOpen:s.safe,
+      safeOpts: [['widgets', 'Home widgets'], ['modules', 'Extra modules (CRM, Team, Smart devices…)'], ['custom', 'Custom settings & shortcuts'], ['cache', 'Saved offline data']].map(([k, label]) => ({ label, track: s.so[k] ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: s.so[k] ? 'flex-end' : 'flex-start', toggle:() => this.setState(st => ({ so:{ ...st.so, [k]: st.so[k] ? 0 : 1 } })) })),
+      enterSafe:() => { if (s.so.cache) { try { Object.keys(localStorage).filter(k => k.startsWith('den.') && k !== 'den.currency').forEach(k => localStorage.removeItem(k)); } catch (e) {} }
+        this.say('Safe mode on', 'Turn it off from the banner when you’re done', '#FFB547'); go('safe'); },
+      detToggle:() => this.setState({ det:!s.det }), detOpen:s.det, detLabel: s.det ? 'Hide technical details' : 'Show technical details',
+      dn: restartedOk || (h && !down && !restarting) ? { title: restartedOk ? 'Octopus is back' : 'Octopus is running', sub: (held ? held + (held === 1 ? ' task is' : ' tasks are') + ' waiting in line. ' : '') + (services.some(x => x.state !== 'OK') ? 'Some parts below need a look — Octopus routes around what it can.' : 'Everything below is healthy.'), c:'#6FCF97', ring:'rgba(111,207,151,0.15)', bg:'rgba(111,207,151,0.06)', bd:'rgba(111,207,151,0.3)', anim:'none', btn: restartedOk ? 'Restarted' : 'Restart Octopus', btnBg:'rgba(111,207,151,0.16)', btnFg:'#6FCF97', spin:'none' }
+        : { title: h ? 'Octopus is offline' : 'Checking…', sub: 'The Den still works — you can browse, edit and queue tasks. Nothing runs until Octopus is back.' + (held ? ' ' + held + (held === 1 ? ' task is' : ' tasks are') + ' waiting.' : ''), c:'#FF5470', ring:'rgba(255,84,112,0.15)', bg:'rgba(255,84,112,0.06)', bd:'rgba(255,84,112,0.3)', anim:'denPulse 1.4s infinite', btn: restarting ? 'Restarting…' : 'Restart Octopus', btnBg:'#FF7B5C', btnFg:'#1A0A05', spin: restarting ? 'denSpin .8s linear infinite' : 'none' },
+      restart:() => this.restart(),
+      checked: h ? 'JUST NOW' : '…',
+      services, log: logLines.map(t => ({ t, c: /error|exception|traceback|failed/i.test(t) ? '#FF8FA2' : /warn/i.test(t) ? '#FFB547' : '#C2CDD8' })),
+      copyLog:() => copy(logLines.join('\n'), 'Log copied'), done:() => go('close'),
+      mt:{ title: s.step >= 4 ? 'The Den is back' : 'Restarting the Den', pct:s.pct + '%', finished: s.step >= 4,
+        sub: s.step >= 4 ? (s.slow ? 'This is taking longer than usual — check the Den on the Mac.' : 'All done. Octopus picked up where it left off.') : (s.waiting ? 'Waiting for ' + s.waiting + ' running task(s) to finish first. ' : '') + 'Your queue is paused and resumes on its own.',
+        note: s.step >= 4 ? 'Waiting tasks were let go again.' : 'This page updates itself when the Den is back.' },
+      steps: STEPS.map(([t, meta], i) => { const done = i < s.step || s.step >= 4, now = i === s.step && s.step < 4; return { t, meta, done, now, bg: done ? '#6FCF97' : 'transparent', bd: done ? '#6FCF97' : now ? '#FFB547' : 'rgba(255,255,255,0.2)', fg: done ? '#C2CDD8' : now ? '#FFFFFF' : '#6B7A8A' }; })
+    };
+  }
+  restart() { if (this.state.rst === 'run') return; this.setState({ rst:'run' });
+    D.api('/service/restart', { method:'POST', body:{ hard:false } }).catch(() => {}).finally(() => {
+      let gone = false;   // done once the service has gone away and answered again
+      const poll = (n) => { this.rt = setTimeout(() => fetch('/health', { cache:'no-store' }).then(r => r.ok).catch(() => false).then(up => { if (!up) gone = true;
+        if (up && gone) { D.invalidate('health'); D.refresh().catch(() => {}); this.setState({ rst:'ok' }); this.say('Octopus restarted', '', '#6FCF97'); this.props.onRecover && this.props.onRecover(); }
+        else if (n < 400) poll(n + 1); else this.setState({ rst:'idle' }); }), 1500); };
+      poll(0); }); }
+}
+</script>
+</body>
+</html>

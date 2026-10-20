@@ -1,8 +1,12 @@
-/* Pictures attached to a prompt: the thumbnail row above a box, and thumbnails in a sent message. */
+/* Pictures attached to a prompt: the thumbnail row above a box, and thumbnails in a sent message.
+   Also the preview sheet (preview.js) those and project documents open in. */
 
 .attach-strip { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 2px 2px; }
 .palette .attach-strip, .sheet .attach-strip { padding: 0 16px 10px; }
 .composer > .attach-strip { padding: 0 4px 8px; }
+.sheet__body--form .attach-strip, .section--backlog > .attach-strip { padding: 0; }
+.brow__detail .msg-you__imgs { margin-top: 0; }
+.brow__pics { display: inline-flex; align-items: center; gap: 2px; flex: none; margin-right: 4px; }
 
 .attach-thumb { position: relative; width: 56px; height: 56px; flex: none; border-radius: 11px; overflow: hidden; background: var(--surface-2, var(--surface)); border: 1px solid var(--line-strong); }
 .attach-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -14,6 +18,31 @@
 .attach-thumb__x { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: none; padding: 0; background: rgba(0, 0, 0, .62); color: #fff; font: 600 14px/1 var(--font-ui); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
 .msg-you__imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.msg-you__imgs a { display: block; line-height: 0; }
+.msg-you__img, .attach-thumb__open, .msg-made-img__open { display: block; line-height: 0; padding: 0; border: 0; background: none; cursor: zoom-in; color: inherit; }
+.attach-thumb__open { width: 100%; height: 100%; }
 .attach-thumb--sent { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; }
 .attach-thumb--wait { display: inline-block; opacity: .5; }
+/* A picture Octopus made, inside its reply bubble */
+.msg-made-img { display: block; max-width: 100%; max-height: 420px; border-radius: 12px; object-fit: contain; }
+.msg-made-img--wait { width: 240px; height: 240px; background: var(--line); opacity: .5; }
+
+/* ================================================================ preview sheet */
+.app--desk .sheet--preview { width: 960px; max-height: 88vh; margin-top: 5vh; }
+.sheet--preview .sheet__head { gap: 12px; }
+.sheet--preview .sheet__title { font-size: 18px; min-width: 0; }
+.preview { gap: 12px; }
+.preview__stage { display: flex; align-items: center; justify-content: center; min-height: 220px; border-radius: 14px; background: var(--surface-2, var(--surface)); border: 1px solid var(--line-soft); overflow: hidden; }
+.preview__stage--wait, .preview__stage--none { flex-direction: column; gap: 10px; padding: 24px; text-align: center; }
+.preview__stage--audio { min-height: 120px; padding: 16px; }
+.preview__stage--audio audio { width: 100%; }
+.preview__img { display: block; max-width: 100%; max-height: 68vh; object-fit: contain; }
+.preview__video { display: block; width: 100%; max-height: 68vh; background: #000; }
+.preview__stage--pdf { align-items: stretch; }
+.preview__pdf { display: block; width: 100%; height: 68vh; border: 0; background: #fff; }
+.preview__text { margin: 0; padding: 14px 16px; border-radius: 14px; background: var(--surface-2, var(--surface)); border: 1px solid var(--line-soft);
+  font: 400 12.5px/1.55 var(--font-mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
+.preview__ext { font: 800 15px/1 var(--font-mono); letter-spacing: .06em; padding: 18px 14px; border-radius: 12px; border: 1px solid var(--line-strong); color: var(--text-meta); }
+.preview__acts { flex-wrap: wrap; gap: 8px; align-items: center; }
+.preview__acts > .meta { flex: 1 0 auto; }            /* its own line on a phone rather than squeezed beside the buttons */
+.preview__acts .btn { display: inline-flex; align-items: center; gap: 6px; }
+.doc-row__acts { display: flex; align-items: center; }

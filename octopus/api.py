@@ -6,10 +6,13 @@ the rest of the API.
     POST /octopus/plans/{id}/run      [Run] on a plan card - optionally changing project / model / agent first
     POST /octopus/plans/{id}/cancel   [Cancel]
     GET  /routing, /routing/{id}      every request Octopus has routed, with what it decided and what came of it
-    GET  /octopus/overview            everything the Command Center shows, in one call
+    GET  /octopus/overview            everything the Den Home shows, in one call
     GET  /octopus/agents, /tools      the registries (agents.json, tools.json)
     GET  /octopus/providers           models grouped by provider, with availability, limits and usage
     PATCH /octopus/models/{id}        switch a model on or off
+    POST /octopus/models              add a model (octopus/models.py); PUT / DELETE /octopus/models/{id} change or remove one added here
+    POST /octopus/api-keys            another OpenAI / Gemini key (api_keys.py); DELETE /octopus/api-keys/{id},
+                                      POST /octopus/api-keys/{id}/default - each answers with the providers view
     GET  /tasks/{id}/detail, /diff    the task page: plan, steps, files, git, tests, approvals, activity
     GET  /octopus/images/{name}       a picture the Creative Agent made
     (voice)                           see octopus/voice
@@ -20,22 +23,25 @@ import json
 import re
 from pathlib import Path
 from typing import Any, Callable, Optional
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
+import accounts
+import api_keys
 import db
 import providers
 import router
 import uploads
 from assistant import capabilities as cap
-from octopus import execution, plan as planner, registry, service, voice
+from octopus import execution, models as model_admin, plan as planner, registry, service, sites, voice
 
 PROVIDER_LABELS = {
     "claude_code": ("Claude Code", "Runs on your Claude subscription, inside a project folder"),
-    "openai": ("OpenAI", "API key OPENAI_API_KEY"),
-    "gemini": ("Google Gemini", "API key GEMINI_API_KEY"),
+    "openai": ("OpenAI", "API keys - OPENAI_API_KEY and any added here"),
+    "gemini": ("Google Gemini", "API keys - GEMINI_API_KEY and any added here"),
     "tools": ("Personal assistant", "Email, calendar and reminders through your connected accounts"),
     "control": ("Octopus", "Instant commands about Octopus itself"),
 }
@@ -59,7 +65,54 @@ class RunPlanIn(BaseModel):
 
 
 class ModelPatchIn(BaseModel):
-    enabled: bool
+    # The model panel on the AI Providers page; only what is sent changes. Works for
+    # models.json models too (kept in settings["model_overrides"], see router / providers).
+    enabled: Optional[bool] = None
+    label: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    system_addon: Optional[str] = None
+    use_for: Optional[list[str]] = None
+    price_per_mtok: Optional[dict[str, float]] = None   # {input, output} USD per million tokens
+    context_tokens: Optional[int] = None
+    caps: Optional[list[str]] = None                     # shown on the page only
+
+
+class SiteIn(BaseModel):
+    url: str
+
+
+class PriceIn(BaseModel):
+    input: Optional[float] = None
+    output: Optional[float] = None
+
+
+class ModelIn(BaseModel):
+    # The Add a model form; octopus/models.py checks the values.
+    label: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    modality: Optional[str] = None
+    use_for: Optional[list[str]] = None
+    coding: Optional[int] = None
+    reasoning: Optional[int] = None
+    cost: Optional[int] = None
+    speed: Optional[int] = None
+    vision: Optional[bool] = None
+    web_search: Optional[bool] = None
+    context_tokens: Optional[int] = None
+    price_per_mtok: Optional[PriceIn] = None
+    price_per_image: Optional[float] = None
+    note: Optional[str] = None
+    enabled: Optional[bool] = None
+    base_url: Optional[str] = None      # OpenAI-compatible servers (Mistral, Ollama, ...)
+    api_key: Optional[str] = None       # their key - kept in api_keys.json, never in the model
+
+
+class ApiKeyIn(BaseModel):
+    provider: str
+    label: str
+    key: str
 
 
 class SpeakIn(BaseModel):
@@ -85,6 +138,18 @@ def _agent_label(agent_id: Optional[str]) -> Optional[str]:
 def _model_label(model_id: Optional[str]) -> Optional[str]:
     m = router.get_model(model_id)
     return m.get("label", model_id) if m else model_id
+
+
+def _ai_tool(task: dict[str, Any]) -> dict[str, Any]:
+    """Which AI tool ran (or will run) a task, and for Claude Code which Claude
+    account it is on: the one it started on, else its project's."""
+    m = router.get_model(task.get("model_id")) or {}
+    provider = m.get("provider")
+    out: dict[str, Any] = {"provider": provider, "label": m.get("label") or task.get("model_id"), "account": None}
+    if provider == "claude_code" or task.get("lane") == "agent":
+        acct = task.get("claude_account") or accounts.for_project(task["project_id"])
+        out["account"] = {"id": acct, "label": accounts.label(acct)}
+    return out
 
 
 def _progress(task: dict[str, Any]) -> Optional[dict[str, int]]:
@@ -138,12 +203,15 @@ def providers_view() -> dict[str, Any]:
         ready, why = providers.provider_ready(gid)
         g["ready"], g["not_ready_reason"] = ready, why
         g["available_models"] = sum(1 for m in g["models"] if m["available"])
+        if gid in api_keys.PROVIDERS:
+            g["keys"] = api_keys.public_list(gid)
     order = list(PROVIDER_LABELS)
     return {"providers": sorted(groups.values(), key=lambda g: order.index(g["id"]) if g["id"] in order else 99),
-            "claude_usage": db.get_setting("claude_usage"), "claude_window": planner.claude_window(),
+            "claude_usage": accounts.current(db.get_setting("claude_usage")), "claude_window": planner.claude_window(),
             "categories": {c: {"candidates": v.get("candidates", []), "optimize": v.get("optimize", "balanced"),
                                "transferable": v.get("transferable", True), "description": v.get("description", "")}
-                           for c, v in router.registry().get("routing", {}).get("categories", {}).items()}}
+                           for c, v in router.registry().get("routing", {}).get("categories", {}).items()},
+            "add": model_admin.choices()}
 
 
 def build_router(require_api_key: Callable) -> APIRouter:
@@ -229,17 +297,108 @@ def build_router(require_api_key: Callable) -> APIRouter:
     def providers_list():
         return providers_view()
 
+    # ------------------------------------------------- OpenAI / Gemini keys
+    @r.post("/octopus/api-keys")
+    def add_api_key(body: ApiKeyIn):
+        try:
+            api_keys.add(body.provider, body.label, body.key)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return providers_view()
+
+    @r.delete("/octopus/api-keys/{key_id}")
+    def remove_api_key(key_id: str):
+        try:
+            found = api_keys.remove(key_id)
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        if not found:
+            raise HTTPException(status_code=404, detail="No such key")
+        return providers_view()
+
+    @r.post("/octopus/api-keys/{key_id}/default")
+    def default_api_key(key_id: str):
+        try:
+            api_keys.make_default(key_id)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        return providers_view()
+
+    # ----------------------------------------------------------- learned sites
+    @r.get("/octopus/sites")
+    def sites_list():
+        return sites.list_sites()
+
+    @r.post("/octopus/sites/learn")
+    def sites_learn(body: SiteIn):
+        try:
+            url = sites.normalize_url(body.url)
+        except sites.SiteError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        host = urlsplit(url).hostname
+        task = db.add_task(planner.general_project()["id"], sites.learn_prompt(url), title=f"Learn site: {host}",
+                           source="dashboard", route_reason="You asked Octopus to learn a website", routed_by="sites")
+        return {"task": task, "url": url}
+
     @r.patch("/octopus/models/{model_id}")
     def patch_model(model_id: str, body: ModelPatchIn):
         if not router.get_model(model_id):
             raise HTTPException(status_code=404, detail="Unknown model")
         over = db.get_setting("model_overrides", {}) or {}
-        over[model_id] = {**over.get(model_id, {}), "enabled": body.enabled}
+        sent = body.model_dump(exclude_unset=True)
+        if "temperature" in sent and sent["temperature"] is not None and not 0 <= sent["temperature"] <= 2:
+            raise HTTPException(status_code=400, detail="temperature must be between 0 and 2")
+        if "max_tokens" in sent and sent["max_tokens"] is not None and not 1 <= sent["max_tokens"] <= 200000:
+            raise HTTPException(status_code=400, detail="max_tokens must be between 1 and 200000")
+        cats = router.registry().get("routing", {}).get("categories", {})
+        if sent.get("use_for") is not None and any(c not in cats for c in sent["use_for"]):
+            raise HTTPException(status_code=400, detail="use_for: unknown category")
+        cur = {**over.get(model_id, {})}
+        for k, v in sent.items():
+            if v is None or v == "":
+                cur.pop(k, None)          # null / "" clears it back to the default
+            else:
+                cur[k] = v.strip()[:2000] if isinstance(v, str) else v
+        over[model_id] = cur
         db.set_setting("model_overrides", over)
         for g in providers_view()["providers"]:
             for m in g["models"]:
                 if m["id"] == model_id:
                     return m
+
+    def _model_row(model_id: str) -> dict[str, Any]:
+        return next(m for g in providers_view()["providers"] for m in g["models"] if m["id"] == model_id)
+
+    @r.post("/octopus/models")
+    def add_model(body: ModelIn):
+        try:
+            fields = body.model_dump(exclude_unset=True)
+            key = (fields.pop("api_key", None) or "").strip()
+            m = model_admin.add(fields)
+            if key and m.get("provider") == "openai_compat":
+                api_keys.set_compat_key(m["id"], key)
+        except model_admin.ModelError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return _model_row(m["id"])
+
+    @r.put("/octopus/models/{model_id}")
+    def edit_model(model_id: str, body: ModelIn):
+        if not model_admin.is_custom(model_id):
+            raise HTTPException(status_code=409 if router.get_model(model_id) else 404,
+                                detail="That model comes from models.json - change it there" if router.get_model(model_id) else "Unknown model")
+        try:
+            model_admin.update(model_id, body.model_dump(exclude_unset=True))
+        except model_admin.ModelError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return _model_row(model_id)
+
+    @r.delete("/octopus/models/{model_id}")
+    def delete_model(model_id: str):
+        if not model_admin.is_custom(model_id):
+            raise HTTPException(status_code=409 if router.get_model(model_id) else 404,
+                                detail="That model comes from models.json - switch it off instead, or remove it there" if router.get_model(model_id) else "Unknown model")
+        model_admin.remove(model_id)
+        return {"ok": True}
 
     # ------------------------------------------------------------ task detail
     @r.get("/tasks/{task_id}/detail")
@@ -267,6 +426,7 @@ def build_router(require_api_key: Callable) -> APIRouter:
                         "is_general": db.is_general_project(project)} if project else None,
             "agent": {"id": task.get("agent_id"), "label": _agent_label(task.get("agent_id"))} if task.get("agent_id") else None,
             "model": {"id": task.get("model_id"), "label": _model_label(task.get("model_id"))},
+            "ai_tool": _ai_tool(task),
             "tools": [{"id": t, "label": (registry.get_tool(t) or {}).get("label", t)} for t in tool_ids],
             "routing": routing,
             "plan_steps": task.get("plan_steps") or [],
@@ -288,7 +448,28 @@ def build_router(require_api_key: Callable) -> APIRouter:
         project = db.get_project(task["project_id"])
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
+        if not db.has_folder(project):   # "git -C ''" would look at the service's own folder
+            return {"available": False, "diff": "", "note": "This project has no folder."}
         return execution.full_diff(task, project["path"])
+
+    @r.get("/tasks/{task_id}/file")
+    def task_file(task_id: int, path: str):
+        """A file the task created or changed (a PDF it wrote, say), for the preview sheet. Only paths the run
+        itself recorded, and only if they really sit inside the project folder."""
+        task = db.get_task(task_id)
+        project = db.get_project(task["project_id"]) if task else None
+        if not task or not project or not db.has_folder(project):
+            raise HTTPException(status_code=404, detail="Task not found")
+        recorded = {f.get("path") for f in (task.get("artifacts") or {}).get("files") or [] if f.get("status") != "D"}
+        if path not in recorded:
+            raise HTTPException(status_code=404, detail="That file isn't one this task changed")
+        root = Path(project["path"]).resolve()
+        file = (root / path).resolve()
+        if root not in file.parents or not file.is_file():
+            raise HTTPException(status_code=404, detail="That file is gone")
+        # Always sent as a download; the page shows it from a local copy, never as a page of its own.
+        return FileResponse(file, media_type="application/octet-stream", filename=file.name,
+                            headers={"X-Content-Type-Options": "nosniff"})
 
     # ----------------------------------------------------------------- voice
     # Voice is another way in and out of the same pipeline - see octopus/voice.
@@ -340,6 +521,12 @@ def build_router(require_api_key: Callable) -> APIRouter:
             except voice.VoiceError as e:
                 raise HTTPException(status_code=409, detail=str(e))
             extra = {}
+        # Your own spoken commands (Connections › Smart devices) run straight away; the rest goes to Octopus.
+        import den_connections
+        said, yes = den_connections.confirm_prefix(text)
+        own = await asyncio.to_thread(den_connections.run_command, said, yes)
+        if own:
+            return {**own, "transcript": text}
         try:
             outcome = await asyncio.to_thread(lambda: service.submit(text, source="voice", continue_recent=True, **extra))
         except service.ServiceError as e:

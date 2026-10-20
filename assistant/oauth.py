@@ -80,13 +80,16 @@ GOOGLE = OAuthProvider(
     service_scopes={
         "email": [_G + "gmail.readonly", _G + "gmail.compose"],
         "calendar": [_G + "calendar.events", _G + "calendar.freebusy"],
+        # drive.file: only files the Den creates itself (the backups) - never the rest of your Drive.
+        "drive": [_G + "drive.file"],
     },
     cost="free",
     cost_note="Gmail and Calendar APIs are free for personal use.",
-    extra_auth_params={"access_type": "offline", "prompt": "consent", "include_granted_scopes": "true"},
+    # select_account: always show Google's account chooser, so a second account can be connected.
+    extra_auth_params={"access_type": "offline", "prompt": "select_account consent", "include_granted_scopes": "true"},
     setup_steps=(
         "Open console.cloud.google.com and create a project (free - no billing needed).",
-        "Enable the Gmail API and the Google Calendar API.",
+        "Enable the Gmail API, the Google Calendar API and the Google Drive API.",
         "Configure the OAuth consent screen: External, add your own Google account as a test user.",
         "Credentials > Create credentials > OAuth client ID > Desktop app.",
         "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the launchd plist and restart the service.",
@@ -136,8 +139,11 @@ def _pkce() -> tuple[str, str]:
     return verifier, challenge
 
 
-def begin(provider: OAuthProvider, services: Optional[list[str]] = None) -> str:
-    """The consent-page URL to open in a browser."""
+def begin(provider: OAuthProvider, services: Optional[list[str]] = None, connection: Optional[str] = None,
+          login_hint: Optional[str] = None) -> str:
+    """The consent-page URL to open in a browser. connection: the account being
+    signed in again (kept with the state for connections.finish); login_hint:
+    its address, so the provider suggests it."""
     if not provider.implemented:
         raise OAuthError(provider.unavailable_note or f"{provider.label} isn't available yet")
     if not provider.configured():
@@ -149,7 +155,7 @@ def begin(provider: OAuthProvider, services: Optional[list[str]] = None) -> str:
     with _pending_lock:
         for k in [k for k, v in _pending.items() if now - v["at"] > STATE_TTL_SECONDS]:
             del _pending[k]
-        _pending[state] = {"provider": provider.id, "verifier": verifier, "at": now,
+        _pending[state] = {"provider": provider.id, "verifier": verifier, "at": now, "connection": connection,
                            "services": [s for s in (services or provider.services) if s in provider.services]}
     params = {
         "client_id": provider.client_id(), "redirect_uri": redirect_uri(provider.id),
@@ -157,6 +163,8 @@ def begin(provider: OAuthProvider, services: Optional[list[str]] = None) -> str:
         "state": state, "code_challenge": challenge, "code_challenge_method": "S256",
         **provider.extra_auth_params,
     }
+    if login_hint:
+        params["login_hint"] = login_hint
     return f"{provider.auth_url}?{urlencode(params)}"
 
 

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1480px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div data-tour="crm-tabs" style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+    </div>
+    <div style="flex:1 1 220px; min-width:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+      <input value="{{ q }}" onChange="{{ onQ }}" placeholder="{{ qHint }}" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+    </div>
+    <button onClick="{{ addNew }}" data-tour="crm-add" style="height:40px; display:flex; align-items:center; gap:7px; padding:0 15px; border-radius:12px; border:0; cursor:pointer; background:#FF7B5C; color:#1A0A05; font-size:13px; font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>{{ addLabel }}</button>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+    <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; margin-right:4px;">SORT BY</span>
+    <sc-for list="{{ sorts }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.pick }}" title="{{ o.tip }}" style="height:30px; display:flex; align-items:center; gap:5px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }}; border:1px solid {{ o.bd }};">{{ o.label }}<sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;">{{ o.arrow }}</span></sc-if></button></sc-for>
+    <span style="font-size:11.5px; color:#6B7A8A; margin-left:4px;">tap again to flip order</span>
+  </div>
+
+  <sc-if value="{{ isPipe }}" hint-placeholder-val="{{ true }}">
+    <div data-tour="crm-pipeline" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <div style="padding:12px 14px; border-radius:15px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(18px);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#93A1B0;">{{ k.label }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:21px; font-weight:600; color:{{ k.color }}; margin-top:4px;">{{ k.value }}</div></div>
+      </sc-for>
+    </div>
+    <div style="display:grid; grid-auto-flow:column; grid-auto-columns:minmax(250px, 1fr); gap:12px; overflow-x:auto; padding-bottom:6px;">
+      <sc-for list="{{ stages }}" as="c" hint-placeholder-count="5">
+        <div onDragOver="{{ c.over }}" onDrop="{{ c.drop }}" style="display:flex; flex-direction:column; gap:8px; min-height:380px; padding:10px; border-radius:18px; background:{{ c.bg }}; border:1px solid {{ c.bd }};">
+          <div style="display:flex; align-items:center; gap:8px; padding:2px 4px;"><span style="width:8px; height:8px; border-radius:50%; background:{{ c.color }};"></span><span style="font-size:13.5px; font-weight:700;">{{ c.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ c.count }}</span><span style="flex:1;"></span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8;">{{ c.total }}</span></div>
+          <sc-for list="{{ c.items }}" as="d" hint-placeholder-count="2">
+            <div draggable="true" onDragStart="{{ d.ds }}" onDragEnd="{{ d.de }}" onClick="{{ d.open }}" style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; cursor:grab; background:rgba(20,28,38,0.78); border:1px solid {{ d.bd }}; opacity:{{ d.op }};" style-hover="border-color:rgba(255,255,255,0.18);">
+              <div style="display:flex; align-items:center; gap:8px;"><span style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:{{ d.tint }}; color:{{ d.color }}; font-size:11.5px; font-weight:750;">{{ d.init }}</span><span style="flex:1; min-width:0; font-size:12.5px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.client }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600;">{{ d.value }}</span></div>
+              <div style="font-size:13.5px; font-weight:650; line-height:1.4;">{{ d.title }}</div>
+              <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:{{ d.nextC }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg>{{ d.next }}<span style="flex:1;"></span><sc-if value="{{ d.risk }}" hint-placeholder-val="{{ false }}"><span style="height:18px; padding:0 6px; display:flex; align-items:center; border-radius:5px; background:rgba(255,84,112,0.12); color:#FF8FA2; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600;">AT RISK</span></sc-if></div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ c.empty }}" hint-placeholder-val="{{ false }}"><div style="flex:1; min-height:80px; display:grid; place-items:center; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); font-size:12px; color:#6B7A8A;">Drop a deal here</div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isClients }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+      <div style="flex:1 1 480px; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <sc-for list="{{ clients }}" as="c" hint-placeholder-count="5">
+          <button onClick="{{ c.pick }}" style="display:flex; align-items:center; gap:12px; min-height:64px; padding:10px 14px; border:0; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; text-align:left; background:{{ c.bg }}; color:#E8EEF3;">
+            <span style="position:relative; flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:{{ c.tint }}; color:{{ c.color }}; font-size:14px; font-weight:750;">{{ c.init }}<span style="position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%; background:{{ c.health }}; box-shadow:0 0 0 2px #121922;"></span></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:14px; font-weight:650;">{{ c.name }}</span><span style="display:block; font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.contact }} · {{ c.deals }} open deals</span></span>
+            <span style="flex:none; text-align:right;"><span style="display:block; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600;">{{ c.value }}</span><span style="display:block; font-size:11px; color:{{ c.fuC }};">{{ c.fu }}</span></span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}"><div style="padding:36px; text-align:center; font-size:13px; color:#93A1B0;">No clients match “{{ q }}”.</div></sc-if>
+      </div>
+      <div style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px);">
+        <sc-if value="{{ clView }}" hint-placeholder-val="{{ true }}"><div style="display:flex; align-items:center; gap:12px;"><span style="flex:none; width:48px; height:48px; display:grid; place-items:center; border-radius:14px; background:{{ cl.tint }}; color:{{ cl.color }}; font-size:18px; font-weight:750;">{{ cl.init }}</span><div style="flex:1; min-width:0;"><div style="font-size:18px; font-weight:750;">{{ cl.name }}</div><div style="font-size:12.5px; color:#93A1B0;">{{ cl.contact }} · {{ cl.email }}</div><sc-if value="{{ cl.phone }}" hint-placeholder-val="{{ false }}"><div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ cl.phone }}</div></sc-if></div><button onClick="{{ clEdit }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; display:flex; align-items:center; gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>Edit</button></div></sc-if>
+        <sc-if value="{{ clEditing }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:16px; background:rgba(255,123,92,0.05); border:1px solid rgba(255,123,92,0.3);">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#FFA48C;">{{ clFormTitle }}</div>
+            <input value="{{ cf.name }}" onChange="{{ cfSet.name }}" placeholder="Company / client name" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; height:40px; font-size:15px; font-weight:650;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;"><input value="{{ cf.contact }}" onChange="{{ cfSet.contact }}" placeholder="Main contact" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1 1 140px;"><input value="{{ cf.phone }}" onChange="{{ cfSet.phone }}" placeholder="Phone" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1 1 120px;"></div>
+            <input value="{{ cf.email }}" onChange="{{ cfSet.email }}" placeholder="Email" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font-size:12px; color:#93A1B0;">Colour</span><sc-for list="{{ clSw }}" as="w" hint-placeholder-count="7"><button onClick="{{ w.pick }}" style="width:22px; height:22px; border-radius:50%; border:0; cursor:pointer; background:{{ w.c }}; box-shadow:{{ w.ring }};"></button></sc-for></div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font-size:12px; color:#93A1B0;">Health</span><div style="display:flex; gap:3px; padding:3px; border-radius:10px; background:rgba(255,255,255,0.04);"><sc-for list="{{ clHealth }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:26px; display:flex; align-items:center; gap:5px; padding:0 9px; border-radius:7px; border:0; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; background:{{ o.bg }}; color:{{ o.fg }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.c }};"></span>{{ o.label }}</button></sc-for></div></div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-if value="{{ clCanDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clDelete }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; border-color:rgba(255,84,112,0.3); color:#FF8FA2;">{{ clDelLabel }}</button></sc-if><span style="flex:1;"></span><button onClick="{{ clCancel }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Cancel</button><button onClick="{{ clSave }}" style="height:34px; padding:0 14px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05;">Save client</button></div>
+          </div>
+        </sc-if>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+          <sc-for list="{{ cl.facts }}" as="f" hint-placeholder-count="3"><div style="padding:10px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:600; color:{{ f.c }};">{{ f.v }}</div><div style="font-size:11px; color:#93A1B0;">{{ f.l }}</div></div></sc-for>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button onClick="{{ logFu }}" style="height:34px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:12.5px; font-weight:700;">Log follow-up</button>
+          <button onClick="{{ emailCl }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Email</button>
+          <button onClick="{{ briefCl }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; font-size:12.5px; font-weight:650; color:#C9B8FF;">Brief me</button>
+          <button onClick="{{ reportCl }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Report</button>
+        </div>
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">TIMELINE</div>
+        <sc-for list="{{ cl.timeline }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex; gap:10px;"><span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:{{ t.dot }};"></span><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:600;">{{ t.text }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ t.when }}</div></div></div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dealOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeDeal }}" style="position:fixed; inset:0; z-index:90; background:rgba(3,5,8,0.55); backdrop-filter:blur(6px); display:grid; place-items:center; padding:16px;">
+      <div onClick="{{ stop }}" style="width:100%; max-width:480px; display:flex; flex-direction:column; gap:14px; padding:20px; border-radius:22px; background:rgba(15,21,29,0.94); border:1px solid rgba(255,255,255,0.1); box-shadow:0 40px 90px -30px rgba(0,0,0,0.9); animation:denRise .2s cubic-bezier(.2,.7,.3,1);">
+        <div style="display:flex; align-items:flex-start; gap:10px;"><div style="flex:1; min-width:0;"><select ref="{{ fixSel }}" data-v="{{ deal.clientId }}" value="{{ deal.clientId }}" onChange="{{ deal.setClient }}" style="max-width:100%; border:0; padding:0; background:transparent; color:#93A1B0; font-family:inherit; font-size:12.5px; cursor:pointer; outline:none;"><sc-for list="{{ clientOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select><input value="{{ deal.title }}" onChange="{{ deal.setTitle }}" onBlur="{{ deal.save }}" style="display:block; width:100%; border:0; padding:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:19px; font-weight:750;"></div><input value="{{ deal.valueRaw }}" onChange="{{ deal.setValue }}" onBlur="{{ deal.save }}" placeholder="$0" style="width:120px; border:0; padding:0; outline:none; background:transparent; color:#E8EEF3; text-align:right; font-family:'JetBrains Mono', monospace; font-size:19px; font-weight:600;"></div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ dealStages }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.pick }}" style="height:32px; padding:0 12px; border-radius:9px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }}; border:1px solid {{ o.bd }};">{{ o.label }}</button></sc-for></div>
+        <div style="display:flex; flex-direction:column; gap:6px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); font-size:13px; line-height:1.6; color:#C2CDD8;"><div style="display:flex; align-items:center; gap:6px;"><b style="color:#E8EEF3; flex:none;">Next step:</b><input value="{{ deal.nextEdit }}" onChange="{{ deal.setNext }}" placeholder="{{ deal.next }}" style="flex:1; min-width:0; border:0; padding:0; outline:none; background:transparent; color:#C2CDD8; font-family:inherit; font-size:13px;"></div><div style="display:flex; align-items:flex-start; gap:6px;"><b style="color:#E8EEF3; flex:none;">Notes:</b><textarea value="{{ deal.note }}" onChange="{{ deal.setNote }}" onBlur="{{ deal.save }}" rows="2" placeholder="—" style="flex:1; min-width:0; resize:vertical; border:0; padding:0; outline:none; background:transparent; color:#C2CDD8; font-family:inherit; font-size:13px; line-height:1.6;"></textarea></div></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;"><button onClick="{{ openDealProject }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:13px; font-weight:600; color:#DCE4EB;">Open project</button><span style="flex:1;"></span><button onClick="{{ closeDeal }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:13px; font-weight:600; color:#DCE4EB;">Close</button><button onClick="{{ remind }}" style="height:38px; padding:0 14px; border-radius:11px; border:0; background:#FF7B5C; cursor:pointer; font-size:13px; font-weight:700; color:#1A0A05;">Remind me</button></div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+// The design's columns -> the Den's project stages ("Won" holds everything signed: active, on hold, done).
+const STG = [['lead', 'Lead', '#93A1B0', ['lead']], ['proposal', 'Proposal', C.blue, ['proposal']], ['nego', 'Negotiation', C.amber, ['negotiation']], ['won', 'Won', C.green, ['active', 'on_hold', 'done']], ['lost', 'Lost', C.err, ['lost']]];
+const COL_STAGE = { lead:'lead', proposal:'proposal', nego:'negotiation', won:'active', lost:'lost' };
+const colOf = stage => (STG.find(s => s[3].includes(stage)) || STG[0])[0];
+const WEIGHT = { lead:0.1, proposal:0.4, nego:0.7 };
+const money = (n, cur) => { const sym = (cur && cur !== 'USD' && D.CURRENCIES[cur]) || D.cur(); return sym + (n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'k' : Math.round(n)); };
+const clColor = c => c.color || D.PALETTE[(c.id || 0) % D.PALETTE.length];
+const plus = days => D.ymd(new Date(Date.now() + days * 864e5));
+
+class Component extends DCLogic {
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); if (this.props.routeId === 'new') setTimeout(() => this.newClient(), 400); }
+  componentWillUnmount() { clearTimeout(this.svT); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { tab:null, q:'', drag:null, over:null, deal:null, client:null, dealEdit:{}, ce:null };
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : D.say(t, s, c); }
+  newClient() { this.setState({ tab:'clients', clForm:{ isNew:true, name:'', contact:'', email:'', phone:'', color:'#45E0C8', health:'healthy' } }); }
+  renderVals() {
+    const s = this.state; const tab = s.tab || this.props.tab || 'crm'; const ql = s.q.trim().toLowerCase();
+    const clientsRaw = D.need('clients', '/clients', 30000) || [];
+    const contacts = D.need('contacts', '/contacts', 30000) || [];
+    const fus = (D.need('followups', '/followups?status=open', 20000) || []).filter(f => f.status === 'open');
+    const CL = Object.fromEntries(clientsRaw.map(c => [c.id, c]));
+    const projects = D.store.projects.filter(p => !p.is_general && !p.hidden && D.inArea(p));   // the workspace shown in the top-left menu
+    const nextFu = pred => fus.filter(pred).sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''))[0];
+    const fuText = f => !f ? '—' : f.overdue ? 'overdue ' + Math.abs(f.days_left) + 'd' : f.days_left === 0 ? 'today' : f.days_left === 1 ? 'tomorrow' : new Date(f.due_date + 'T00:00').toLocaleDateString([], { weekday:'short' });
+    const fuColor = f => !f ? '#6B7A8A' : f.overdue ? '#FF8FA2' : f.days_left === 0 ? C.amber : '#93A1B0';
+    // deals = projects
+    const all = projects.map(p => { const c = CL[p.client_id]; const f = nextFu(x => x.project_id === p.id);
+      const risk = p.health === 'at_risk' || p.health === 'off_track' || (f && f.overdue) || (p.schedule && p.schedule.due_state === 'overdue');
+      const ed = s.dealEdit[p.id] || {};
+      return { id:p.id, raw:p, c: c ? c.id : null, client: c ? c.name : 'No client', title: ed.title ?? p.name, valueN: +(ed.value ?? p.contract_value ?? 0) || 0, cur:p.currency || 'USD', st:colOf(p.stage || 'lead'),
+        next: f ? f.title + ' · ' + fuText(f) : p.due_date ? 'Due ' + new Date(p.due_date + 'T00:00').toLocaleDateString([], { day:'numeric', month:'short' }) : 'Add a next step', risk: risk ? 1 : 0, note: ed.note ?? (p.description || ''), at:p.updated_at || p.created_at, color: c ? clColor(c) : D.projColor(p) }; });
+    const deals = all.filter(d => !ql || (d.title + d.client).toLowerCase().includes(ql));
+    const deco = d => ({ ...d, init:d.client[0] || '?', tint:tint(d.color, 0.16), value:money(d.valueN, d.cur), nextC: d.risk ? '#FF8FA2' : '#93A1B0', bd: d.risk ? 'rgba(255,84,112,0.3)' : 'rgba(255,255,255,0.07)', op: s.drag === d.id ? '0.4' : '1',
+      ds:e => { try { e.dataTransfer.setData('text/plain', String(d.id)); } catch (x) {} this.setState({ drag:d.id }); }, de:() => this.setState({ drag:null, over:null }), open:() => this.setState({ deal:d.id }) });
+    const stages = STG.map(([id, label, color]) => { const items = this.sortDeals(deals.filter(d => d.st === id)).map(deco); const ov = s.drag && s.over === id;
+      return { label, color, count:String(items.length), total:money(items.reduce((a, d) => a + d.valueN, 0)), items, empty: !items.length, bg: ov ? 'rgba(255,123,92,0.07)' : 'rgba(255,255,255,0.02)', bd: ov ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.05)',
+        over:e => { e.preventDefault(); if (this.state.over !== id) this.setState({ over:id }); }, drop:e => { e.preventDefault(); this.move(this.state.drag, id); } }; });
+    const open = all.filter(d => !['won', 'lost'].includes(d.st));
+    const month = new Date().toISOString().slice(0, 7);
+    const wonMonth = all.filter(d => d.st === 'won' && ((d.raw.start_date || '').startsWith(month) || (d.raw.updated_at || '').startsWith(month)));
+    // clients
+    const healthOf = cid => { const ps = projects.filter(p => p.client_id === cid); return ps.some(p => p.health === 'off_track') ? C.err : ps.some(p => p.health === 'at_risk') || fus.some(f => f.client_id === cid && f.overdue) ? C.amber : C.green; };
+    const contactOf = cid => contacts.find(k => k.client_id === cid);
+    const clientList = clientsRaw.map(c => { const k = contactOf(c.id); const f = nextFu(x => x.client_id === c.id || projects.some(p => p.client_id === c.id && p.id === x.project_id));
+      return { id:c.id, raw:c, name:c.name, contact: k ? k.name : 'No contact yet', email: k && k.email ? k.email : '', color:clColor(c), health:({ healthy:C.green, watch:C.amber, at_risk:C.err })[c.health] || healthOf(c.id), phone: k && k.phone ? k.phone : '', fu:fuText(f), fuC:fuColor(f), fuObj:f }; });
+    const selId = s.client || (clientList[0] && clientList[0].id);
+    const sel = clientList.find(c => c.id === selId) || { id:null, name:'No clients yet', contact:'', email:'', color:'#93A1B0', fu:'—', fuC:'#6B7A8A', raw:{} };
+    const cds = all.filter(d => d.c === sel.id);
+    const feed = sel.id ? D.need('clfeed:' + sel.id, '/crm/feed?client_id=' + sel.id, 20000) : null;
+    const clients = this.sortClients(clientList.filter(c => !ql || (c.name + c.contact).toLowerCase().includes(ql)), all).map(c => { const ds = all.filter(d => d.c === c.id && !['won', 'lost'].includes(d.st));
+      return { ...c, init:c.name[0], tint:tint(c.color, 0.16), deals:String(ds.length), value:money(ds.reduce((a, d) => a + d.valueN, 0)), bg: selId === c.id ? 'rgba(255,123,92,0.08)' : 'transparent', pick:() => this.setState({ client:c.id, ce:null }) }; });
+    const dd = all.find(d => d.id === s.deal);
+    const SO = tab === 'crm' ? [['value', 'Value', 'Biggest deals first'], ['next', 'Next step', 'Soonest next step first'], ['risk', 'At risk', 'At-risk deals on top'], ['client', 'Client', 'A → Z'], ['recent', 'Recently added', 'Newest first']]
+      : [['name', 'Name', 'A → Z'], ['value', 'Open value', 'Highest open value first'], ['deals', 'Open deals', 'Most open deals first'], ['fu', 'Follow-up', 'Overdue and today first'], ['health', 'Health', 'Needs attention first']];
+    const cs = (s.sortBy || {})[tab] || { key: SO[0][0], dir:1 };
+    const timeline = [...((feed && feed.open) || []).map(f => ({ text:'Follow-up: ' + f.title, when: f.overdue ? 'overdue ' + Math.abs(f.days_left) + 'd' : 'due ' + f.due_date, dot: f.overdue ? C.err : C.amber })),
+      ...cds.map(d => ({ text:d.title + ' · ' + STG.find(x => x[0] === d.st)[1], when:d.next, dot:STG.find(x => x[0] === d.st)[2] })),
+      ...((feed && feed.items) || []).slice(0, 12).map(it => ({ text: it.type === 'activity' ? (it.kind_label || it.kind) + ': ' + D.firstLine(it.summary, 90) : it.type === 'followup' ? 'Done: ' + it.title : '#' + it.id + ' ' + it.title, when:D.ago(it.at, false), dot: it.type === 'task' ? C.coral : it.kind === 'stage' ? C.violet : C.blue }))];
+    return {
+      fixSel:this.fixSel,
+      sorts: SO.map(([key, label, tip]) => { const on = cs.key === key; return { label, tip, on, arrow: cs.dir === 1 ? '↓' : '↑', bg: on ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.08)',
+        pick:() => this.setState(st => ({ sortBy:{ ...(st.sortBy || {}), [tab]:{ key, dir: on ? -cs.dir : 1 } } })) }; }),
+      tabs:[['crm', 'Pipeline'], ['clients', 'Clients']].map(([id, label]) => ({ label, pick:() => { this.setState({ tab:id }); D.go(id); }, bg: tab === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: tab === id ? '#FFFFFF' : '#93A1B0' })),
+      isPipe: tab === 'crm', isClients: tab === 'clients', q:s.q, onQ:e => this.setState({ q:e.target.value }), qHint: tab === 'crm' ? 'Search deals or clients…' : 'Search clients…',
+      addLabel: tab === 'crm' ? 'New deal' : 'New client',
+      addNew:() => { if (tab !== 'crm') return this.newClient();
+        D.act(() => D.api('/projects', { method:'POST', body:{ name:'New deal', category:'work', stage:'lead' } }), { ok:['New deal', 'Name it and add its value', C.coral], reload:['projStates'] }).then(p => p && this.setState({ deal:p.id })); },
+      kpis:[{ label:'OPEN PIPELINE', value:money(open.reduce((a, d) => a + d.valueN, 0)), color:'#E8EEF3' }, { label:'WEIGHTED', value:money(Math.round(open.reduce((a, d) => a + d.valueN * (WEIGHT[d.st] || 0), 0))), color:C.teal },
+        { label:'WON · ' + new Date().toLocaleDateString('en', { month:'short' }).toUpperCase(), value:money(wonMonth.reduce((a, d) => a + d.valueN, 0)), color:C.green }, { label:'AT RISK', value:String(open.filter(d => d.risk).length), color:C.err }],
+      stages, clients, noClients: !!clientsRaw && !clients.length,
+      cl:{ ...sel, init:(sel.name || '?')[0], tint:tint(sel.color, 0.16), facts:[{ v:String(cds.filter(d => !['won', 'lost'].includes(d.st)).length), l:'open deals', c:'#E8EEF3' }, { v:money(cds.filter(d => d.st === 'won').reduce((a, d) => a + d.valueN, 0)), l:'won', c:C.green }, { v:sel.fu, l:'follow-up', c:sel.fuC }], timeline },
+      logFu:() => sel.id && D.act(() => D.api('/followups', { method:'POST', body:{ client_id:sel.id, title:'Check in with ' + (sel.contact !== 'No contact yet' ? sel.contact : sel.name), due_date:plus(7) } }), { ok:['Follow-up logged', sel.name + ' · next in 7 days', C.green], reload:['followups', 'clfeed:' + sel.id], core:false }),
+      emailCl:() => { if (!sel.id) return; if (!sel.email) return this.say('No email for ' + sel.name, 'Add a contact with an email first', C.amber);
+        const deals2 = cds.filter(d => !['won', 'lost'].includes(d.st)).map(d => d.title).join(', ');
+        D.act(() => D.api('/octopus', { method:'POST', body:{ text:'Draft an email to ' + sel.contact + ' <' + sel.email + '> from me: a short, friendly check-in' + (deals2 ? ' about ' + deals2 : '') + '. Save it as a draft, don’t send.', source:'dashboard' } }), { ok:['Drafting email', 'To ' + sel.email + ' — it waits in Gmail drafts', C.blue] }); },
+      briefCl:() => sel.id && D.act(() => D.api('/octopus', { method:'POST', body:{ text:'Write me a short brief on the client ' + sel.name + ': open deals, last contact, overdue follow-ups and what to do next. Save it to my Notes.', source:'dashboard' } }), { ok:['Brief for ' + sel.name, 'Open deals, last contact, overdue items → Notes', C.violet] }),
+      reportCl:() => { if (!sel.id) return; fetch('/crm/reports/client/' + sel.id + '?format=md', { headers:{ 'X-API-Key':D.key() } }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); }).then(b => { const u = URL.createObjectURL(b); const a = Object.assign(document.createElement('a'), { href:u, download:sel.name.replace(/[^a-z0-9]+/gi, '-') + '-report.md' }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 10000); }).catch(e => this.say('Couldn’t make the report', e.message, C.err)); },
+      ...this.clientForm(s, sel, contacts),
+      dealOpen: !!dd, closeDeal:() => { this.saveDeal(dd); this.setState({ deal:null }); }, stop:e => e.stopPropagation(),
+      deal: dd ? { ...deco(dd), clientId: String(dd.c || ''), valueRaw: String(dd.valueN || ''), nextEdit: s.dealNext ?? '',
+        setTitle:e => this.dealEdit(dd, { title:e.target.value }), setValue:e => this.dealEdit(dd, { value:e.target.value.replace(/[^0-9.]/g, '') }), setNote:e => this.dealEdit(dd, { note:e.target.value }), setNext:e => this.setState({ dealNext:e.target.value }),
+        setClient:e => D.act(() => D.api('/projects/' + dd.id, { method:'PATCH', body:{ client_id: e.target.value ? +e.target.value : null } }), { reload:['clients'] }), save:() => this.saveDeal(dd) }
+        : { client:'', title:'', value:'', next:'', note:'', clientId:'', valueRaw:'', nextEdit:'', setTitle:() => {}, setValue:() => {}, setNote:() => {}, setNext:() => {}, setClient:() => {}, save:() => {} },
+      clientOpts: [{ v:'', l:'No client' }, ...clientsRaw.map(c => ({ v:String(c.id), l:c.name }))],
+      dealStages: STG.map(([id, label, color]) => ({ label, pick:() => this.move(s.deal, id), bg: dd && dd.st === id ? tint(color, 0.16) : 'rgba(255,255,255,0.03)', fg: dd && dd.st === id ? '#FFFFFF' : '#A3B0BE', bd: dd && dd.st === id ? tint(color, 0.5) : 'rgba(255,255,255,0.08)' })),
+      openDealProject:() => { if (!dd) return; this.saveDeal(dd); this.setState({ deal:null }); D.go('projects', { route:[String(dd.id)] }); },
+      remind:() => { if (!dd) return; const t = (s.dealNext || '').trim() || dd.next;
+        D.act(() => D.api('/followups', { method:'POST', body:{ project_id:dd.id, title: t === 'Add a next step' ? 'Next step on ' + dd.title : t, due_date:plus(1) } }), { ok:['Reminder set', (t || dd.title) + ' · tomorrow', C.amber], reload:['followups'], core:false }).then(() => { this.saveDeal(dd); this.setState({ deal:null, dealNext:'' }); }); }
+    };
+  }
+  dealEdit(d, patch) { this.setState(st => ({ dealEdit:{ ...st.dealEdit, [d.id]:{ ...(st.dealEdit[d.id] || {}), ...patch } } })); }
+  saveDeal(d) { if (!d) return; const e = this.state.dealEdit[d.id]; if (!e) return; const body = {};
+    if (e.title !== undefined && e.title.trim()) body.name = e.title.trim(); if (e.value !== undefined) body.contract_value = e.value === '' ? null : +e.value; if (e.note !== undefined) body.description = e.note;
+    if (!Object.keys(body).length) return;
+    D.api('/projects/' + d.id, { method:'PATCH', body }).then(() => { D.refresh(); setTimeout(() => this.setState(st => { const x = { ...st.dealEdit }; delete x[d.id]; return { dealEdit:x }; }), 600); }).catch(err => this.say('Couldn’t save the deal', err.message, C.err)); }
+  // Client header + form (Den 2.1): name, main contact (the client's first contact), phone, email, colour, health.
+  clientForm(s, sel, contacts) {
+    const F = s.clForm; const SW = ['#7FB2FF', '#7FD1B9', '#E6C07B', '#A58BFF', '#FF7B5C', '#45E0C8', '#6FCF97'];
+    const HL = [['Healthy', '#6FCF97', 'healthy'], ['Watch', '#FFB547', 'watch'], ['At risk', '#FF5470', 'at_risk']];
+    const set = k => e => { const v = e.target.value; this.setState(st => ({ clForm:{ ...st.clForm, [k]:v } })); };
+    const main = sel.id ? contacts.find(k => k.client_id === sel.id) : null;
+    const save = async () => { const f = this.state.clForm; if (!f) return; const name = (f.name || '').trim(); if (!name) return this.say('Add a client name', '', C.amber);
+      try {
+        const body = { name, color:f.color || null, health:f.health || null };
+        const c = f.isNew ? await D.api('/clients', { method:'POST', body:{ ...body, status:'prospect' } }) : await D.api('/clients/' + f.id, { method:'PATCH', body });
+        const cid = (c && (c.client || c).id) || f.id;
+        const who = (f.contact || '').trim(); const kb = { name:who, email:(f.email || '').trim() || null, phone:(f.phone || '').trim() || null };
+        if (who && f.contactId) await D.api('/contacts/' + f.contactId, { method:'PATCH', body:kb });
+        else if (who) await D.api('/contacts', { method:'POST', body:{ ...kb, client_id:cid } });
+        D.invalidate('clients', 'contacts'); this.setState({ clForm:null, client:cid, confirmDelC:false }); this.say(f.isNew ? 'Client added' : 'Client updated', name, C.green);
+      } catch (err) { this.say('Couldn’t save the client', err.message, C.err); } };
+    return { clEditing: !!F, clView: !F && !!sel.id, clFormTitle: F && F.isNew ? 'NEW CLIENT' : 'EDIT CLIENT',
+      cf: F || { name:'', contact:'', email:'', phone:'' }, cfSet:{ name:set('name'), contact:set('contact'), email:set('email'), phone:set('phone') },
+      clSw: SW.map(c => ({ c, ring: F && F.color === c ? '0 0 0 2px #0B1016, 0 0 0 4px ' + c : 'none', pick:() => this.setState(st => ({ clForm:{ ...st.clForm, color:c } })) })),
+      clHealth: HL.map(([label, c, v]) => ({ label, c, bg: F && F.health === v ? 'rgba(255,255,255,0.1)' : 'transparent', fg: F && F.health === v ? '#FFFFFF' : '#93A1B0', pick:() => this.setState(st => ({ clForm:{ ...st.clForm, health:v } })) })),
+      clEdit:() => sel.id && this.setState({ clForm:{ id:sel.id, name:sel.name, contact: main ? main.name : '', contactId: main ? main.id : null, email: main ? main.email || '' : '', phone: main ? main.phone || '' : '', color:(sel.raw && sel.raw.color) || sel.color, health:(sel.raw && sel.raw.health) || '' }, confirmDelC:false }),
+      clCancel:() => this.setState({ clForm:null, confirmDelC:false }), clSave:save,
+      clCanDelete: !!F && !F.isNew, clDelLabel: s.confirmDelC ? 'Confirm delete' : 'Delete',
+      clDelete:() => { if (!s.confirmDelC) return this.setState({ confirmDelC:true });
+        D.act(() => D.api('/clients/' + F.id, { method:'DELETE' }), { ok:['Client deleted', (F.name || '') + ' — its contacts are kept', C.err], reload:['clients', 'contacts'], core:false })
+          .then(() => this.setState({ clForm:null, confirmDelC:false, client:null })).catch(() => this.setState({ confirmDelC:false })); } };
+  }
+  sortDeals(list) { const cs = (this.state.sortBy || {}).crm || { key:'value', dir:1 }; const d = cs.dir;
+    const f = { value:(a, b) => b.valueN - a.valueN, next:(a, b) => (b.risk - a.risk) || a.next.localeCompare(b.next), risk:(a, b) => b.risk - a.risk || b.valueN - a.valueN, client:(a, b) => a.client.localeCompare(b.client), recent:(a, b) => (b.raw.created_at || '').localeCompare(a.raw.created_at || '') }[cs.key] || (() => 0);
+    return [...list].sort((a, b) => f(a, b) * d); }
+  sortClients(list, deals) { const cs = (this.state.sortBy || {}).clients || { key:'name', dir:1 }; const d = cs.dir;
+    const open = id => deals.filter(x => x.c === id && !['won', 'lost'].includes(x.st)); const fuR = c => !c.fuObj ? 9 : c.fuObj.overdue ? 0 : c.fuObj.days_left === 0 ? 1 : 2; const hR = c => c.health === C.err ? 0 : c.health === C.amber ? 1 : 2;
+    const f = { name:(a, b) => a.name.localeCompare(b.name), value:(a, b) => open(b.id).reduce((x, y) => x + y.valueN, 0) - open(a.id).reduce((x, y) => x + y.valueN, 0), deals:(a, b) => open(b.id).length - open(a.id).length, fu:(a, b) => fuR(a) - fuR(b), health:(a, b) => hR(a) - hR(b) }[cs.key] || (() => 0);
+    return [...list].sort((a, b) => f(a, b) * d); }
+  move(id, col) { if (!id) return; const p = D.projectById(id); this.setState({ drag:null, over:null }); if (!p || colOf(p.stage || 'lead') === col) return;
+    const [, label, color] = STG.find(x => x[0] === col);
+    D.act(() => D.api('/projects/' + id, { method:'PATCH', body:{ stage:COL_STAGE[col] } }), { ok:[p.name + ' → ' + label, ((D.need('clients', '/clients') || []).find(c => c.id === p.client_id) || { name:'No client' }).name, color], reload:['projStates'] }); }
+}
+</script>
+</body>
+</html>

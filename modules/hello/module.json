@@ -1,0 +1,15 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "description": "Example module: a hello tool, a /hello command and a TASK_COMPLETED listener.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "greeting": {"type": "string", "default": "Hello"}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

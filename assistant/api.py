@@ -12,7 +12,7 @@ import html
 import json
 import os
 import time
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,6 +30,12 @@ _calendar_cache: dict[str, Any] = {"at": 0.0, "data": None}
 class ConnectIn(BaseModel):
     # Which services to ask Google for; omit for everything the provider offers.
     services: Optional[list[str]] = None
+    # The id of a connected account to sign in again (Reconnect); omit to add an account.
+    account: Optional[str] = None
+
+
+class DefaultIn(BaseModel):
+    service: str      # email | calendar
 
 
 class RouteIn(BaseModel):
@@ -62,11 +68,15 @@ def _planner_status() -> dict[str, Any]:
 
 
 def _provider_view(service: str) -> Optional[dict[str, Any]]:
-    """The connection that serves this service, for the Email / Calendar tabs."""
-    for st in connections.list_status():
-        if st["status"] in (connections.CONNECTED, connections.REAUTH) and service in st["services_granted"]:
-            return st
-    return None
+    """The account that serves this service by default, for the Email / Calendar tabs -
+    with every account connected for it under `accounts`."""
+    ids = connections.connected_with(service)
+    if not ids:
+        return None
+    st = connections.status_of(connections.provider_of(ids[0]))
+    mine = [a for a in st["accounts"] if a["id"] in ids]
+    first = next(a for a in mine if a["id"] == ids[0])
+    return {**st, "account": first["account"], "status": first["status"], "accounts": mine}
 
 
 def build_router(auth: Callable) -> APIRouter:
@@ -88,7 +98,7 @@ def build_router(auth: Callable) -> APIRouter:
         if provider_id not in oauth.PROVIDERS:
             raise HTTPException(status_code=404, detail="Unknown provider")
         try:
-            return connections.begin(provider_id, body.services)
+            return connections.begin(provider_id, body.services, reconnect=body.account)
         except oauth.OAuthError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
@@ -106,7 +116,7 @@ def build_router(auth: Callable) -> APIRouter:
                 f"<title>{html.escape(title)}</title><body style=\"font:16px -apple-system,system-ui,sans-serif;background:#0B1016;"
                 f"color:#e6edf3;display:grid;place-items:center;min-height:100vh;margin:0\"><div style='max-width:420px;padding:24px'>"
                 f"<h2 style='color:{colour}'>{html.escape(title)}</h2><p>{html.escape(body)}</p>"
-                f"<p><a style='color:#58a6ff' href='/dashboard#/personal/connections'>Back to the dashboard</a></p></div>",
+                f"<p><a style='color:#58a6ff' href='/dashboard#/connections'>Back to the dashboard</a></p></div>",
                 status_code=200 if ok else 400)
         if error:
             return page("Not connected", f"{label} said: {error}", False)
@@ -118,14 +128,26 @@ def build_router(auth: Callable) -> APIRouter:
             return page("Not connected", str(e), False)
         except Exception:
             return page("Not connected", "Something went wrong saving the connection. Check the service log.", False)
-        return RedirectResponse("/dashboard#/personal/connections", status_code=303)
+        _calendar_cache["data"] = None      # a new account's events belong on the Calendar tab now
+        return RedirectResponse("/dashboard#/connections", status_code=303)
 
-    @router.delete("/connections/{provider_id}", dependencies=dep)
-    def disconnect(provider_id: str):
-        if provider_id not in oauth.PROVIDERS:
-            raise HTTPException(status_code=404, detail="Unknown provider")
+    @router.delete("/connections/{conn_id}", dependencies=dep)
+    def disconnect(conn_id: str):
+        """Disconnect one account (its id from the status' `accounts`)."""
+        if not db.get_connection(conn_id) and conn_id not in oauth.PROVIDERS:
+            raise HTTPException(status_code=404, detail="No such account")
         _calendar_cache["data"] = None
-        return connections.disconnect(provider_id)
+        return connections.disconnect(conn_id)
+
+    @router.put("/connections/{conn_id}/default", dependencies=dep)
+    def make_default(conn_id: str, body: DefaultIn):
+        """Use this account for email / calendar when nobody says which."""
+        try:
+            connections.set_default(body.service, conn_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        _calendar_cache["data"] = None
+        return connections.list_status()
 
     # ------------------------------------------------------------ permissions
 
@@ -181,7 +203,8 @@ def build_router(auth: Callable) -> APIRouter:
             me = provider.account()
             today_end = midnight + timedelta(days=1)
             brief = [{"id": e["id"], "title": e["title"], "start": e["start"], "end": e["end"], "all_day": e["all_day"],
-                      "location": e.get("location"), "link": e.get("link"),
+                      "location": e.get("location"), "link": e.get("link"), "recurring": bool(e.get("recurring")),
+                      "account": e.get("account"),
                       "attendees": [a["name"] or a["email"] for a in e["attendees"] if not a["self"] and a["email"] != me]}
                      for e in events]
             data = {"today": [e for e in brief if timeutil.parse_iso(e["start"]) < today_end],
@@ -195,6 +218,23 @@ def build_router(auth: Callable) -> APIRouter:
     @router.get("/reminders", dependencies=dep)
     def reminders():
         return db.list_reminders(["pending", "fired"], 60)
+
+    class ReminderIn(BaseModel):
+        text: str
+        # When to push it: an ISO time (with or without zone - none = local time).
+        due_at: str
+
+    @router.post("/reminders", dependencies=dep)
+    def add_reminder(body: ReminderIn):
+        """The Reminders panel's "Remind me to..." box (Octopus adds them from chat too)."""
+        text = body.text.strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Say what to remind you about")
+        try:
+            due = timeutil.parse_iso(body.due_at)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="due_at must be an ISO date and time")
+        return db.add_reminder(text, due.astimezone(timezone.utc).isoformat())
 
     @router.delete("/reminders/{reminder_id}", dependencies=dep)
     def cancel_reminder(reminder_id: int):

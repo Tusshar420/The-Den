@@ -33,6 +33,34 @@ export function usageSummary(u) {
 // prompt. Approval rows carry it as task_title.
 export const taskName = t => (t && (t.title || t.task_title || t.prompt)) || '';
 
+// How far along a task is. Its plan (Claude's TodoWrite list) when it wrote one, a step in progress
+// counting half; otherwise, while running, time so far against how long runs in its project usually
+// take (typical_ms, from /tasks) - eased from 80% so a long run slows down and a guess never says 100.
+// null = nothing to go on (queued, no history, paused mid-guess).
+// Rough time left as text ("~2m left"), or '' when it's too early to say.
+const timeLeft = sec => (sec < 45 ? '<1m left' : sec < 90 ? '~1m left' : sec < 3600 ? `~${Math.round(sec / 60)}m left` : `~${Math.round(sec / 360) / 10}h left`);
+
+export function taskProgress(t, now = Date.now()) {
+  const steps = (t && t.plan_steps) || [];
+  if (steps.length) {
+    const done = steps.filter(s => s.status === 'completed').length;
+    const doing = steps.some(s => s.status === 'in_progress') ? 0.5 : 0;
+    const percent = t.status === 'done' ? 100 : Math.round(100 * Math.min(done + doing, steps.length) / steps.length);
+    const cur = steps.find(s => s.status === 'in_progress');
+    // With a plan, pace so far projects the rest - but only once a few steps have given it something to go on.
+    const spent = t.started_at ? secondsSince(t.started_at, now) : 0;
+    const left = t.status === 'running' && !t.paused && done >= 2 && percent > 0 && percent < 100 ? ' · ' + timeLeft(spent * (100 - percent) / percent) : '';
+    return { percent, label: `${percent}% · ${done}/${steps.length}${left}`, estimate: false,
+      title: `${done} of ${steps.length} plan steps done` + (cur ? ` - now: ${cur.content}` : '') };
+  }
+  if (!t || t.status !== 'running' || t.paused || !t.started_at || !t.typical_ms) return null;
+  const r = secondsSince(t.started_at, now) * 1000 / t.typical_ms;
+  const percent = Math.round(r < 0.8 ? 100 * r : 95 - 15 * Math.exp(-(r - 0.8) / 0.4));
+  const remaining = t.typical_ms / 1000 - r * t.typical_ms / 1000;
+  return { percent, label: '~' + percent + '%' + (r < 1 ? ' · ' + timeLeft(remaining) : ' · running long'), estimate: true,
+    title: `Estimate - no plan yet. Runs here usually take about ${Math.max(1, Math.round(t.typical_ms / 60000))}m` };
+}
+
 // ---------------------------------------------------------------- task status
 // Backend statuses: queued | running | done | error | needs_review | rate_limited | cancelled
 // plus the UI-only 'approval' (a task with a pending row in /approvals).
@@ -98,6 +126,33 @@ export const PERMISSION_MODES = [
 export const modeInfo = id => PERMISSION_MODES.find(m => m.id === (id || 'acceptEdits')) || PERMISSION_MODES[0];
 // The mode a chat last ran under - what its next reply starts on.
 export const threadMode = tasks => ((tasks || []).slice().reverse().find(t => t.permission_mode) || {}).permission_mode || null;
+
+// Who actually ran a chat / queue item, from what each of its tasks recorded (model_id, claude_account) -
+// nothing is guessed. `msgs` are the chat's tasks. Only tasks that started count. Account applies to Claude Code
+// (agent lane) tasks only: api-lane models don't use a Claude account. `unrecorded` = a Claude Code task ran but
+// no account was stored (history from before accounts were tracked).
+export function attribution(msgs) {
+  const models = [], accounts = [];
+  let unrecorded = false, claudeRan = false;
+  for (const m of msgs || []) {
+    if (!m.started_at) continue;
+    if (m.model_id && !models.includes(m.model_id)) models.push(m.model_id);
+    if ((m.lane || 'agent') !== 'agent') continue;
+    claudeRan = true;
+    if (!m.claude_account) unrecorded = true;
+    else if (!accounts.includes(m.claude_account)) accounts.push(m.claude_account);
+  }
+  return { models, accounts, unrecorded, claudeRan };
+}
+
+// "Claude Code · GPT-6 Luna" / "Account: Work, Personal" - modelName / accountName turn ids into labels.
+export function attributionParts(a, modelName, accountName) {
+  const out = { models: a.models.map(modelName).join(' · '), account: '' };
+  if (a.accounts.length) out.account = (a.accounts.length > 1 ? 'Accounts: ' : 'Account: ') + a.accounts.map(accountName).join(', ')
+    + (a.unrecorded ? ' + unrecorded' : '');
+  else if (a.claudeRan) out.account = 'Account not recorded';
+  return out;
+}
 
 // Chat reply footer: "Done · 2m ago · GPT-6 Luna · 2.1s · <$0.01" (missing values are dropped)
 export function replyFooter(task, modelLabel, now) {

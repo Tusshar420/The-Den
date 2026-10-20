@@ -10,10 +10,10 @@ Shapes (plain dicts, so they go straight into JSON):
             message_id_header?, references?}
   event    {id, title, start, end (ISO, aware), all_day, location,
             description, attendees[{email, name, status}], organizer,
-            link, meet_link}
+            link, meet_link, recurring}
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 
 
@@ -43,8 +43,8 @@ class EmailProvider:
         raise NotImplementedError
 
     def send(self, to: list[str], subject: str, body: str, cc: Optional[list[str]] = None,
-             reply_to_message_id: Optional[str] = None) -> dict[str, Any]:
-        """-> {message_id, thread_id}"""
+             reply_to_message_id: Optional[str] = None, html: Optional[str] = None) -> dict[str, Any]:
+        """-> {message_id, thread_id}. `html` adds an HTML alternative to the plain-text body."""
         raise NotImplementedError
 
     def send_draft(self, draft_id: str) -> dict[str, Any]:
@@ -71,7 +71,10 @@ class CalendarProvider:
 
     def create_event(self, title: str, start: datetime, end: datetime, attendees: Optional[list[str]] = None,
                      description: Optional[str] = None, location: Optional[str] = None,
-                     all_day: bool = False, add_video_call: bool = False) -> dict[str, Any]:
+                     all_day: bool = False, add_video_call: bool = False, repeat_days: Optional[int] = None,
+                     repeat_until: Optional[date] = None) -> dict[str, Any]:
+        """repeat_days: repeat every that many days from start (None = once),
+        up to and including the local day repeat_until (None = no end)."""
         raise NotImplementedError
 
     def update_event(self, event_id: str, changes: dict[str, Any], notify: bool) -> dict[str, Any]:

@@ -3,8 +3,12 @@
 // tools.json - edit and save, no restart.
 
 import { esc } from '../ui.js';
+import { tourSettings } from './tour.js';
 import { accountsSection } from './accounts.js';
 import { timelineSettings } from './calendar.js';
+import { backupSection } from './backup.js';
+import { sitesSection } from './sites.js';
+import { SHORTCUTS, FIXED, bindingOf, isDefault, label } from '../shortcuts.js';
 
 const AUTONOMY = [
   ['assist', 'Assist', 'Investigates and proposes. Coding tasks run read-only, and anything that would change something asks first.'],
@@ -40,6 +44,18 @@ function voiceSection() {
   return `<div class="set-line"><span class="meta">How Octopus listens and speaks, and which voice reads which language.</span><button class="btn btn--sm" data-action="go" data-view="voice">Voice settings</button></div>`;
 }
 
+function shortcutsSection(c) {
+  const rec = c.ui.shortcutRec, msg = c.ui.shortcutMsg;
+  const rows = SHORTCUTS.map(([id, what]) => `<div class="key-row set-key${rec === id ? ' is-rec' : ''}" data-key="sk-${id}"><span>${esc(what)}</span>
+    <span class="set-key__act">${rec === id ? '<span class="kbd kbd--rec">Press keys… · Esc cancels · ⌫ turns off</span>' : `<span class="kbd">${esc(label(bindingOf(id)))}</span>`}
+      ${isDefault(id) ? '' : `<button class="btn btn--sm btn--ghost" data-action="shortcutReset" data-id="${id}">Reset</button>`}
+      <button class="btn btn--sm" data-action="shortcutRecord" data-id="${id}">${rec === id ? 'Cancel' : 'Change'}</button></span></div>`).join('');
+  return `<span class="meta prov-note">Click Change, then press the keys you want. Saved on this device.</span>
+    ${msg ? `<span class="meta set-key__msg">${esc(msg)}</span>` : ''}
+    <div class="list">${rows}</div>
+    <div class="set-group"><span class="set-group__t">Built in</span>${FIXED.map(([k, what]) => `<div class="key-row"><span>${esc(what)}</span><span class="kbd">${esc(k.includes('+') || k === 'Escape' ? label(k) : k)}</span></div>`).join('')}</div>`;
+}
+
 function agentsSection(c) {
   const agents = c.d.octo.agents;
   if (!agents.length) return '<div class="empty">Loading…</div>';
@@ -62,22 +78,29 @@ function toolsSection(c) {
   </div>`).join('')}</div>`;
 }
 
+const TABS = [['general', 'General'], ['octopus', 'Octopus'], ['sites', 'Sites'], ['agents', 'Agents & tools'], ['schedule', 'Calendar & voice'], ['shortcuts', 'Shortcuts'], ['backup', 'Backup']];
+
+const sec = (key, title, body, extra = '') => `<section class="section" data-key="${key}"><div class="section__head"><span class="section__title">${title}</span>${extra}</div>${body}</section>`;
+
 export function settings(c) {
   const s = c.d.settings || {};
+  const tab = TABS.some(t => t[0] === c.ui.settingsTab) ? c.ui.settingsTab : 'general';
+  const panes = {
+    general: sec('set-account', 'Claude account', accountsSection(c)) + sec('set-tour', 'Tour and help', tourSettings()),
+    octopus: sec('set-autonomy', 'Autonomy', `<span class="meta prov-note">How much Octopus may do without asking. Dangerous things - deploying, deleting, touching production, sending email - stay behind your approval unless you set them to Allow below.</span>
+      ${radio('setAutonomy', s.autonomy || 'execute', AUTONOMY)}`)
+      + sec('set-review', 'Plan preview', radio('setPlanReview', s.plan_review || 'risky', PLAN_REVIEW))
+      + sec('set-perms', 'Permissions', `<span class="meta prov-note">What each kind of action is allowed to do. Claude Code's individual commands are still approved one by one on your phone; these say what a whole kind of action may do.</span>
+      ${permissions(c)}`),
+    sites: sec('set-sites', 'Learn a website', sitesSection(c)),
+    agents: sec('set-agents', 'Agents', agentsSection(c), '<span class="section__note">agents.json</span>')
+      + sec('set-tools', 'Tools', `<span class="meta prov-note">A task is only given the tools its request needs - never every tool.</span>${toolsSection(c)}`, '<span class="section__note">tools.json</span>'),
+    schedule: sec('set-calendar', 'Calendar and briefing', timelineSettings(c)) + sec('set-voice', 'Voice', voiceSection()),
+    shortcuts: sec('set-keys', 'Shortcuts', shortcutsSection(c), '<button class="btn btn--sm btn--ghost" data-action="shortcutResetAll">Reset all</button>'),
+    backup: sec('set-backup', 'Export and backup', backupSection(c)),
+  };
   return `<div class="page page--narrow page--settings" data-key="page-settings">
-    <section class="section" data-key="set-account"><div class="section__head"><span class="section__title">Claude account</span></div>${accountsSection(c)}</section>
-    <section class="section" data-key="set-autonomy"><div class="section__head"><span class="section__title">Autonomy</span></div>
-      <span class="meta prov-note">How much Octopus may do without asking. Dangerous things - deploying, deleting, touching production, sending email - stay behind your approval unless you set them to Allow below.</span>
-      ${radio('setAutonomy', s.autonomy || 'execute', AUTONOMY)}</section>
-    <section class="section" data-key="set-review"><div class="section__head"><span class="section__title">Plan preview</span></div>
-      ${radio('setPlanReview', s.plan_review || 'risky', PLAN_REVIEW)}</section>
-    <section class="section" data-key="set-perms"><div class="section__head"><span class="section__title">Permissions</span></div>
-      <span class="meta prov-note">What each kind of action is allowed to do. Claude Code's individual commands are still approved one by one on your phone; these say what a whole kind of action may do.</span>
-      ${permissions(c)}</section>
-    <section class="section" data-key="set-calendar"><div class="section__head"><span class="section__title">Calendar and briefing</span></div>${timelineSettings(c)}</section>
-    <section class="section" data-key="set-voice"><div class="section__head"><span class="section__title">Voice</span></div>${voiceSection()}</section>
-    <section class="section" data-key="set-agents"><div class="section__head"><span class="section__title">Agents</span><span class="section__note">agents.json</span></div>${agentsSection(c)}</section>
-    <section class="section" data-key="set-tools"><div class="section__head"><span class="section__title">Tools</span><span class="section__note">tools.json</span></div>
-      <span class="meta prov-note">A task is only given the tools its request needs - never every tool.</span>${toolsSection(c)}</section>
+    <div class="segmented set-tabs" role="tablist" data-noswipe>${TABS.map(([k, l]) => `<button class="segmented__opt${tab === k ? ' is-on' : ''}" role="tab" aria-selected="${tab === k}" data-action="settingsTab" data-tab="${k}">${l}</button>`).join('')}</div>
+    ${panes[tab]}
   </div>`;
 }

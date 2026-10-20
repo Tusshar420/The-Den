@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:18px; max-width:1480px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <div style="flex:1 1 260px; min-width:0; height:42px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:13px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search projects, branches, folders…" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:15px;">
+      </div>
+      <div style="display:flex; gap:4px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); overflow-x:auto;">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+          <button onClick="{{ f.pick }}" style="flex:none; height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:600; background:{{ f.bg }}; color:{{ f.fg }};">{{ f.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ f.cc }};">{{ f.count }}</span></button>
+        </sc-for>
+      </div>
+      <button onClick="{{ newProject }}" style="height:42px; display:flex; align-items:center; gap:8px; padding:0 16px; border-radius:13px; border:0; cursor:pointer; background:#FF7B5C; color:#1A0A05; font-size:13.5px; font-weight:700; box-shadow:0 10px 24px -12px rgba(255,123,92,0.7);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New project</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px;">
+      <sc-for list="{{ projects }}" as="p" hint-placeholder-count="6">
+        <article onClick="{{ p.open }}" style="position:relative; z-index:{{ p.z }}; display:flex; flex-direction:column; gap:14px; padding:16px; border-radius:20px; cursor:pointer; background:rgba(20,28,38,0.45); border:1px solid {{ p.bd }}; backdrop-filter:blur(20px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); animation:denRise .3s cubic-bezier(.2,.7,.3,1); transition:border-color .15s, transform .15s;" style-hover="border-color:rgba(255,255,255,0.16); transform:translateY(-2px);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="flex:none; width:40px; height:40px; display:grid; place-items:center; border-radius:12px; background:{{ p.tint }}; color:{{ p.color }}; font-size:16px; font-weight:750;">{{ p.initial }}</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ p.name }}</div>
+              <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ p.path }}</div>
+            </div>
+            <div style="position:relative; flex:none;">
+            <button onClick="{{ p.menuToggle }}" title="Project actions" style="width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:0; background:transparent; cursor:pointer; color:#93A1B0;" style-hover="background:rgba(255,255,255,0.06); color:#E8EEF3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round;"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button>
+            <sc-if value="{{ p.menuOpen }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ p.menuClose }}" style="position:fixed; inset:-100vh -100vw; z-index:30; cursor:default;"></div>
+              <div onClick="{{ stop }}" style="position:absolute; top:calc(100% + 6px); right:0; z-index:31; width:220px; padding:6px; border-radius:14px; background:rgba(15,21,29,0.96); border:1px solid rgba(255,255,255,0.1); box-shadow:0 24px 60px -20px rgba(0,0,0,0.85); cursor:default; animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+                <sc-for list="{{ p.actions }}" as="a" hint-placeholder-count="5"><button onClick="{{ a.run }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; border:0; background:transparent; cursor:pointer; text-align:left; font-size:13px; font-weight:600; color:{{ a.fg }};" style-hover="background:rgba(255,255,255,0.05);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg><span style="flex:1;">{{ a.label }}</span></button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+            <button onClick="{{ p.pin }}" title="{{ p.pinTitle }}" style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:0; background:transparent; cursor:pointer; color:{{ p.pinFg }};" style-hover="background:rgba(255,255,255,0.06);"><svg width="16" height="16" viewBox="0 0 24 24" fill="{{ p.pinFill }}" stroke="currentColor" style="stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"></path></svg></button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="height:24px; display:flex; align-items:center; gap:6px; padding:0 9px; border-radius:7px; background:{{ p.stBg }}; color:{{ p.stFg }}; font-family:'JetBrains Mono', monospace; font-size:10.5px; font-weight:600; letter-spacing:.06em;"><span style="width:6px; height:6px; border-radius:50%; background:{{ p.stFg }};"></span>{{ p.stLabel }}</span>
+            <span style="height:24px; display:flex; align-items:center; gap:5px; padding:0 8px; border-radius:7px; background:rgba(255,255,255,0.04); font-family:'JetBrains Mono', monospace; font-size:11px; color:#C2CDD8;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round;"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 9a9 9 0 0 1-9 9"></path></svg>{{ p.branch }}</span>
+          </div>
+          <sc-if value="{{ p.running }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="font-size:12.5px; color:#C2CDD8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ p.now }}</div>
+              <div style="height:4px; border-radius:4px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ p.progress }}; background:#45E0C8; border-radius:4px;"></div></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ p.notRunning }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12.5px; line-height:1.5; color:#93A1B0; text-wrap:pretty;">{{ p.desc }}</div>
+          </sc-if>
+          <div style="display:flex; align-items:center; gap:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.05); font-size:12px; color:#93A1B0;">
+            <span><b style="font-family:'JetBrains Mono', monospace; color:#E8EEF3; font-weight:600;">{{ p.queued }}</b> queued</span>
+            <span><b style="font-family:'JetBrains Mono', monospace; color:#E8EEF3; font-weight:600;">{{ p.done }}</b> done</span>
+            <span style="flex:1;"></span>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ p.last }}</span>
+          </div>
+        </article>
+      </sc-for>
+      <input ref="{{ projDirRef }}" type="file" webkitdirectory="" directory="" multiple="{{ true }}" onChange="{{ onProjDir }}" style="display:none;">
+      <button onClick="{{ newProject }}" style="min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:20px; cursor:pointer; background:transparent; border:1px dashed rgba(255,255,255,0.14); color:#93A1B0; font-size:13.5px; font-weight:600;" style-hover="border-color:rgba(255,123,92,0.45); color:#FFA48C;">
+        <span style="width:40px; height:40px; display:grid; place-items:center; border-radius:12px; border:1px dashed currentColor;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg></span>
+        Add a project folder
+        <span style="font-size:12px; font-weight:400; color:#6B7A8A;">Point Octopus at any repo on this Mac</span>
+      </button>
+    </div>
+    <sc-if value="{{ hiddenN }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ toggleHidden }}" style="align-self:center; height:30px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.08); background:transparent; cursor:pointer; font-size:12px; font-weight:600; color:#93A1B0;">{{ hiddenLabel }}</button>
+    </sc-if>
+    <sc-if value="{{ listEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:40px 20px; border-radius:20px; border:1px dashed rgba(255,255,255,0.1); text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px;">
+        <div style="font-size:16px; font-weight:700;">No projects match</div>
+        <div style="font-size:13px; color:#93A1B0;">Try another filter, or clear the search.</div>
+        <button onClick="{{ clearFilters }}" style="margin-top:6px; height:36px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:13px; font-weight:600; color:#E8EEF3;">Clear filters</button>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <section ref="{{ hdrRef }}" style="position:relative; z-index:20; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <button onClick="{{ back }}" title="All projects" style="flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button>
+        <span style="flex:none; width:44px; height:44px; display:grid; place-items:center; border-radius:13px; background:{{ cur.tint }}; color:{{ cur.color }}; font-size:18px; font-weight:750;">{{ cur.initial }}</span>
+        <div style="flex:1 1 200px; min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px;"><h1 style="margin:0; font-size:22px; font-weight:750; letter-spacing:-.015em;">{{ cur.name }}</h1><span style="height:22px; display:flex; align-items:center; gap:6px; padding:0 8px; border-radius:7px; background:{{ cur.stBg }}; color:{{ cur.stFg }}; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; letter-spacing:.06em;">{{ cur.stLabel }}</span></div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;"><span>{{ cur.path }}</span><span style="color:#4A5866;">·</span><span>⎇ {{ cur.branch }}</span><span style="color:#4A5866;">·</span><span>{{ cur.model }}</span></div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap;">
+          <sc-for list="{{ inlineActs }}" as="a" hint-placeholder-count="3">
+            <button onClick="{{ a.run }}" data-tip="{{ a.label }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 12px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; white-space:nowrap; color:{{ a.fg }}; border-color:{{ a.bd }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg><sc-if value="{{ a.showLabel }}" hint-placeholder-val="{{ true }}"><span>{{ a.label }}</span></sc-if></button>
+          </sc-for>
+          <button onClick="{{ addTask }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:11px; border:0; cursor:pointer; background:#FF7B5C; color:#1A0A05; font-size:13px; font-weight:700; white-space:nowrap;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New task</button>
+          <sc-if value="{{ hasMoreActs }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative; flex:none;">
+            <button onClick="{{ curMenuToggle }}" title="More actions" style="width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:{{ moreBg }}; cursor:pointer; color:#C2CDD8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round;"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button>
+            <sc-if value="{{ curMenuOpen }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ curMenuClose }}" style="position:fixed; inset:-100vh -100vw; z-index:30;"></div>
+              <div style="position:absolute; top:calc(100% + 6px); right:0; z-index:31; width:220px; padding:6px; border-radius:14px; background:rgba(15,21,29,0.97); border:1px solid rgba(255,255,255,0.1); box-shadow:0 24px 60px -20px rgba(0,0,0,0.85); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+                <sc-for list="{{ menuActs }}" as="a" hint-placeholder-count="3"><button onClick="{{ a.run }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px; border:0; background:transparent; cursor:pointer; text-align:left; font-size:13px; font-weight:600; color:{{ a.fg }};" style-hover="background:rgba(255,255,255,0.05);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg><span style="flex:1;">{{ a.label }}</span></button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:flex; gap:3px; overflow-x:auto; scrollbar-width:none;">
+        <sc-for list="{{ stagePath }}" as="p" hint-placeholder-count="5">
+          <button onClick="{{ p.pick }}" title="{{ p.tip }}" style="flex:1 0 128px; height:38px; display:flex; align-items:center; justify-content:center; gap:7px; padding:0 18px 0 22px; border:0; cursor:pointer; clip-path:{{ p.clip }}; background:{{ p.bg }}; color:{{ p.fg }}; font-family:inherit; font-size:12.5px; font-weight:{{ p.fw }}; white-space:nowrap; transition:background .15s;" style-hover="filter:brightness(1.25);">
+            <sc-if value="{{ p.done }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+            <sc-if value="{{ p.dotOn }}" hint-placeholder-val="{{ true }}"><span style="flex:none; width:7px; height:7px; border-radius:50%; background:{{ p.dot }};"></span></sc-if>
+            {{ p.label }}
+          </button>
+        </sc-for>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); border-radius:14px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <sc-for list="{{ ovKpis }}" as="k" hint-placeholder-count="5"><div style="padding:12px 16px; border-left:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ k.label }}</div><div style="display:flex; align-items:center; gap:7px; margin-top:4px; font-size:16px; font-weight:700;"><sc-if value="{{ k.dot }}" hint-placeholder-val="{{ false }}"><span style="width:8px; height:8px; border-radius:50%; background:{{ k.dot }};"></span></sc-if>{{ k.v }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ k.sub }}</div></div></sc-for>
+      </div>
+    </section>
+    <div style="position:sticky; top:-1px; z-index:15; display:flex; align-items:stretch; margin:-6px 0 -4px; padding:0 6px; border-radius:14px; background:rgba(10,14,19,0.86); backdrop-filter:blur(18px) saturate(140%); border:1px solid rgba(255,255,255,0.06); box-shadow:0 10px 24px -18px rgba(0,0,0,0.8);">
+      <div style="flex:1; min-width:0; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding:0 4px;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <button onClick="{{ t.pick }}" title="{{ t.tip }}" style="position:{{ t.pos }}; left:0; z-index:{{ t.z }}; flex:none; display:flex; align-items:center; gap:7px; padding:0 14px; border:0; border-bottom:2px solid {{ t.line }}; border-right:{{ t.sep }}; background:{{ t.tbg }}; height:44px; cursor:pointer; font-size:13.5px; font-weight:650; color:{{ t.fg }}; margin-bottom:-1px;"><sc-if value="{{ t.pinned }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex:none; opacity:.7;"><path d="M14 3l7 7-3 1-4 4 1 5-2 1-4-5-5 5-1-1 5-5-5-4 1-2 5 1 4-4z"></path></svg></sc-if>{{ t.label }}<sc-if value="{{ t.count }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ t.count }}</span></sc-if></button>
+        </sc-for>
+      </div>
+      <div style="position:relative; flex:none; display:flex; align-items:center; padding:0 2px 0 6px;">
+        <button onClick="{{ tabMenuToggle }}" title="Customize tabs" style="width:32px; height:32px; display:grid; place-items:center; border-radius:9px; border:0; background:transparent; cursor:pointer; color:#93A1B0;" style-hover="background:rgba(255,255,255,0.06); color:#E8EEF3;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg></button>
+        <sc-if value="{{ tabMenu }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ tabMenuClose }}" style="position:fixed; inset:-100vh -100vw; z-index:30;"></div>
+          <div style="position:absolute; top:calc(100% + 6px); right:0; z-index:31; width:280px; max-height:min(480px, calc(100vh - 160px)); overflow-y:auto; padding:6px; border-radius:16px; background:rgba(15,21,29,0.97); border:1px solid rgba(255,255,255,0.1); box-shadow:0 24px 60px -20px rgba(0,0,0,0.85); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+            <div style="display:flex; align-items:center; padding:6px 10px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">CUSTOMIZE TABS</span><button onClick="{{ tabReset }}" style="border:0; background:none; cursor:pointer; font-size:11.5px; font-weight:650; color:#FF7B5C;">Reset</button></div>
+            <sc-for list="{{ tabRows }}" as="r" hint-placeholder-count="8">
+              <div style="display:flex; align-items:center; gap:4px; padding:4px 6px 4px 10px; border-radius:10px;" style-hover="background:rgba(255,255,255,0.04);">
+                <span style="flex:1; min-width:0; font-size:13px; font-weight:600; color:#E8EEF3; opacity:{{ r.op }};">{{ r.label }}</span>
+                <button onClick="{{ r.pin }}" title="{{ r.pinTitle }}" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:{{ r.pinFg }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M14 3l7 7-3 1-4 4 1 5-2 1-4-5-5 5-1-1 5-5-5-4 1-2 5 1 4-4z"></path></svg></button>
+                <button onClick="{{ r.up }}" title="Move left" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+                <button onClick="{{ r.down }}" title="Move right" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></button>
+                <button onClick="{{ r.toggle }}" title="Show / hide" style="flex:none; width:34px; height:20px; padding:2px; margin-left:4px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:16px; height:16px; border-radius:50%; background:#E8EEF3;"></span></button>
+              </div>
+            </sc-for>
+            <div style="padding:6px 10px 4px; font-size:11px; line-height:1.5; color:#6B7A8A;">Pinned tabs stay on the left while you scroll. Saved for every project.</div>
+          </div>
+        </sc-if>
+      </div>
+      </div>
+
+    <sc-if value="{{ tabTasks }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+          <sc-for list="{{ views }}" as="v" hint-placeholder-count="2">
+            <button onClick="{{ v.pick }}" style="height:32px; display:flex; align-items:center; gap:7px; padding:0 12px; border-radius:9px; border:0; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ v.bg }}; color:{{ v.fg }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ v.icon }}"></path></svg>{{ v.label }}</button>
+          </sc-for>
+        </div>
+        <span style="font-size:12.5px; color:#6B7A8A;">{{ boardHint }}</span>
+        <span style="flex:1;"></span>
+        <div style="height:36px; display:flex; align-items:center; gap:8px; padding:0 12px; border-radius:11px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.07); min-width:200px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+          <input value="{{ tq }}" onChange="{{ onTq }}" placeholder="Filter tasks" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14px;">
+        </div>
+      </div>
+
+      <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; grid-auto-flow:column; grid-auto-columns:minmax(260px, 1fr); gap:12px; overflow-x:auto; padding-bottom:6px;">
+          <sc-for list="{{ cols }}" as="c" hint-placeholder-count="5">
+            <div onDragOver="{{ c.over }}" onDragLeave="{{ c.leave }}" onDrop="{{ c.drop }}" style="display:flex; flex-direction:column; gap:8px; min-height:320px; padding:10px; border-radius:18px; background:{{ c.bg }}; border:1px solid {{ c.bd }}; transition:background .15s, border-color .15s;">
+              <div style="display:flex; align-items:center; gap:8px; padding:2px 4px 4px;">
+                <span style="width:8px; height:8px; border-radius:50%; background:{{ c.color }};"></span>
+                <span style="font-size:13.5px; font-weight:700;">{{ c.label }}</span>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ c.count }}</span>
+                <span style="flex:1;"></span>
+                <sc-if value="{{ c.canAdd }}" hint-placeholder-val="{{ false }}"><button onClick="{{ c.add }}" title="Add to {{ c.label }}" style="width:26px; height:26px; display:grid; place-items:center; border-radius:8px; border:0; background:transparent; cursor:pointer; color:#93A1B0;" style-hover="background:rgba(255,255,255,0.06);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg></button></sc-if>
+              </div>
+              <sc-for list="{{ c.items }}" as="t" hint-placeholder-count="2">
+                <div draggable="true" onDragStart="{{ t.dragStart }}" onDragEnd="{{ t.dragEnd }}" onClick="{{ t.open }}" style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; cursor:grab; background:rgba(20,28,38,0.75); border:1px solid rgba(255,255,255,0.07); opacity:{{ t.op }}; box-shadow:0 8px 20px -14px rgba(0,0,0,0.7);" style-hover="border-color:rgba(255,255,255,0.16);">
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ t.id }}</span>
+                    <span style="flex:1;"></span>
+                    <span style="height:19px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-size:10.5px; font-weight:650; background:{{ t.pbg }}; color:{{ t.pfg }};">{{ t.prio }}</span>
+                    <button onClick="{{ t.expand }}" title="{{ t.expTitle }}" style="width:24px; height:24px; margin-right:-4px; display:grid; place-items:center; border-radius:7px; border:0; background:{{ t.expBg }}; cursor:pointer; color:{{ t.expFg }};" style-hover="background:rgba(255,255,255,0.08); color:#E8EEF3;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ t.expIcon }}"></path></svg></button>
+                  </div>
+                  <div style="font-size:13.5px; font-weight:600; line-height:1.4; text-wrap:pretty;">{{ t.title }}</div>
+                  <sc-if value="{{ t.expanded }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ stop }}" style="display:flex; flex-direction:column; gap:8px; cursor:default;">
+                      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PROMPT</div>
+                      <div style="max-height:180px; overflow-y:auto; padding:9px 10px; border-radius:10px; background:rgba(6,9,13,0.6); border:1px solid rgba(255,255,255,0.05); font-size:12.5px; line-height:1.55; color:#DCE4EB; white-space:pre-wrap;">{{ t.prompt }}</div>
+                      <div style="display:flex; gap:5px;"><button onClick="{{ t.copy }}" style="height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:11.5px; font-weight:650; color:#DCE4EB;">Copy</button><button onClick="{{ t.open }}" style="height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:11.5px; font-weight:650; color:#DCE4EB;">Open chat</button></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ t.progress }}" hint-placeholder-val="{{ false }}"><div style="height:3px; border-radius:3px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ t.progress }}; background:#45E0C8;"></div></div></sc-if>
+                  <div style="display:flex; align-items:center; gap:6px; font-size:11px; color:#93A1B0;">
+                    <span style="height:18px; padding:0 6px; display:flex; align-items:center; border-radius:5px; font-family:'JetBrains Mono', monospace; font-size:10px; background:{{ t.lbg }}; color:{{ t.lfg }};">{{ t.lane }}</span>
+                    <span style="flex:1;"></span>
+                    <span style="font-family:'JetBrains Mono', monospace;">{{ t.meta }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ c.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1; min-height:90px; display:grid; place-items:center; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); font-size:12px; color:#6B7A8A; text-align:center; padding:12px;">{{ c.emptyText }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isListView }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+          <sc-for list="{{ cols }}" as="c" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:rgba(255,255,255,0.025); border-top:1px solid rgba(255,255,255,0.04);">
+              <span style="width:8px; height:8px; border-radius:50%; background:{{ c.color }};"></span><span style="font-size:13px; font-weight:700;">{{ c.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ c.count }}</span>
+            </div>
+            <sc-for list="{{ c.items }}" as="t" hint-placeholder-count="2">
+              <div onClick="{{ t.open }}" style="display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 14px; border-top:1px solid rgba(255,255,255,0.04); cursor:pointer;" style-hover="background:rgba(255,255,255,0.03);">
+                <span style="flex:none; width:44px; font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ t.id }}</span>
+                <span style="flex:1; min-width:0; font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ t.title }}</span>
+                <span style="flex:none; height:19px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-size:10.5px; font-weight:650; background:{{ t.pbg }}; color:{{ t.pfg }};">{{ t.prio }}</span>
+                <span style="flex:none; height:18px; padding:0 6px; display:flex; align-items:center; border-radius:5px; font-family:'JetBrains Mono', monospace; font-size:10px; background:{{ t.lbg }}; color:{{ t.lfg }};">{{ t.lane }}</span>
+                <select ref="{{ fixSel }}" data-v="{{ t.col }}" value="{{ t.col }}" onChange="{{ t.move }}" onClick="{{ stop }}" title="Move to" style="flex:none; height:30px; padding:0 8px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#C2CDD8; font-family:inherit; font-size:12px; cursor:pointer;">
+                  <sc-for list="{{ colOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+                </select>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ tabChats }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; gap:14px; align-items:stretch; min-height:520px;">
+        <sc-if value="{{ showChatList }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:{{ chatListFlex }}; min-width:0; display:flex; flex-direction:column; gap:6px; padding:8px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <div style="padding:6px 8px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">TASK CHATS</div>
+            <sc-for list="{{ chats }}" as="c" hint-placeholder-count="5">
+              <button onClick="{{ c.pick }}" style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:13px; cursor:pointer; text-align:left; background:{{ c.bg }}; border:1px solid {{ c.bd }};">
+                <span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:{{ c.dot }};"></span>
+                <span style="flex:1; min-width:0;">
+                  <span style="display:flex; gap:8px; align-items:baseline;"><span style="flex:1; min-width:0; font-size:13.5px; font-weight:650; color:#E8EEF3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ c.when }}</span></span>
+                  <span style="display:block; font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.preview }}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showThread }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(20px); overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}"><button onClick="{{ chatBack }}" style="width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button></sc-if>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ thread.title }}</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11.5px; color:#93A1B0;"><span style="font-family:'JetBrains Mono', monospace; color:#6B7A8A;">{{ thread.id }}</span><span style="color:#4A5866;">·</span><span style="color:{{ thread.dot }};">{{ thread.status }}</span><span style="color:#4A5866;">·</span><span>{{ thread.lane }}</span></div>
+              </div>
+              <button onClick="{{ threadAction }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ thread.action }}</button>
+            </div>
+            <div style="flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;">
+              <sc-for list="{{ thread.msgs }}" as="m" hint-placeholder-count="4">
+                <sc-if value="{{ m.you }}" hint-placeholder-val="{{ false }}">
+                  <div style="align-self:flex-end; max-width:80%; padding:10px 14px; border-radius:16px 16px 4px 16px; background:rgba(255,123,92,0.14); border:1px solid rgba(255,123,92,0.25); font-size:14px; line-height:1.5;">{{ m.text }}</div>
+                </sc-if>
+                <sc-if value="{{ m.step }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:8px; padding-left:4px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;"><span style="width:6px; height:6px; border-radius:50%; background:{{ m.dot }};"></span>{{ m.text }}</div>
+                </sc-if>
+                <sc-if value="{{ m.code }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-left:14px; padding:10px 12px; border-radius:11px; background:rgba(6,9,13,0.65); border:1px solid rgba(255,255,255,0.05); font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6; color:#9FEFE2; white-space:pre-wrap;">{{ m.text }}</div>
+                </sc-if>
+                <sc-if value="{{ m.bot }}" hint-placeholder-val="{{ false }}">
+                  <div style="max-width:85%; padding:10px 14px; border-radius:4px 16px 16px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); font-size:14px; line-height:1.5;">{{ m.text }}</div>
+                </sc-if>
+              </sc-for>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin:12px; padding:4px 4px 4px 14px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+              <input value="{{ chatText }}" onChange="{{ onChatText }}" onKeyDown="{{ chatKey }}" placeholder="Reply — Octopus continues in this project…" style="flex:1; min-width:0; height:38px; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:15px;">
+              <button onClick="{{ sendChat }}" title="Send" style="flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabChanges }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+        <div style="flex:1 1 420px; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+          <div style="display:flex; align-items:center; gap:8px; padding:12px 14px;"><h2 style="margin:0; font-size:15px; font-weight:700;">Uncommitted changes</h2><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ changeCount }} files</span><span style="flex:1;"></span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px;"><span style="color:#6FCF97;">+{{ adds }}</span> <span style="color:#FF8FA2;">−{{ dels }}</span></span></div>
+          <sc-for list="{{ files }}" as="fl" hint-placeholder-count="4">
+            <label style="display:flex; align-items:center; gap:10px; min-height:46px; padding:6px 14px; border-top:1px solid rgba(255,255,255,0.04); cursor:pointer;">
+              <input type="checkbox" checked="{{ fl.on }}" onChange="{{ fl.toggle }}" style="width:16px; height:16px; accent-color:#FF7B5C;">
+              <span style="flex:none; width:18px; height:18px; display:grid; place-items:center; border-radius:5px; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; background:{{ fl.kbg }}; color:{{ fl.kfg }};">{{ fl.kind }}</span>
+              <span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12.5px; color:#DCE4EB; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ fl.path }}</span>
+              <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px;"><span style="color:#6FCF97;">+{{ fl.a }}</span> <span style="color:#FF8FA2;">−{{ fl.d }}</span></span>
+            </label>
+          </sc-for>
+        </div>
+        <div style="flex:1 1 300px; min-width:0; display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">COMMIT</div>
+          <textarea value="{{ commitMsg }}" onChange="{{ onCommit }}" rows="3" placeholder="Describe the change…" style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.5; outline:none;"></textarea>
+          <button onClick="{{ suggestMsg }}" style="align-self:flex-start; height:30px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:9px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; font-size:12px; font-weight:600; color:#C9B8FF;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg>Write it for me</button>
+          <div style="display:flex; gap:6px;">
+            <button onClick="{{ commit }}" style="flex:1; height:38px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13px; font-weight:700;">Commit {{ selCount }} files</button>
+            <button onClick="{{ push }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,181,71,0.35); background:rgba(255,181,71,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#FFCB7A;">Push</button>
+          </div>
+          <div style="font-size:11.5px; color:#6B7A8A; line-height:1.5;">Push is a protected action — Octopus will ask for approval first.</div>
+          <div style="height:1px; background:rgba(255,255,255,0.06); margin:4px 0;"></div>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">RECENT COMMITS</div>
+          <sc-for list="{{ commits }}" as="cm" hint-placeholder-count="3">
+            <div style="display:flex; gap:10px; align-items:baseline;"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#FFA48C;">{{ cm.sha }}</span><span style="flex:1; min-width:0; font-size:12.5px; color:#C2CDD8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ cm.msg }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ cm.when }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; align-items:start;">
+        <sc-for list="{{ settingGroups }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ g.name }}</div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:7px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="flex:1; min-width:0;"><div style="font-size:13.5px; font-weight:600;">{{ r.label }}</div><div style="font-size:12px; color:#93A1B0;">{{ r.hint }}</div></div>
+                  <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></sc-if>
+                </div>
+                <sc-if value="{{ r.isSeg }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    <sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:32px; padding:0 12px; border-radius:9px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }}; border:1px solid {{ o.bd }};">{{ o.label }}</button></sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+        <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(255,84,112,0.04); border:1px solid rgba(255,84,112,0.2);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#FF8FA2;">DANGER ZONE</div>
+          <div style="font-size:13px; color:#C2CDD8; line-height:1.5;">Archiving moves this project, its chats and queued tasks to the Recycle bin for 30 days. Files on disk are untouched.</div>
+          <button onClick="{{ archive }}" style="align-self:flex-start; height:36px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,84,112,0.4); background:rgba(255,84,112,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#FF8FA2;">Archive project</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabTodos }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:820px; width:100%; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); box-sizing:border-box;">
+        <dc-import name="DenTodo" project="{{ cur.name }}" hint-size="100%,360px"></dc-import>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabDocs }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+        <div style="flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">DOCUMENTS · {{ docCount }}</span></div>
+          <label onDragOver="{{ dzOver }}" onDragLeave="{{ dzLeave }}" onDrop="{{ dzDrop }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 12px; border-radius:15px; cursor:pointer; text-align:center; border:1.5px dashed {{ dzBd }}; background:{{ dzBg }}; transition:all .15s;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{ dzIc }}" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"></path></svg>
+            <span style="font-size:13px; font-weight:650; color:#E8EEF3;">{{ dzText }}</span>
+            <span style="font-size:11.5px; color:#93A1B0;">PDF, Markdown, Word, images · or click to browse</span>
+            <input type="file" multiple="{{ true }}" onChange="{{ dzPick }}" style="display:none;">
+          </label>
+          <sc-for list="{{ docs }}" as="d" hint-placeholder-count="4">
+            <button onClick="{{ d.pick }}" style="display:flex; align-items:center; gap:12px; padding:12px; border-radius:15px; cursor:pointer; text-align:left; background:{{ d.bg }}; border:1px solid {{ d.bd }}; color:#E8EEF3;">
+              <span style="flex:none; width:38px; height:44px; display:grid; place-items:center; border-radius:9px; background:{{ d.tint }}; color:{{ d.tone }}; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:700;">{{ d.ext }}</span>
+              <span style="flex:1; min-width:0;"><span style="display:block; font-size:13.5px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</span><span style="display:block; font-size:11.5px; color:#93A1B0;">{{ d.size }} · updated {{ d.when }} · {{ d.by }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="flex:2 1 420px; min-width:0; display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07);">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><div style="flex:1; min-width:0;"><div style="font-size:17px; font-weight:750;">{{ doc.name }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ doc.path }}</div></div><button onClick="{{ askDoc }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; border-color:rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); color:#C9B8FF;">Ask about this</button><button onClick="{{ openDoc }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Open</button></div>
+          <div style="padding:16px; border-radius:14px; background:rgba(6,9,13,0.5); border:1px solid rgba(255,255,255,0.05); font-size:13.5px; line-height:1.75; color:#C2CDD8; white-space:pre-wrap; max-height:420px; overflow-y:auto;">{{ doc.body }}</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabTimeline }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;"><input value="{{ msText }}" onChange="{{ onMs }}" placeholder="Add a milestone…" style="flex:1 1 220px; min-width:0; height:38px; padding:0 12px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:14px; outline:none;"><div style="flex:1 1 170px; min-width:0;"><dc-import name="DenDatePicker" value="{{ msDate }}" on-change="{{ onMsDate }}" hint-size="100%,36px"></dc-import></div><button onClick="{{ addMs }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05; height:38px;">Add</button></div>
+        <div style="position:relative; display:flex; flex-direction:column; padding-left:26px;">
+          <div style="position:absolute; left:8px; top:6px; bottom:6px; width:2px; border-radius:2px; background:rgba(255,255,255,0.08);"></div>
+          <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="6">
+            <div style="position:relative; display:flex; gap:12px; align-items:flex-start; padding:8px 0;">
+              <span style="position:absolute; left:-23px; top:12px; width:12px; height:12px; border-radius:50%; background:{{ m.fill }}; border:2px solid {{ m.c }}; box-shadow:0 0 0 3px #0B1016;"></span>
+              <span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:{{ m.dc }}; padding-top:2px;">{{ m.date }}</span>
+              <div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:650; color:{{ m.tc }};">{{ m.title }}</div><div style="font-size:12px; color:#93A1B0;">{{ m.sub }}</div></div>
+              <span style="flex:none; height:20px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ m.sbg }}; color:{{ m.c }};">{{ m.state }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabNotes }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1 1 360px; min-width:0; display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+          <div><div style="display:flex; align-items:baseline; gap:8px;"><h3 style="margin:0; font-size:16px; font-weight:700;">Guidelines &amp; notes</h3><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ gActiveCount }} active</span></div>
+          <div style="margin-top:6px; font-size:12.5px; line-height:1.55; color:#A3B0BE;">Octopus reads every <b style="color:#E8EEF3;">active</b> guideline and requirement before each task on this project. Notes are for you only.</div></div>
+          <div style="display:flex; gap:4px;"><sc-for list="{{ gKinds }}" as="k" hint-placeholder-count="3"><button onClick="{{ k.pick }}" style="height:32px; display:flex; align-items:center; gap:6px; padding:0 13px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:650; background:{{ k.bg }}; color:{{ k.fg }}; border:1px solid {{ k.bd }};"><span style="width:7px; height:7px; border-radius:50%; background:{{ k.c }};"></span>{{ k.label }}</button></sc-for></div>
+          <textarea value="{{ noteText }}" onChange="{{ onNote }}" onKeyDown="{{ noteKey }}" onPaste="{{ notePaste }}" rows="4" placeholder="{{ gHint }}" style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:14px; line-height:1.55; outline:none;"></textarea>
+          <sc-if value="{{ gImg }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; background:rgba(255,255,255,0.04); font-size:12px; color:#C2CDD8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4"></path></svg>{{ gImg }}<span style="flex:1;"></span><button onClick="{{ gImgRm }}" style="border:0; background:none; cursor:pointer; color:#93A1B0;">×</button></div></sc-if>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button onClick="{{ gPolish }}" title="Polish with Octopus" style="width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; color:#C9B8FF;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg></button>
+            <label title="Attach picture" style="width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01"></path></svg><input type="file" accept="image/*" onChange="{{ gPick }}" style="display:none;"></label>
+            <span style="flex:1; font-size:11.5px; color:#6B7A8A;">↵ add · ⇧↵ new line · paste a picture</span>
+            <button onClick="{{ addNote }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05; height:34px;">Add</button>
+          </div>
+        </div>
+        <div style="flex:1 1 360px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <sc-for list="{{ gGroups }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; align-items:center; gap:7px;"><span style="width:7px; height:7px; border-radius:50%; background:{{ g.c }};"></span><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ g.name }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ g.count }}</span></div>
+              <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="2">
+                <div style="display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:14px; background:rgba(20,28,38,0.45); border:1px solid {{ n.bd }}; opacity:{{ n.op }};">
+                  <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:13.5px; line-height:1.55; color:#E8EEF3; white-space:pre-wrap;">{{ n.text }}</div>
+                    <sc-if value="{{ n.img }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start; display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:7px; background:rgba(255,255,255,0.05); font-size:11.5px; color:#C2CDD8;">🖼 {{ n.img }}</span></sc-if>
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ n.when }}{{ n.useTxt }}</span>
+                  </div>
+                  <sc-if value="{{ n.canToggle }}" hint-placeholder-val="{{ true }}"><button onClick="{{ n.toggle }}" title="{{ n.tTitle }}" style="flex:none; width:36px; height:22px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ n.track }}; display:flex; justify-content:{{ n.align }};"><span style="width:18px; height:18px; border-radius:50%; background:#E8EEF3;"></span></button></sc-if>
+                  <button onClick="{{ n.del }}" title="Delete" style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;" style-hover="color:#FF8FA2;">×</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{ gEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:24px; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); font-size:13px; color:#93A1B0;">Nothing yet. Write the first one in the box.</div></sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabFiles }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; min-height:560px; border-radius:18px; overflow:hidden; background:rgba(10,14,19,0.75); border:1px solid rgba(255,255,255,0.07);">
+        <sc-if value="{{ showTree }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:{{ treeFlex }}; min-width:0; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.015);">
+            <div style="display:flex; align-items:center; gap:6px; padding:10px 10px 8px 14px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">EXPLORER</span><button onClick="{{ pickFolder }}" title="Open folder…" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2M3 7v10a2 2 0 0 0 2 2h7M15 15h6M18 12v6"></path></svg></button><button onClick="{{ newFile }}" title="New file" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 3h9l4 4v14H6zM12 11v6M9 14h6"></path></svg></button><button onClick="{{ collapseAll }}" title="Collapse all" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 4h16v16H4zM8 12h8"></path></svg></button></div>
+            <div style="padding:0 8px 6px;"><input value="{{ fq }}" onChange="{{ onFq }}" placeholder="Filter files" style="width:100%; box-sizing:border-box; height:30px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; outline:none;"></div>
+            <div style="flex:1; overflow-y:auto; padding:0 6px 10px;">
+              <input ref="{{ dirRef }}" type="file" webkitdirectory="" directory="" multiple="{{ true }}" onChange="{{ onDirPick }}" style="display:none;">
+              <div style="display:flex; align-items:center; gap:6px; padding:4px 8px;"><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; color:#C2CDD8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ rootName }}</span><sc-if value="{{ isPicked }}" hint-placeholder-val="{{ false }}"><button onClick="{{ closeFolder }}" title="Back to project folder" style="border:0; background:none; cursor:pointer; font-size:11px; color:#FF7B5C;">Close</button></sc-if></div>
+              <sc-if value="{{ treeEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:16px 10px; text-align:center; display:flex; flex-direction:column; gap:8px; align-items:center;"><span style="font-size:12px; color:#93A1B0;">No folder open</span><button onClick="{{ pickFolder }}" style="height:30px; padding:0 12px; border-radius:9px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:12px; font-weight:700;">Open folder…</button></div></sc-if>
+              <sc-for list="{{ tree }}" as="n" hint-placeholder-count="10">
+                <button onClick="{{ n.click }}" title="{{ n.path }}" style="width:100%; display:flex; align-items:center; gap:6px; height:26px; padding:0 8px 0 {{ n.pad }}; border-radius:6px; border:0; cursor:pointer; text-align:left; background:{{ n.bg }}; color:{{ n.fg }}; font-family:'JetBrains Mono', monospace; font-size:12px;" style-hover="background:rgba(255,255,255,0.05);">
+                  <span style="flex:none; width:12px; color:#6B7A8A; font-size:10px;">{{ n.chev }}</span>
+                  <span style="flex:none; width:14px; text-align:center; font-size:10px; font-weight:700; color:{{ n.ic }};">{{ n.glyph }}</span>
+                  <span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ n.name }}</span>
+                  <sc-if value="{{ n.dirty }}" hint-placeholder-val="{{ false }}"><span style="flex:none; width:7px; height:7px; border-radius:50%; background:#FFB547;"></span></sc-if>
+                  <sc-if value="{{ n.git }}" hint-placeholder-val="{{ false }}"><span style="flex:none; font-size:10px; font-weight:700; color:{{ n.gc }};">{{ n.git }}</span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showEditor }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:stretch; height:38px; overflow-x:auto; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);">
+              <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}"><button onClick="{{ fileBack }}" style="flex:none; width:38px; border:0; background:transparent; cursor:pointer; color:#C2CDD8;">‹</button></sc-if>
+              <sc-for list="{{ ftabs }}" as="t" hint-placeholder-count="2">
+                <div style="flex:none; display:flex; align-items:center; gap:6px; padding:0 6px 0 12px; border-right:1px solid rgba(255,255,255,0.05); background:{{ t.bg }}; box-shadow:{{ t.line }}; cursor:pointer;" onClick="{{ t.pick }}">
+                  <span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:{{ t.fg }};">{{ t.name }}</span>
+                  <button onClick="{{ t.close }}" title="{{ t.closeTitle }}" style="width:20px; height:20px; display:grid; place-items:center; border-radius:5px; border:0; background:transparent; cursor:pointer; color:{{ t.xc }}; font-size:13px;">{{ t.x }}</button>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.05); font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">
+                <span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ crumbs }}</span>
+                <button onClick="{{ askEdit }}" style="height:26px; padding:0 9px; border-radius:7px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; font-family:inherit; font-size:11px; font-weight:600; color:#C9B8FF;">✦ Ask Octopus to edit</button>
+                <button onClick="{{ revert }}" style="height:26px; padding:0 9px; border-radius:7px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:11px; font-weight:600; color:#C2CDD8; opacity:{{ dirtyOp }};">Revert</button>
+                <button onClick="{{ saveFile }}" style="height:26px; padding:0 10px; border-radius:7px; border:0; background:{{ saveBg }}; cursor:pointer; font-family:inherit; font-size:11px; font-weight:700; color:{{ saveFg }};">Save ⌘S</button>
+              </div>
+              <div style="flex:1; min-height:0; overflow:auto; display:flex; align-items:flex-start;">
+                <div style="flex:none; padding:12px 10px 12px 14px; text-align:right; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:20px; color:#4A5866; user-select:none; white-space:pre;">{{ gutter }}</div>
+                <textarea value="{{ fileText }}" onChange="{{ onFile }}" onKeyDown="{{ fileKey }}" spellcheck="false" wrap="off" style="flex:1; min-width:400px; height:{{ edH }}; padding:12px 14px 12px 4px; border:0; outline:none; resize:none; overflow:hidden; background:transparent; color:#DCE4EB; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:20px; tab-size:2; white-space:pre;"></textarea>
+              </div>
+              <div style="display:flex; align-items:center; gap:14px; padding:4px 12px; border-top:1px solid rgba(255,255,255,0.05); background:rgba(255,123,92,0.06); font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#93A1B0;"><span>⎇ {{ cur.branch }}</span><span>{{ fStatus }}</span><span style="flex:1;"></span><span>{{ fLang }}</span><span>{{ fLines }} lines</span><span>UTF-8</span></div>
+            </sc-if>
+            <sc-if value="{{ noFile }}" hint-placeholder-val="{{ false }}"><div style="flex:1; display:grid; place-items:center; padding:40px; text-align:center; font-size:13px; color:#6B7A8A;">Pick a file from the explorer to view or edit it.</div></sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabActivity }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <sc-for list="{{ pacts }}" as="a" hint-placeholder-count="6">
+          <div style="display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 14px; border-top:1px solid rgba(255,255,255,0.04);">
+            <span style="flex:none; width:70px; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ a.when }}</span>
+            <span style="flex:none; height:20px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ a.bg }}; color:{{ a.c }};">{{ a.kind }}</span>
+            <span style="flex:1; min-width:0; font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.text }}</span>
+            <span style="flex:none; font-size:12px; color:#93A1B0;">{{ a.who }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabRecipes }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:12px;">
+        <sc-for list="{{ precipes }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-size:14.5px; font-weight:700;">{{ r.name }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ r.when }}</div></div><button onClick="{{ r.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div>
+            <div style="font-size:12.5px; line-height:1.5; color:#A3B0BE;">{{ r.steps }}</div>
+            <div style="display:flex; gap:6px;"><button onClick="{{ r.run }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Run now</button><span style="flex:1;"></span><span style="align-self:center; font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">last {{ r.last }}</span></div>
+          </div>
+        </sc-for>
+        <button onClick="{{ newRecipe }}" style="min-height:140px; border-radius:18px; border:1px dashed rgba(255,255,255,0.14); background:transparent; cursor:pointer; font-size:13.5px; font-weight:600; color:#93A1B0;" style-hover="color:#FFA48C; border-color:rgba(255,123,92,0.45);">+ Recipe for this project</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabIdeas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(165,139,255,0.06); border:1px solid rgba(165,139,255,0.25);">
+          <div style="display:flex; align-items:center; gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9B8FF" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"></path></svg><span style="font-size:14px; font-weight:700;">Parked ideas</span><span style="font-size:12.5px; color:#93A1B0;">Nothing here runs until you press Run.</span></div>
+          <textarea value="{{ ideaText }}" onChange="{{ onIdea }}" onKeyDown="{{ ideaKey }}" rows="2" placeholder="Jot a thought, a feature, a fix… (⌘↵ to park it)" style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:14px; line-height:1.55; outline:none;"></textarea>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">SIZE</span><sc-for list="{{ ideaSizes }}" as="z" hint-placeholder-count="3"><button onClick="{{ z.pick }}" style="height:28px; padding:0 10px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ z.bg }}; color:{{ z.fg }}; border:1px solid {{ z.bd }};">{{ z.label }}</button></sc-for><span style="flex:1;"></span><button onClick="{{ addIdea }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;">Park idea</button></div>
+        </div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ ideaFilters }}" as="x" hint-placeholder-count="3"><button onClick="{{ x.pick }}" style="height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ x.bg }}; color:{{ x.fg }}; border:1px solid {{ x.bd }};">{{ x.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ x.count }}</span></button></sc-for></div>
+        <sc-for list="{{ ideas }}" as="i" hint-placeholder-count="4">
+          <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; padding:14px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid {{ i.bd }}; opacity:{{ i.op }};">
+            <div style="flex:1 1 280px; min-width:0; display:flex; flex-direction:column; gap:6px;">
+              <sc-if value="{{ i.editing }}" hint-placeholder-val="{{ false }}"><textarea value="{{ i.text }}" onChange="{{ i.onEdit }}" rows="3" style="resize:vertical; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,123,92,0.4); background:rgba(6,9,13,0.6); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.55; outline:none;"></textarea></sc-if>
+              <sc-if value="{{ i.notEditing }}" hint-placeholder-val="{{ true }}"><div style="font-size:14px; line-height:1.55; color:#E8EEF3; white-space:pre-wrap; text-wrap:pretty;">{{ i.text }}</div></sc-if>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11.5px; color:#93A1B0;"><span style="height:19px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ i.sbg }}; color:{{ i.sc }};">{{ i.status }}</span><span>{{ i.size }}</span><span style="color:#4A5866;">·</span><span>parked {{ i.when }}</span></div>
+            </div>
+            <div style="flex:none; display:flex; gap:6px; flex-wrap:wrap;">
+              <sc-if value="{{ i.parked }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ i.edit }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ i.editLabel }}</button>
+                <button onClick="{{ i.backlog }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">To backlog</button>
+                <button onClick="{{ i.run }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05; display:flex; align-items:center; gap:6px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"></path></svg>Run</button>
+              </sc-if>
+              <button onClick="{{ i.del }}" title="Delete" style="width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); cursor:pointer; color:#93A1B0;" style-hover="color:#FF8FA2;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ ideasEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:30px; border-radius:16px; border:1px dashed rgba(255,255,255,0.1); text-align:center; font-size:13px; color:#93A1B0;">No ideas here yet.</div></sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tabOverview }}" hint-placeholder-val="{{ true }}">
+      
+      <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:2 1 520px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <section style="position:relative; z-index:{{ projZ }}; padding:6px 16px 10px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:10px 0 6px; font-size:15px; font-weight:700;">Project</h3>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Name</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><input value="{{ om.name }}" onChange="{{ ov.name }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; color-scheme:dark; flex:1; min-width:0; background:transparent; border-color:transparent; font-weight:600; padding-left:0;"></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Client</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="display:flex; align-items:center; gap:7px; height:32px; padding:0 10px 0 4px; border-radius:999px; background:rgba(255,255,255,0.05); font-size:13px; font-weight:650;"><span style="width:24px; height:24px; display:grid; place-items:center; border-radius:50%; background:{{ om.clientTint }}; color:{{ om.clientColor }}; font-size:11px; font-weight:750;">{{ om.clientInit }}</span>{{ om.client }}</span><div style="position:relative;"><button onClick="{{ ov.clientToggle }}" style="display:flex; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Change<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.4; stroke-linecap:round;"><path d="M6 9l6 6 6-6"></path></svg></button>
+              <sc-if value="{{ clientOpen }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ ov.clientClose }}" style="position:fixed; inset:-100vh -100vw; z-index:30;"></div>
+                <div style="position:absolute; top:calc(100% + 6px); left:0; z-index:31; width:250px; max-height:min(360px, calc(100vh - 140px)); overflow-y:auto; padding:6px; border-radius:14px; background:rgba(15,21,29,0.97); border:1px solid rgba(255,255,255,0.1); box-shadow:0 24px 60px -20px rgba(0,0,0,0.85); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+                  <div style="padding:6px 10px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">CLIENT</div>
+                  <sc-for list="{{ clientOpts }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; cursor:pointer; text-align:left; background:{{ c.bg }}; border:1px solid {{ c.bd }};"><span style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:{{ c.tint }}; color:{{ c.color }}; font-size:11px; font-weight:750;">{{ c.init }}</span><span style="flex:1; min-width:0;"><span style="display:block; font-size:13px; font-weight:650; color:#E8EEF3;">{{ c.name }}</span><span style="display:block; font-size:11px; color:#93A1B0;">{{ c.role }}</span></span><sc-if value="{{ c.on }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF7B5C" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button></sc-for>
+                  <div style="height:1px; margin:6px 4px; background:rgba(255,255,255,0.06);"></div>
+                  <button onClick="{{ ov.newClient }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; border:0; background:transparent; cursor:pointer; text-align:left; font-size:13px; font-weight:650; color:#FFA48C;">+ New client</button>
+                </div>
+              </sc-if></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Look</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><button onClick="{{ ov.reedit }}" title="{{ om.logoTip }}" style="flex:none; width:52px; height:52px; padding:0; display:grid; place-items:center; border-radius:15px; border:0; cursor:pointer; overflow:hidden; background-color:{{ om.logoBg }}; background-image:{{ om.logoImg }}; background-size:{{ om.logoBs }}; background-position:{{ om.logoBp }}; background-repeat:no-repeat; color:#0A0E13; font-family:inherit; font-size:22px; font-weight:800;">{{ om.logoText }}</button><div style="display:flex; flex-direction:column; gap:6px;"><div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ swatches }}" as="w" hint-placeholder-count="9"><button onClick="{{ w.pick }}" title="{{ w.c }}" style="width:22px; height:22px; border-radius:50%; border:0; cursor:pointer; background:{{ w.c }}; box-shadow:{{ w.ring }};"></button></sc-for></div><div style="display:flex; gap:6px; align-self:flex-start;"><label style="height:32px; display:flex; align-items:center; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ om.picLabel }}<input type="file" accept="image/*" onChange="{{ ov.picPick }}" style="display:none;"></label><sc-if value="{{ om.hasPic }}" hint-placeholder-val="{{ false }}"><button onClick="{{ ov.picRemove }}" style="height:32px; padding:0 10px; border-radius:10px; border:0; background:transparent; cursor:pointer; font-size:12px; font-weight:600; color:#93A1B0;">Remove</button></sc-if></div></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Category</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; flex-wrap:wrap; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ovCat }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};"><sc-if value="{{ o.dot }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.dot }};"></span></sc-if>{{ o.label }}</button></sc-for></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Stage</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; flex-wrap:wrap; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ovStage }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};"><sc-if value="{{ o.dot }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.dot }};"></span></sc-if>{{ o.label }}</button></sc-for></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Folder</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:1 1 160px; min-width:0; display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; border-radius:10px; background:rgba(6,9,13,0.45); border:1px solid rgba(255,255,255,0.08); font-family:'JetBrains Mono', monospace; font-size:12px; color:#C2CDD8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ om.folder }}</span></span>
+              <input ref="{{ pathDirRef }}" type="file" webkitdirectory="" directory="" multiple="{{ true }}" onChange="{{ onPathDir }}" style="display:none;">
+              <button onClick="{{ choosePath }}" style="flex:none; height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Choose folder…</button>
+              <button onClick="{{ revealPath }}" title="Open in Finder" style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></button></div></div>
+          </section>
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Description</h3>
+            <textarea value="{{ om.desc }}" onChange="{{ ov.desc }}" rows="3" placeholder="What it is, the scope, anything worth knowing." style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px dashed rgba(255,255,255,0.14); background:rgba(6,9,13,0.4); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.6; outline:none;"></textarea>
+            <button onClick="{{ ov.gen }}" style="height:36px; border-radius:11px; border:1px solid rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); cursor:pointer; font-size:12.5px; font-weight:650; color:#C9B8FF;">✦ Generate from project</button>
+          </section>
+          <section style="padding:6px 16px 10px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:10px 0 6px; font-size:15px; font-weight:700;">Details</h3>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Priority</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; flex-wrap:wrap; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ovPrio }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};"><sc-if value="{{ o.dot }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.dot }};"></span></sc-if>{{ o.label }}</button></sc-for></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Health</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; flex-wrap:wrap; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ovHealth }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};"><sc-if value="{{ o.dot }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.dot }};"></span></sc-if>{{ o.label }}</button></sc-for></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Owner</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><input value="{{ om.owner }}" onChange="{{ ov.owner }}" placeholder="Add owner" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; color-scheme:dark; flex:1; min-width:0;"></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Billing</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; flex-wrap:wrap; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ovBill }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};"><sc-if value="{{ o.dot }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ o.dot }};"></span></sc-if>{{ o.label }}</button></sc-for></div></div></div>
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:48px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Contract value</span><div style="flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font-size:13px; color:#93A1B0;">$</span><input type="number" value="{{ om.value }}" onChange="{{ ov.value }}" placeholder="0" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; color-scheme:dark; width:140px; font-family:'JetBrains Mono', monospace;;"></div></div>
+          </section>
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Links</h3>
+            <div style="font-size:12.5px; color:#93A1B0;">Repo, live site, staging, docs, designs — one tap away.</div>
+            <sc-for list="{{ links }}" as="l" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);"><span style="flex:none; width:70px; font-size:12px; font-weight:650; color:#C2CDD8;">{{ l.kind }}</span><a href="{{ l.url }}" target="_blank" style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ l.url }}</a><button onClick="{{ l.rm }}" title="Remove" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;">×</button></div></sc-for>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ linkKinds }}" as="k" hint-placeholder-count="5"><button onClick="{{ k.pick }}" style="height:30px; padding:0 12px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:650; background:{{ k.bg }}; color:{{ k.fg }}; border:1px solid {{ k.bd }};">{{ k.label }}</button></sc-for></div>
+            <div style="display:flex; gap:8px;"><input value="{{ linkUrl }}" onChange="{{ onLinkUrl }}" onKeyDown="{{ linkKey }}" placeholder="https://…" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; color-scheme:dark; flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12.5px;"><button onClick="{{ addLink }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; height:36px;">Add</button></div>
+          </section>
+        </div>
+        <div style="flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <div style="display:flex; align-items:center;"><h3 style="margin:0; flex:1; font-size:15px; font-weight:700;">Progress</h3><button onClick="{{ goTasks }}" style="border:0; background:none; cursor:pointer; font-size:12px; font-weight:650; color:#FF7B5C;">Tasks →</button></div>
+            <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600;">{{ prog.pct }}</span><div style="flex:1; height:6px; border-radius:6px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ prog.pct }}; border-radius:6px; background:#6FCF97;"></div></div></div>
+            <div style="font-size:12.5px; color:#93A1B0;"><b style="color:#E8EEF3;">{{ prog.done }}</b> of {{ prog.total }} tasks done</div>
+          </section>
+          <section style="padding:6px 16px 10px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:10px 0 6px; font-size:15px; font-weight:700;">Schedule</h3>
+            <sc-for list="{{ sched }}" as="d" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:10px; min-height:46px; border-top:1px solid rgba(255,255,255,0.05);"><span style="flex:none; width:90px; font-size:12.5px; color:#93A1B0;">{{ d.label }}</span><div style="flex:1 1 150px; min-width:0;"><dc-import name="DenDatePicker" value="{{ d.v }}" on-change="{{ d.set }}" hint-size="100%,36px"></dc-import></div></div></sc-for>
+          </section>
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Contacts</h3>
+            <sc-for list="{{ contacts }}" as="c" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:10px;"><span style="width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:{{ c.tint }}; color:{{ c.color }}; font-size:12px; font-weight:750;">{{ c.init }}</span><div style="flex:1; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ c.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ c.role }}</div></div><button onClick="{{ c.rm }}" title="Remove" style="width:26px; height:26px; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;">×</button></div></sc-for>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ contactSug }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.add }}" style="height:28px; padding:0 10px; border-radius:999px; border:1px dashed rgba(255,255,255,0.16); background:transparent; cursor:pointer; font-size:12px; font-weight:600; color:#A3B0BE;">+ {{ c.name }}</button></sc-for></div>
+          </section>
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Tags</h3>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ tags }}" as="t" hint-placeholder-count="2"><span style="height:26px; display:flex; align-items:center; gap:4px; padding:0 4px 0 10px; border-radius:999px; background:rgba(255,123,92,0.1); border:1px solid rgba(255,123,92,0.25); font-size:12px; font-weight:600; color:#FFA48C;">{{ t.label }}<button onClick="{{ t.rm }}" style="width:18px; height:18px; border-radius:50%; border:0; background:transparent; cursor:pointer; color:#FFA48C;">×</button></span></sc-for></div>
+            <div style="display:flex; gap:8px;"><input value="{{ tagText }}" onChange="{{ onTag }}" onKeyDown="{{ tagKey }}" placeholder="Add tags, separated by commas" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; color-scheme:dark; flex:1; min-width:0;"><button onClick="{{ addTag }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; height:36px;">Add</button></div>
+          </section>
+          <section style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Keep or remove</h3>
+            <div style="font-size:12.5px; line-height:1.5; color:#93A1B0;">Pause stops new tasks. Archive or hide when you're done — nothing is lost and you can bring it back.</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ keepActs }}" as="a" hint-placeholder-count="4"><button onClick="{{ a.run }}" style="height:34px; padding:0 13px; border-radius:10px; cursor:pointer; font-size:12.5px; font-weight:650; background:{{ a.bg }}; color:{{ a.fg }}; border:1px solid {{ a.bd }};">{{ a.label }}</button></sc-for></div>
+          </section>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A; padding-left:4px;">Record updated {{ om.updated }}</div>
+        </div>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ crop.open }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ crop.cancel }}" style="position:fixed; inset:0; z-index:200; display:grid; place-items:center; padding:16px; background:rgba(3,5,8,0.6); backdrop-filter:blur(6px);">
+      <div onClick="{{ stop }}" style="width:100%; max-width:380px; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(15,21,29,0.97); border:1px solid rgba(255,255,255,0.1); box-shadow:0 40px 90px -30px rgba(0,0,0,0.9); animation:denRise .2s cubic-bezier(.2,.7,.3,1);">
+        <div style="font-size:16px; font-weight:750;">Adjust project picture</div>
+        <div onPointerDown="{{ crop.down }}" onWheel="{{ crop.wheel }}" style="align-self:center; width:280px; height:280px; border-radius:16px; border:1px solid rgba(255,255,255,0.12); background-color:#0A0E13; background-image:{{ crop.img }}; background-size:{{ crop.bs }}; background-position:{{ crop.bp }}; background-repeat:no-repeat; cursor:{{ crop.cur }}; touch-action:none; user-select:none;"></div>
+        <div style="font-size:11.5px; color:#6B7A8A; text-align:center; margin-top:-6px;">Drag to move · scroll or slide to zoom</div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">Size</span><input type="range" min="{{ crop.min }}" max="{{ crop.max }}" step="0.01" value="{{ crop.z }}" onChange="{{ crop.setZ }}" style="flex:1; accent-color:#FF7B5C;"></div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button onClick="{{ crop.fit }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Fit whole picture</button><button onClick="{{ crop.reset }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Reset</button><span style="flex:1;"></span><button onClick="{{ crop.cancel }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Cancel</button><button onClick="{{ crop.save }}" style="height:36px; padding:0 14px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;">Save</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const ST = { running:['RUNNING', C.teal], needs:['NEEDS YOU', C.amber], asleep:['ASLEEP', C.violet], idle:['IDLE', '#93A1B0'] };
+const PROJ = [
+  { id:'den', name:'The Den', color:C.coral, st:'running', branch:'docs/den-handover', path:'~/code/the-den', queued:3, done:212, last:'now', model:'Claude Code · LA', now:'#828 Exporting the UI handover as PDF', progress:'64%', desc:'' },
+  { id:'ka7', name:'KodeAura7', color:C.blue, st:'needs', branch:'feature/crm-board', path:'~/code/kodeaura7', queued:2, done:148, last:'2m', model:'Claude Code · Tushar', desc:'CRM board view is waiting on a push approval.' },
+  { id:'skt', name:'Sanskrit exam paper', color:'#E6C07B', st:'idle', branch:'paper-set-b', path:'~/docs/sanskrit-papers', queued:1, done:64, last:'18m', model:'GPT-5 · API', desc:'Paper set B is ready for your review.' },
+  { id:'law', name:'Law Accounting site', color:'#7FD1B9', st:'asleep', branch:'main', path:'~/code/lawaccounting', queued:0, done:91, last:'3h', model:'Claude Code · LA', desc:'Launch Friday. Invoice rounding fix shipped this morning.' },
+  { id:'gen', name:'General', color:C.green, st:'idle', branch:'—', path:'no folder', queued:1, done:31, last:'1h', model:'Auto', desc:'Requests with no project — summaries, replies, translations.' },
+  { id:'lab', name:'Octopus voice lab', color:C.violet, st:'idle', branch:'exp/wake-word', path:'~/lab/voice', queued:0, done:12, last:'4d', model:'Gemini 2.5', desc:'Wake-word experiments. Paused.' }
+];
+const COLS = [['backlog', 'Backlog', '#6B7A8A'], ['next', 'Up next', C.blue], ['running', 'Running', C.teal], ['review', 'Review', C.amber], ['done', 'Done', C.green]];
+const SEED = [
+  ['#828', 'Document den structure and workflows', 'running', 'Urgent', 'agent', '64%'],
+  ['#829', 'Board view: drag cards between stages', 'next', 'Urgent', 'agent'],
+  ['#832', 'Add keyboard shortcuts to the project page', 'next', 'Normal', 'agent'],
+  ['#833', 'Recycle bin: restore with preview', 'backlog', 'Normal', 'agent'],
+  ['#834', 'Try a lighter glass theme for daytime', 'backlog', 'Low', 'api'],
+  ['#827', 'Split routing config into its own file', 'review', 'High', 'agent'],
+  ['#826', 'Fix invoice rounding on retainer projects', 'done', 'Normal', 'agent'],
+  ['#823', 'Generate phase 3 to-dos', 'done', 'Low', 'api']
+];
+const PROMPTS = {
+  '#828':'Document the den structure and workflows.\n\n- Read the codebase and DEN_UI_HANDOVER.md\n- Write a clear overview of folders, services and the queue lifecycle\n- Export the handover as PDF with weasyprint\n- Keep it under 12 pages',
+  '#829':'Board view: let users drag cards between stages.\n\nUse dnd-kit for touch support (client uses iPads). Persist order per stage. Record stage history (who moved what, when) for Thursday\'s demo.',
+  '#832':'Add keyboard shortcuts to the project page: N new task, B board/list toggle, / filter. Show them in the ? sheet.',
+  '#833':'Recycle bin: show a preview of each item before restoring. Support tasks, notes, recipes, chats and projects.',
+  '#834':'Explore a lighter glass theme for daytime. Keep contrast ≥ 4.5:1. Answer-only: return 3 palette options.',
+  '#827':'Split routing config into routing.json. Keep old keys as fallbacks for one release.'
+};
+const PN0 = [
+  { id:1, kind:'guideline', on:1, text:'Use TypeScript strict mode. No any. Prefer small pure functions.', when:'2w', used:41 },
+  { id:2, kind:'guideline', on:1, text:'Never push to main. Branch per task: feat/<id>-<slug>.', when:'2w', used:41 },
+  { id:3, kind:'requirement', on:1, text:'Handover PDF must stay under 12 pages — Abhishek prints it.', when:'today', used:2 },
+  { id:4, kind:'requirement', on:0, text:'Support Safari 16+ (client iPads).', when:'1w', used:0 },
+  { id:5, kind:'note', on:1, text:'Queue dependencies shipped. Templates later.', when:'Mon', used:0 }
+];
+const TREE = {
+  'src/': null, 'src/queue/': null, 'src/queue/runner.ts':"import { db } from '../db';\n\nexport async function next() {\n  const task = await db.task.findFirst({ where: { col: 'next' }, orderBy: { pos: 'asc' } });\n  if (!task) return null;\n  if (task.dependsOn && !(await isDone(task.dependsOn))) return null;\n  return start(task);\n}\n",
+  'src/queue/approvals.ts':"export const PROTECTED = ['git push', 'rm -rf', 'npm publish', 'deploy'];\n\nexport function needsApproval(cmd: string) {\n  return PROTECTED.some(p => cmd.startsWith(p));\n}\n",
+  'src/routing/': null, 'src/routing/rules.ts':"export type Rule = { when: string; kw: string[]; model: string; on: boolean };\n\nexport function route(prompt: string, rules: Rule[]) {\n  for (const r of rules) {\n    if (!r.on) continue;\n    if (r.kw.some(k => prompt.toLowerCase().includes(k))) return r.model;\n  }\n  return 'auto';\n}\n",
+  'src/ui/': null, 'src/ui/home.tsx':"export function Home() {\n  return (\n    <Shell>\n      <CurrentTask />\n      <UpNext />\n      <Widgets />\n    </Shell>\n  );\n}\n",
+  'src/db.ts':"import Database from 'better-sqlite3';\nexport const db = new Database('den.db');\n",
+  'docs/': null, 'docs/DEN_UI_HANDOVER.md':'# Den UI handover\n\nEvery screen, its state, and how queue, approvals and routing fit together.\n',
+  '.env.example':'ANTHROPIC_ACCOUNTS=la,tushar\nOPENAI_API_KEY=\nGEMINI_KEYS=\n',
+  'package.json':'{\n  "name": "the-den",\n  "private": true,\n  "scripts": {\n    "den": "tsx src/index.ts",\n    "test": "vitest"\n  }\n}\n',
+  'README.md':'# The Den\n\nA self-hosted workspace where Octopus runs tasks across your projects.\n'
+};
+const GIT = { 'src/ui/home.tsx':'M', 'docs/DEN_UI_HANDOVER.md':'M', 'src/routing/rules.ts':'U' };
+const IDEAS0 = [
+  { id:1, text:'Widget store: let each module ship its own Home widget, with a manifest for size and refresh rate.', size:'Big', status:'parked', when:'2d' },
+  { id:2, text:'“While you were away” should also read out on the speaker if I say “Octo, catch me up”.', size:'Medium', status:'parked', when:'4d' },
+  { id:3, text:'Queue templates — save a sequence like backup → summary → tests and run it in one tap.', size:'Medium', status:'parked', when:'1w' },
+  { id:4, text:'Show diff preview inside the approval card for git pushes.', size:'Small', status:'queued', when:'2w' }
+];
+const PRIO = { Urgent:['rgba(255,84,112,0.12)', '#FF8FA2'], High:['rgba(255,181,71,0.12)', '#FFCB7A'], Normal:['rgba(255,255,255,0.06)', '#C2CDD8'], Low:['rgba(255,255,255,0.04)', '#93A1B0'] };
+const LANE = { agent:['Claude Code', 'rgba(255,123,92,0.12)', '#FFA48C'], api:['GPT-5', 'rgba(111,207,151,0.1)', '#8FE0B0'] };
+
+class Component extends DCLogic {
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { q:'', filter:'All', sel:null, tab:'overview', view:'board', tq:'', pins:{ den:true, ka7:true }, tasks:SEED.map(t => ({ id:t[0], title:t[1], col:t[2], prio:t[3], lane:t[4], progress:t[5] || '' })),
+    dragId:null, overCol:null, chatSel:'#828', chatOpenPhone:false, chatText:'', extra:{}, files:{ 0:true, 1:true, 2:true, 3:false }, commitMsg:'', psets:{ model:'Claude Code', mode:'Accept edits', account:'LA', autoTests:true, autoFmt:true, nightly:false } };
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : null; }
+  componentDidMount() { this.props.onReady && this.props.onReady(); if (this.props.initial) this.setState({ sel:this.props.initial }); }
+
+  renderVals() {
+    const s = this.state; const isPhone = !!this.props.isPhone;
+    const ql = s.q.trim().toLowerCase();
+    const counts0 = { Hidden: PROJ.filter(p => (s.pst || {})[p.id] === 'hidden').length, Archived: [...PROJ, ...(s.extraProj || [])].filter(p => (s.pst || {})[p.id] === 'archived' || ((s.meta || {})[p.id] || {}).stage === 'Archived').length }; const counts = { ...counts0, All:PROJ.length, Running:PROJ.filter(p => p.st === 'running').length, 'Needs you':PROJ.filter(p => p.st === 'needs').length, Pinned:PROJ.filter(p => s.pins[p.id]).length };
+    const ALLP = [...PROJ, ...(s.extraProj || [])]; const pst = s.pst || {}; const isArch = p => pst[p.id] === 'archived' || ((s.meta || {})[p.id] || {}).stage === 'Archived'; const list = ALLP.filter(p => (s.filter === 'Hidden' ? pst[p.id] === 'hidden' : s.filter === 'Archived' ? isArch(p) : !['hidden', 'deleted'].includes(pst[p.id]) && !isArch(p))).filter(p => s.filter === 'Hidden' || s.filter === 'Archived' || (s.filter === 'All' || (s.filter === 'Running' && p.st === 'running') || (s.filter === 'Needs you' && p.st === 'needs') || (s.filter === 'Pinned' && s.pins[p.id])) && (!ql || (p.name + p.branch + p.path).toLowerCase().includes(ql)))
+      .sort((a, b) => (s.pins[b.id] ? 1 : 0) - (s.pins[a.id] ? 1 : 0));
+    const deco = p => { const [l, c] = (s.pst || {})[p.id] === 'paused' ? ['PAUSED', '#A58BFF'] : ST[p.st]; return { ...p, initial:p.name[0], tint:tint(p.color, 0.16), stLabel:l, stFg:c, stBg:tint(c === '#93A1B0' ? '#93A1B0' : c, 0.12) }; };
+    const projects = list.map(p => ({ ...deco(p), running: p.st === 'running', notRunning: p.st !== 'running', bd: p.st === 'needs' ? 'rgba(255,181,71,0.28)' : 'rgba(255,255,255,0.06)',
+      open:() => this.setState({ sel:p.id, tab:'overview' }),
+      menuOpen: s.pmenu === p.id, z: s.pmenu === p.id ? '20' : '1', menuToggle:e => { e.stopPropagation(); this.setState({ pmenu: s.pmenu === p.id ? null : p.id }); }, menuClose:e => { e.stopPropagation(); this.setState({ pmenu:null }); }, actions:this.projActions(p),
+      pin:e => { e.stopPropagation(); this.setState(st => ({ pins:{ ...st.pins, [p.id]: !st.pins[p.id] } })); }, pinFg: s.pins[p.id] ? '#FFB547' : '#5B6A7A', pinFill: s.pins[p.id] ? '#FFB547' : 'none', pinTitle: s.pins[p.id] ? 'Unpin' : 'Pin to sidebar' }));
+    const curP = [...PROJ, ...(s.extraProj || [])].find(p => p.id === s.sel) || PROJ[0];
+    const cur = deco(curP);
+
+    const tql = s.tq.trim().toLowerCase();
+    const tasks = s.tasks.filter(t => !tql || (t.id + t.title).toLowerCase().includes(tql));
+    const cols = COLS.map(([id, label, color]) => { const items = tasks.filter(t => t.col === id); const over = s.dragId && s.overCol === id;
+      return { id, label, color, count:String(items.length), empty: items.length === 0, emptyText: s.dragId ? 'Drop here' : id === 'review' ? 'Nothing to review' : id === 'running' ? 'Octopus is free' : 'No tasks',
+        canAdd: id === 'backlog' || id === 'next', add:() => this.addTask(id),
+        bg: over ? 'rgba(255,123,92,0.07)' : 'rgba(255,255,255,0.02)', bd: over ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.05)',
+        over:e => { e.preventDefault(); if (this.state.overCol !== id) this.setState({ overCol:id }); }, leave:() => {},
+        drop:e => { e.preventDefault(); this.moveTask(this.state.dragId, id); },
+        items: items.map(t => { const [pbg, pfg] = PRIO[t.prio]; const [ln, lbg, lfg] = LANE[t.lane];
+          return { ...t, pbg, pfg, lane:ln, lbg, lfg, meta: t.col === 'done' ? 'done' : t.col === 'running' ? t.progress : t.lane === 'agent' ? '~14m' : '~1m', op: s.dragId === t.id ? '0.4' : '1',
+            dragStart:e => { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t.id); } catch (x) {} this.setState({ dragId:t.id }); },
+            dragEnd:() => this.setState({ dragId:null, overCol:null }),
+            move:e => this.moveTask(t.id, e.target.value),
+            expanded: !!(s.exp || {})[t.id], prompt: t.prompt || PROMPTS[t.id] || t.title + '.\n\nWork in ' + curP.path + ' on ' + curP.branch + '. Run tests before marking done.',
+            expTitle: (s.exp || {})[t.id] ? 'Hide prompt' : 'Show prompt', expBg: (s.exp || {})[t.id] ? 'rgba(255,123,92,0.14)' : 'transparent', expFg: (s.exp || {})[t.id] ? '#FFA48C' : '#6B7A8A',
+            expIcon: (s.exp || {})[t.id] ? 'M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7' : 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
+            expand:e => { e.stopPropagation(); this.setState(st => ({ exp:{ ...(st.exp || {}), [t.id]: !(st.exp || {})[t.id] } })); },
+            copy:e => { e.stopPropagation(); try { navigator.clipboard.writeText(t.prompt || PROMPTS[t.id] || t.title); } catch (x) {} this.say('Prompt copied', t.id, C.green); },
+            open:() => this.setState({ tab:'chats', chatSel:t.id, chatOpenPhone:true }) }; }) }; });
+
+    const threadTask = s.tasks.find(t => t.id === s.chatSel) || s.tasks[0];
+    const status = { running:['Working', C.teal, 'Pause'], next:['Queued', C.blue, 'Run now'], backlog:['Backlog', '#93A1B0', 'Queue it'], review:['Needs review', C.amber, 'Mark done'], done:['Done', C.green, 'Run again'] }[threadTask.col];
+    const base = threadTask.col === 'running' ? [{ you:1, text:threadTask.title + '. Export the handover as a PDF when done.' }, { step:1, text:'Read DEN_UI_HANDOVER.md · 412 lines', dot:C.green }, { step:1, text:'Converted markdown to HTML', dot:C.green }, { code:1, text:'$ pandoc DEN_UI_HANDOVER.md --pdf-engine=weasyprint -o handover.pdf\n  rendering page 4 of 9…' }, { step:1, text:'Rendering PDF', dot:C.teal }]
+      : threadTask.col === 'done' ? [{ you:1, text:threadTask.title + '.' }, { step:1, text:'Read 6 files · edited 2', dot:C.green }, { step:1, text:'Tests passed · 42', dot:C.green }, { bot:1, text:'Done — changes are committed on ' + curP.branch + '. Nothing needs your approval.' }]
+      : threadTask.col === 'review' ? [{ you:1, text:threadTask.title + '.' }, { step:1, text:'Moved 3 files · updated imports', dot:C.green }, { bot:1, text:'Ready for review. I split routing into routing.json and kept the old keys as fallbacks. Want me to remove the fallbacks once you approve?' }]
+      : [{ you:1, text:threadTask.title + '.' }, { step:1, text: threadTask.col === 'next' ? 'Waiting — starts after #828' : 'In backlog — not queued yet', dot:C.blue }];
+    const msgs = [...base, ...((s.extra[threadTask.id]) || [])].map(m => ({ you:!!m.you, bot:!!m.bot, step:!!m.step, code:!!m.code, text:m.text, dot:m.dot || '#93A1B0' }));
+    const chats = s.tasks.map(t => { const on = t.id === threadTask.id; const d = { running:C.teal, next:C.blue, backlog:'#5B6A7A', review:C.amber, done:C.green }[t.col];
+      return { title:t.title, when: t.col === 'running' ? 'now' : t.col === 'done' ? '1d' : t.id === '#827' ? '2h' : '—', preview: t.col === 'running' ? 'Rendering PDF page 4 of 9…' : t.col === 'review' ? 'Ready for review.' : t.col === 'done' ? 'Done — changes committed.' : 'Queued', dot:d,
+        bg: on ? 'rgba(255,123,92,0.1)' : 'transparent', bd: on ? 'rgba(255,123,92,0.25)' : 'transparent', pick:() => this.setState({ chatSel:t.id, chatOpenPhone:true }) }; });
+
+    const FILES = [['M', 'docs/DEN_UI_HANDOVER.md', 48, 12], ['A', 'docs/handover.pdf', 0, 0], ['M', 'src/routes/home.ts', 22, 9], ['D', 'src/legacy/splash.tsx', 0, 61]];
+    const files = FILES.map(([k, p, a, d], i) => ({ kind:k, path:p, a:String(a), d:String(d), on: !!s.files[i], kbg: k === 'A' ? 'rgba(111,207,151,0.14)' : k === 'D' ? 'rgba(255,84,112,0.14)' : 'rgba(255,181,71,0.14)', kfg: k === 'A' ? C.green : k === 'D' ? '#FF8FA2' : C.amber, toggle:() => this.setState(st => ({ files:{ ...st.files, [i]: !st.files[i] } })) }));
+    const selCount = files.filter(x => x.on).length;
+
+    const ps = s.psets; const seg = (key, vals) => vals.map(v => ({ label:v, pick:() => this.setState(st => ({ psets:{ ...st.psets, [key]:v } })), bg: ps[key] === v ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: ps[key] === v ? '#FFA48C' : '#C2CDD8', bd: ps[key] === v ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.08)' }));
+    const tog = (key) => ({ isToggle:true, isSeg:false, track: ps[key] ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: ps[key] ? 'flex-end' : 'flex-start', toggle:() => this.setState(st => ({ psets:{ ...st.psets, [key]: !st.psets[key] } })), opts:[] });
+    const sg = (key, vals) => ({ isToggle:false, isSeg:true, opts:seg(key, vals) });
+
+    return {
+      fixSel: this.fixSel,
+      isPhone, isList: !s.sel, isDetail: !!s.sel, q:s.q, onQ:e => this.setState({ q:e.target.value }),
+      filters:['All', 'Running', 'Needs you', 'Pinned', 'Archived'].map(f => ({ label:f, count:String(counts[f]), pick:() => this.setState({ filter:f }), bg: s.filter === f ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.filter === f ? '#FFFFFF' : '#93A1B0', cc: s.filter === f ? '#C2CDD8' : '#5B6A7A' })),
+      hiddenN: counts.Hidden > 0, hiddenLabel: s.filter === 'Hidden' ? '← Back to all projects' : counts.Hidden + ' hidden — show', toggleHidden:() => this.setState({ filter: s.filter === 'Hidden' ? 'All' : 'Hidden' }),
+      projects, listEmpty: projects.length === 0, clearFilters:() => this.setState({ q:'', filter:'All' }),
+      newProject:() => this.pickDir('proj'), projDirRef:this.projDirRef, onProjDir:e => { this.ingest(e.target.files, 'proj'); e.target.value = ''; },
+      cur, back:() => this.setState({ sel:null }), openFolder:() => this.say('Opening in Finder', curP.path, C.blue), addTask:() => this.addTask('next'),
+      ...this.tabCustom(s, [['tasks', 'Tasks', String(s.tasks.filter(t => t.col !== 'done').length)], ['todos', 'To-dos', ''], ['overview', 'Overview', ''], ['chats', 'Chats', String(s.tasks.length)], ['ideas', 'Ideas', String((s.ideas || IDEAS0).filter(i => i.status === 'parked').length)], ['docs', 'Documents', '4'], ['timeline', 'Timeline', ''], ['notes', 'Guidelines', String((s.pnotes || PN0).filter(n => n.kind !== 'note' && n.on).length)], ['files', 'Files', ''], ['activity', 'Activity', ''], ['recipes', 'Recipes', '2'], ['changes', 'Changes', '4'], ['settings', 'Settings', '']]),
+      tabs: this.orderedTabs(s, [['tasks', 'Tasks', String(s.tasks.filter(t => t.col !== 'done').length)], ['todos', 'To-dos', ''], ['overview', 'Overview', ''], ['chats', 'Chats', String(s.tasks.length)], ['ideas', 'Ideas', String((s.ideas || IDEAS0).filter(i => i.status === 'parked').length)], ['docs', 'Documents', '4'], ['timeline', 'Timeline', ''], ['notes', 'Guidelines', String((s.pnotes || PN0).filter(n => n.kind !== 'note' && n.on).length)], ['files', 'Files', ''], ['activity', 'Activity', ''], ['recipes', 'Recipes', '2'], ['changes', 'Changes', '4'], ['settings', 'Settings', '']]).map(([id, label, count, pin]) => { return { label, count, pinned:pin, tip: pin ? 'Pinned tab' : '', pos: pin ? 'sticky' : 'relative', z: pin ? '2' : '1', tbg: pin ? 'rgba(10,14,19,0.98)' : 'transparent', sep: pin ? '1px solid rgba(255,255,255,0.06)' : '0', pick:() => this.setState({ tab:id }), fg: s.tab === id ? '#FFFFFF' : '#93A1B0', line: s.tab === id ? '#FF7B5C' : 'transparent' }; }),
+      tabTasks: s.tab === 'tasks', ...this.extraTabs(s, curP), ...this.overview(s, curP),
+      ...(() => { const all = this.projActions(curP, true).filter(x => x.label !== 'Duplicate settings' && x.label !== 'Archive'); const hw = s.hw || 1000; const nInline = hw >= 980 ? 6 : hw >= 820 ? 4 : hw >= 640 ? 2 : 0; const inl = all.slice(0, nInline);
+        return { inlineActs: inl.map(a => ({ ...a, showLabel: hw >= 1120 || a.label === 'Pause' || a.label === 'Resume', bd: a.fg === '#FF8FA2' ? 'rgba(255,84,112,0.35)' : 'rgba(255,255,255,0.08)' })), menuActs: all.slice(nInline), hasMoreActs: all.length > nInline, moreBg: s.pmenu === 'cur' ? 'rgba(255,123,92,0.12)' : 'rgba(255,255,255,0.04)' }; })(),
+      hdrRef:this.hdrRef,
+      curMenuOpen: s.pmenu === 'cur', curMenuToggle:() => this.setState({ pmenu: s.pmenu === 'cur' ? null : 'cur' }), curMenuClose:() => this.setState({ pmenu:null }), curActions:this.projActions(curP, true), tabChats: s.tab === 'chats', tabChanges: s.tab === 'changes', tabSettings: s.tab === 'settings',
+      views:[['board', 'Board', 'M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v13h-4z'], ['list', 'List', 'M4 6h16M4 12h16M4 18h16']].map(([id, label, icon]) => ({ label, icon, pick:() => this.setState({ view:id }), bg: s.view === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.view === id ? '#FFFFFF' : '#93A1B0' })),
+      isBoard: s.view === 'board', isListView: s.view === 'list', boardHint: s.view === 'board' ? (isPhone ? 'Scroll sideways · open a card to chat' : 'Drag cards between columns') : 'Change status from the menu on each row',
+      tq:s.tq, onTq:e => this.setState({ tq:e.target.value }), cols, colOpts: COLS.map(([id, label]) => ({ id, label })), stop:e => e.stopPropagation(),
+      chats, showChatList: !isPhone || !s.chatOpenPhone, showThread: !isPhone || s.chatOpenPhone, chatListFlex: '0 0 300px', chatBack:() => this.setState({ chatOpenPhone:false }),
+      thread:{ id:threadTask.id, title:threadTask.title, status:status[0], dot:status[1], action:status[2], lane:LANE[threadTask.lane][0], msgs },
+      threadAction:() => { const nx = { running:null, next:'running', backlog:'next', review:'done', done:'next' }[threadTask.col]; if (nx) this.moveTask(threadTask.id, nx); else this.say('Paused ' + threadTask.id, 'Paused time does not count toward the timeout.', C.amber); },
+      chatText:s.chatText, onChatText:e => this.setState({ chatText:e.target.value }), chatKey:e => { if (e.key === 'Enter') this.send(threadTask.id); }, sendChat:() => this.send(threadTask.id),
+      files, changeCount:'4', adds:'70', dels:'82', selCount:String(selCount), commitMsg:s.commitMsg, onCommit:e => this.setState({ commitMsg:e.target.value }),
+      suggestMsg:() => this.setState({ commitMsg:'docs: add Den UI handover and PDF export\n\n- remove legacy splash route' }),
+      commit:() => { if (!selCount) return this.say('Pick at least one file', '', C.amber); this.say('Committed ' + selCount + ' files', s.commitMsg.split('\n')[0] || 'Untitled commit', C.green); this.setState({ commitMsg:'' }); },
+      push:() => this.say('Approval needed', 'git push origin ' + curP.branch + ' — check Notifications.', C.amber),
+      commits:[{ sha:'a41f2c9', msg:'fix: invoice rounding on retainers', when:'6h' }, { sha:'9be03d1', msg:'feat: queue dependencies', when:'1d' }, { sha:'27c88aa', msg:'chore: bump weasyprint', when:'2d' }],
+      settingGroups:[
+        { name:'DEFAULTS FOR NEW TASKS', rows:[{ label:'AI agent', hint:'Coding work runs in this folder', ...sg('model', ['Claude Code', 'GPT-5', 'Auto']) }, { label:'Permission mode', hint:'What Octopus can do without asking', ...sg('mode', ['Plan only', 'Accept edits', 'Autonomous']) }, { label:'Account', hint:'Which Claude account runs it', ...sg('account', ['LA', 'Tushar', 'Most headroom']) }] },
+        { name:'AUTOMATION', rows:[{ label:'Run tests after edits', hint:'npm test before marking done', ...tog('autoTests') }, { label:'Auto-format changed files', hint:'prettier + eslint --fix', ...tog('autoFmt') }, { label:'Nightly backlog run', hint:'Queue backlog at 23:00 when idle', ...tog('nightly') }] }
+      ],
+      archive:() => { this.say('Moved to Recycle bin', curP.name + ' · restore within 30 days', C.err); this.setState({ sel:null }); }
+    };
+  }
+  hdrRef = el => { if (el === this.hdrEl) return; this.hdrEl = el; this.hro && this.hro.disconnect(); if (!el) return; this.hro = new ResizeObserver(() => { const w = Math.round(el.clientWidth); if (Math.abs(w - (this.state.hw || 0)) > 8) this.setState({ hw:w }); }); this.hro.observe(el); };
+  componentWillUnmount() { this.hro && this.hro.disconnect(); }
+  tabCfg(s, all) { const c = s.tabCfg || {}; const ids = all.map(t => t[0]); const order = [...(c.order || []).filter(x => ids.includes(x)), ...ids.filter(x => !(c.order || []).includes(x))]; return { order, hidden: c.hidden || {}, pinned: c.pinned || { tasks:1 } }; }
+  orderedTabs(s, all) { const c = this.tabCfg(s, all); const by = Object.fromEntries(all.map(t => [t[0], t])); const vis = c.order.filter(id => !c.hidden[id]); const pins = vis.filter(id => c.pinned[id]); return [...pins, ...vis.filter(id => !c.pinned[id])].map(id => [...by[id], !!c.pinned[id]]); }
+  tabCustom(s, all) {
+    const c = this.tabCfg(s, all); const by = Object.fromEntries(all.map(t => [t[0], t])); const save = p => this.setState(st => ({ tabCfg:{ ...this.tabCfg(st, all), ...p } }));
+    const visible = c.order.filter(id => !c.hidden[id]).length;
+    return { tabMenu: !!s.tabMenu, tabMenuToggle:() => this.setState(st => ({ tabMenu:!st.tabMenu })), tabMenuClose:() => this.setState({ tabMenu:false }),
+      tabRows: c.order.map((id, i) => { const hid = !!c.hidden[id], pin = !!c.pinned[id];
+        return { label:by[id][1], op: hid ? '0.45' : '1', pinFg: pin ? '#FFB547' : '#5B6A7A', pinTitle: pin ? 'Unpin' : 'Pin to the left', track: hid ? 'rgba(255,255,255,0.12)' : '#FF7B5C', align: hid ? 'flex-start' : 'flex-end',
+          up:() => { if (!i) return; const o = [...c.order]; [o[i - 1], o[i]] = [o[i], o[i - 1]]; save({ order:o }); },
+          down:() => { if (i === c.order.length - 1) return; const o = [...c.order]; [o[i + 1], o[i]] = [o[i], o[i + 1]]; save({ order:o }); },
+          pin:() => save({ pinned:{ ...c.pinned, [id]: pin ? 0 : 1 } }),
+          toggle:() => { if (!hid && visible <= 1) return this.say('Keep at least one tab', '', C.amber); save({ hidden:{ ...c.hidden, [id]: !hid } }); if (!hid && this.state.tab === id) this.setState({ tab: c.order.find(x => x !== id && !c.hidden[x]) }); } }; }),
+      tabReset:() => this.setState({ tabCfg:null }) };
+  }
+  geom(c, V) { const cover = V / Math.min(c.w, c.h), fitK = V / Math.max(c.w, c.h); const k = cover * c.z; const W = c.w * k, H = c.h * k;
+    const mx = Math.max(0, (W - V) / 2), my = Math.max(0, (H - V) / 2); const x = Math.max(-mx, Math.min(mx, c.x)), y = Math.max(-my, Math.min(my, c.y));
+    return { W, H, x, y, left:(V - W) / 2 + x, top:(V - H) / 2 + y, minZ: fitK / cover }; }
+  logoStyle(pic, T) { if (!pic) return { logoImg:'none', logoBs:'auto', logoBp:'center', logoText:this._initial || '' }; const g = this.geom(pic, 280); const r = T / 280;
+    return { logoImg:'url(' + pic.src + ')', logoBs:(g.W * r) + 'px ' + (g.H * r) + 'px', logoBp:(g.left * r) + 'px ' + (g.top * r) + 'px', logoText:'' }; }
+  cropVals(s, m, set) {
+    const c = s.crop; if (!c) return { open:false };
+    const g = this.geom(c, 280); const upd = p => this.setState(st => ({ crop:{ ...st.crop, ...p } }));
+    const zmin = Math.min(1, g.minZ);
+    return { open:true, img:'url(' + c.src + ')', bs:g.W + 'px ' + g.H + 'px', bp:g.left + 'px ' + g.top + 'px', cur: this.state.cropDrag ? 'grabbing' : 'grab',
+      min:zmin.toFixed(2), max:'3', z:String(c.z), setZ:e => upd({ z:+e.target.value }),
+      wheel:e => upd({ z: Math.max(zmin, Math.min(3, c.z - e.deltaY * 0.002)) }),
+      down:e => { e.preventDefault(); const sx = e.clientX, sy = e.clientY, ox = g.x, oy = g.y; this.setState({ cropDrag:true });
+        const mv = ev => upd({ x:ox + ev.clientX - sx, y:oy + ev.clientY - sy }); const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); this.setState({ cropDrag:false }); };
+        window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); },
+      fit:() => upd({ z:g.minZ, x:0, y:0 }), reset:() => upd({ z:1, x:0, y:0 }),
+      cancel:() => this.setState({ crop:null }), save:() => { set({ pic:{ ...c, x:g.x, y:g.y } }); this.setState({ crop:null }); this.say('Picture saved', m.name, C.green); } };
+  }
+  setPst(p, v, msg, c) { this.setState(st => ({ pst:{ ...(st.pst || {}), [p.id]:v }, pmenu:null, sel: ['hidden', 'archived', 'deleted'].includes(v) ? null : st.sel })); this.say(msg, p.name, c); }
+  projActions(p, inDetail) {
+    const st = (this.state.pst || {})[p.id];
+    const A = [
+      st === 'paused' ? ['Resume', 'M7 5l12 7-12 7z', '#E8EEF3', () => this.setPst(p, null, 'Resumed', C.green)] : ['Pause', 'M8 5v14M16 5v14', '#E8EEF3', () => this.setPst(p, 'paused', 'Paused — no new tasks start', C.violet)],
+      ['Open in Finder', 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', '#E8EEF3', () => { this.setState({ pmenu:null }); this.say('Opening in Finder', p.path, C.blue); }],
+      ['Duplicate settings', 'M8 8h12v12H8zM4 4h12v2M4 4v12h2', '#E8EEF3', () => { this.setState({ pmenu:null }); this.say('Settings copied', 'Paste into a new project', C.blue); }],
+      st === 'hidden' ? ['Unhide', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6', '#E8EEF3', () => this.setPst(p, null, 'Visible again', C.green)] : ['Hide', 'M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7c1.6 0 3-.4 4.3-1', '#E8EEF3', () => this.setPst(p, 'hidden', 'Hidden — find it under the Hidden filter', '#93A1B0')],
+      st === 'archived' ? ['Unarchive', 'M3 5h18v4H3zM5 9v10h14V9M12 17v-5M10 14l2-2 2 2', '#E8EEF3', () => this.setPst(p, null, 'Back in your projects', C.green)] : ['Archive', 'M3 5h18v4H3zM5 9v10h14V9M10 13h4', '#E8EEF3', () => this.setPst(p, 'archived', 'Archived — find it under the Archived filter', C.amber)],
+      ['Delete…', 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', '#FF8FA2', () => { if (this.state.confirmDel !== p.id) { this.setState({ confirmDel:p.id }); this.say('Tap Delete again to confirm', 'Moves ' + p.name + ' to the Recycle bin for 30 days', C.err); return; } this.setState({ confirmDel:null }); this.setPst(p, 'deleted', 'Deleted → Recycle bin (30 days)', C.err); }]
+    ];
+    const ord = ['Open in Finder', 'Pause', 'Resume', 'Hide', 'Unhide', 'Archive', 'Unarchive', 'Delete…', 'Duplicate settings']; A.sort((x, y) => ord.indexOf(x[0]) - ord.indexOf(y[0]));
+    return A.map(([label, icon, fg, run]) => ({ label: label === 'Delete…' && this.state.confirmDel === p.id ? 'Confirm delete' : label, icon, fg, run }));
+  }
+  overview(s, curP) { this._initial = curP.name[0];
+    const pid = curP.id; const D = { name:curP.name, client: pid === 'ka7' ? 'Abhishek Rao' : pid === 'law' ? 'Meera Shah' : pid === 'skt' ? 'Dr. Iyer' : 'Tushar Goyal', logo:curP.color, cat:'Work', stage:'In progress', desc:curP.desc || '', prio:'Medium', health: curP.st === 'needs' ? 'At risk' : 'On track', owner:'Tushar', bill:'Fixed price', value: pid === 'ka7' ? '4800' : '', start:'2026-08-12', due: pid === 'law' ? '2026-10-09' : '', completed:'', links:[['Repo', 'https://github.com/tushar-la/' + pid]], contacts: pid === 'ka7' ? ['Abhishek Rao'] : [], tags:['octopus'], updated:'3d ago' };
+    const m = { ...D, ...((s.meta || {})[pid] || {}) };
+    const set = p => this.setState(st => ({ meta:{ ...(st.meta || {}), [pid]:{ ...m, ...((st.meta || {})[pid] || {}), ...p, updated:'just now' } } }));
+    const PEOPLE = { 'Abhishek Rao':[C.blue, 'Client · KodeAura'], 'Meera Shah':['#7FD1B9', 'Client · Law Accounting'], 'Dr. Iyer':['#E6C07B', 'Principal · Vidya'], 'Ravi K.':[C.violet, 'Nova Clinics'], 'Tushar Goyal':[C.coral, 'You'] };
+    const sg = (key, opts, dots) => opts.map((o, i) => ({ label:o, dot: dots ? dots[i] : '', pick:() => set({ [key]:o }), bg: m[key] === o ? 'rgba(255,255,255,0.1)' : 'transparent', fg: m[key] === o ? '#FFFFFF' : '#93A1B0' }));
+    const done = this.state.tasks.filter(t => t.col === 'done').length, total = this.state.tasks.length; const pct = Math.round(done / Math.max(1, total) * 100) + '%';
+    const lk = s.linkKind || 'Repo';
+    const addLink = () => { const u = (this.state.linkUrl || '').trim(); if (!u) return; set({ links:[...m.links, [lk, u]] }); this.setState({ linkUrl:'' }); };
+    const addTag = () => { const t = (this.state.tagText || '').split(',').map(x => x.trim()).filter(Boolean); if (!t.length) return; set({ tags:[...new Set([...m.tags, ...t])] }); this.setState({ tagText:'' }); };
+    const pc = PEOPLE[m.client] || ['#C2CDD8'];
+    const HC = { 'On track':C.green, 'At risk':C.amber, 'Off track':C.err }; const PC2 = { Low:'#93A1B0', Medium:'#C2CDD8', High:C.amber, Critical:C.err };
+    const fmt = x => { if (!x) return 'Not set'; const d = new Date(x + 'T00:00'); return d.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]; };
+    const dueDays = m.due ? Math.round((new Date(m.due + 'T00:00') - new Date(2026, 9, 6)) / 864e5) : null;
+    return {
+      projZ: s.clientOpen ? '10' : '1', clientOpen: !!s.clientOpen, clientOpts: Object.entries(PEOPLE).map(([n, [c, role]]) => ({ name:n, role, init:n[0], color:c, tint:tint(c, 0.2), on: m.client === n, bg: m.client === n ? 'rgba(255,123,92,0.1)' : 'transparent', bd: m.client === n ? 'rgba(255,123,92,0.25)' : 'transparent', pick:() => { set({ client:n }); this.setState({ clientOpen:false }); } })),
+      crop: this.cropVals(s, m, set), pathDirRef:this.pathDirRef, choosePath:() => this.pickDir('path'), onPathDir:e => { this.ingest(e.target.files, 'path'); e.target.value = ''; }, revealPath:() => this.say('Opening in Finder', m.folder || curP.path, C.blue),
+      stagePath: (() => { const ST = [['Not started', '#93A1B0'], ['In progress', C.teal], ['Need info', C.amber], ['On hold', C.violet], ['Completed', C.green], ['Archived', '#6B7A8A']]; const ci = ST.findIndex(x => x[0] === m.stage); const n = ST.length;
+        return ST.map(([label, c], idx) => { const cur = idx === ci, done = idx < ci && m.stage !== 'On hold' && m.stage !== 'Need info' ? true : idx < ci;
+          const first = idx === 0, last = idx === n - 1;
+          const clip = first ? 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)' : last ? 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%)' : 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)';
+          return { label, clip, done: done && !cur, dotOn: !done || cur, dot:c, fw: cur ? 750 : 600, tip: cur ? 'Current stage' : 'Set stage to ' + label,
+            bg: cur ? tint(c, 0.28) : done ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.025)', fg: cur ? '#FFFFFF' : done ? '#C2CDD8' : '#6B7A8A',
+            pick:() => { if (cur) return; set({ stage:label, ...(label === 'Completed' && !m.completed ? { completed:'2026-10-06' } : {}) }); this.say('Stage → ' + label, curP.name, c); } }; }); })(),
+      tabOverview: s.tab === 'overview', om:{ ...m, folder: m.folder || curP.path, ...this.logoStyle(m.pic, 52), hasPic: !!m.pic, picLabel: m.pic ? 'Change picture' : 'Add picture', logoTip: m.pic ? 'Adjust picture' : 'Add a picture', clientInit:m.client[0], clientColor:pc[0], clientTint:tint(pc[0], 0.2), logoBg:m.logo },
+      ovKpis:[{ label:'PRIORITY', v:m.prio, dot:PC2[m.prio], sub:'' }, { label:'HEALTH', v:m.health, dot:HC[m.health], sub:'' }, { label:'DUE', v:fmt(m.due), dot:'', sub: dueDays === null ? '' : dueDays < 0 ? Math.abs(dueDays) + ' days late' : dueDays + ' days left' }, { label:'PROGRESS', v:pct, dot:'', sub:done + '/' + total + ' tasks' }, { label:'VALUE', v: m.value ? '$' + (+m.value).toLocaleString() : '—', dot:'', sub:m.bill }],
+      ov:{ name:e => set({ name:e.target.value }), desc:e => set({ desc:e.target.value }), owner:e => set({ owner:e.target.value }), value:e => set({ value:e.target.value }),
+        clientToggle:() => this.setState(st => ({ clientOpen:!st.clientOpen })), clientClose:() => this.setState({ clientOpen:false }), newClient:() => { this.setState({ clientOpen:false }); this.say('New client', 'Add them in CRM → Clients', C.coral); }, picPick:e => { const fl = e.target.files && e.target.files[0]; e.target.value = ''; if (!fl) return; const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => this.setState({ crop:{ src:r.result, w:im.naturalWidth, h:im.naturalHeight, z:1, x:0, y:0 } }); im.src = r.result; }; r.readAsDataURL(fl); },
+        picRemove:() => set({ pic:null }), reedit:() => { if (m.pic) this.setState({ crop:{ ...m.pic } }); },
+        gen:() => set({ desc: curP.name + ' — ' + (curP.desc || 'a project in ' + curP.path) + ' Octopus has done ' + curP.done + ' tasks here; ' + curP.queued + ' are queued on ' + curP.branch + '.' }) },
+      swatches:['#FF7B5C', '#FFB547', '#6FCF97', '#7FB2FF', '#A58BFF', '#FF5470', '#45E0C8', '#93A1B0', '#E6C07B'].map(c => ({ c, ring: m.logo === c ? '0 0 0 2px #0B1016, 0 0 0 4px ' + c : 'none', pick:() => set({ logo:c }) })),
+      ovCat: sg('cat', ['Work', 'Personal']), ovStage: sg('stage', ['Not started', 'In progress', 'Need info', 'On hold', 'Completed', 'Archived'], ['#93A1B0', C.teal, C.amber, C.violet, C.green, '#6B7A8A']),
+      ovPrio: sg('prio', ['Low', 'Medium', 'High', 'Critical'], ['#93A1B0', '#C2CDD8', C.amber, C.err]), ovHealth: sg('health', ['On track', 'At risk', 'Off track'], [C.green, C.amber, C.err]), ovBill: sg('bill', ['Fixed price', 'Hourly', 'Retainer']),
+      links: m.links.map(([kind, url], i) => ({ kind, url, rm:() => set({ links:m.links.filter((x, j) => j !== i) }) })),
+      linkKinds: ['Repo', 'Live site', 'Staging', 'Docs', 'Design'].map(k => ({ label:k, pick:() => this.setState({ linkKind:k }), bg: lk === k ? '#E8EEF3' : 'rgba(255,255,255,0.03)', fg: lk === k ? '#0A0E13' : '#C2CDD8', bd: lk === k ? '#E8EEF3' : 'rgba(255,255,255,0.1)' })),
+      linkUrl: s.linkUrl || '', onLinkUrl:e => this.setState({ linkUrl:e.target.value }), linkKey:e => { if (e.key === 'Enter') addLink(); }, addLink,
+      goTasks:() => this.setState({ tab:'tasks' }), prog:{ pct, done:String(done), total:String(total) },
+      sched: [['start', 'Start'], ['due', 'Due'], ['completed', 'Completed']].map(([k, label]) => ({ label, v:m[k], set:e => set({ [k]:e.target.value }) })),
+      contacts: m.contacts.map(n => ({ name:n, init:n[0], color:(PEOPLE[n] || ['#C2CDD8'])[0], tint:tint((PEOPLE[n] || ['#C2CDD8'])[0], 0.2), role:(PEOPLE[n] || ['', 'Contact'])[1], rm:() => set({ contacts:m.contacts.filter(x => x !== n) }) })),
+      contactSug: Object.keys(PEOPLE).filter(n => !m.contacts.includes(n) && n !== 'Tushar Goyal').map(n => ({ name:n, add:() => set({ contacts:[...m.contacts, n] }) })),
+      tags: m.tags.map(t => ({ label:t, rm:() => set({ tags:m.tags.filter(x => x !== t) }) })), tagText: s.tagText || '', onTag:e => this.setState({ tagText:e.target.value }), tagKey:e => { if (e.key === 'Enter') addTag(); }, addTag,
+      keepActs: this.projActions(curP, true).filter(a => ['Pause', 'Resume', 'Archive', 'Unarchive', 'Hide', 'Unhide', 'Delete…', 'Confirm delete'].includes(a.label)).map(a => ({ ...a, bg: a.fg === '#FF8FA2' ? 'rgba(255,84,112,0.08)' : 'rgba(255,255,255,0.04)', bd: a.fg === '#FF8FA2' ? 'rgba(255,84,112,0.35)' : 'rgba(255,255,255,0.08)' }))
+    };
+  }
+  dropVals(s) {
+    const add = files => { const arr = Array.from(files || []); if (!arr.length) return; const toneOf = n => /\.pdf$/i.test(n) ? C.err : /\.(png|jpe?g|gif|webp|svg)$/i.test(n) ? C.teal : /\.docx?$/i.test(n) ? C.blue : C.violet;
+      const items = arr.map(fl => ({ name:fl.name, ext:(fl.name.split('.').pop() || 'FILE').toUpperCase().slice(0, 4), tone:toneOf(fl.name), size: fl.size > 1e6 ? (fl.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(fl.size / 1e3)) + ' KB' }));
+      this.setState(st => ({ docsX:[...items, ...(st.docsX || [])], docSel:0, dzOn:false })); this.say(items.length + ' document' + (items.length > 1 ? 's' : '') + ' added', items.map(i => i.name).join(', ').slice(0, 60), C.green); };
+    return { dzOver:e => { e.preventDefault(); if (!this.state.dzOn) this.setState({ dzOn:true }); }, dzLeave:() => this.setState({ dzOn:false }), dzDrop:e => { e.preventDefault(); add(e.dataTransfer.files); }, dzPick:e => { add(e.target.files); e.target.value = ''; },
+      dzBd: s.dzOn ? '#FF7B5C' : 'rgba(255,255,255,0.16)', dzBg: s.dzOn ? 'rgba(255,123,92,0.08)' : 'rgba(255,255,255,0.02)', dzIc: s.dzOn ? '#FF7B5C' : '#93A1B0', dzText: s.dzOn ? 'Drop to add' : 'Drag & drop documents here' };
+  }
+  guideVals(s) {
+    const notes = s.pnotes || PN0; const kind = s.gKind || 'guideline';
+    const GK = { guideline:['Guideline', C.coral, 'Add a guideline… e.g. “Always write tests for new routes”'], requirement:['Requirement', C.blue, 'Add a requirement… e.g. “Must work offline”'], note:['Note', '#93A1B0', 'A note for yourself — Octopus won\'t read it']};
+    const setN = fn => this.setState(st => ({ pnotes: fn(st.pnotes || PN0) }));
+    const add = () => { const t = (this.state.noteText || '').trim(); if (!t) return; setN(a => [{ id:Date.now(), kind, on:1, text:t, when:'now', used:0, img:this.state.gImg || '' }, ...a]); this.setState({ noteText:'', gImg:'' }); this.say(GK[kind][0] + ' added', kind === 'note' ? 'Only you see this' : 'Octopus will follow it from the next task', GK[kind][1]); };
+    return {
+      gActiveCount: String(notes.filter(n => n.kind !== 'note' && n.on).length),
+      gKinds: Object.entries(GK).map(([id, [label, c]]) => ({ label, c, pick:() => this.setState({ gKind:id }), bg: kind === id ? '#E8EEF3' : 'rgba(255,255,255,0.03)', fg: kind === id ? '#0A0E13' : '#C2CDD8', bd: kind === id ? '#E8EEF3' : 'rgba(255,255,255,0.1)' })),
+      gHint: GK[kind][2] + '  (⇧↵ new line)', noteText: s.noteText || '', onNote:e => this.setState({ noteText:e.target.value }), addNote:add,
+      noteKey:e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); add(); } },
+      notePaste:e => { const it = Array.from((e.clipboardData && e.clipboardData.items) || []).find(x => x.type && x.type.startsWith('image/')); if (it) { e.preventDefault(); this.setState({ gImg:'pasted-image.png' }); } },
+      gPick:e => { const fl = e.target.files && e.target.files[0]; if (fl) this.setState({ gImg:fl.name }); e.target.value = ''; }, gImg: s.gImg || '', gImgRm:() => this.setState({ gImg:'' }),
+      gPolish:() => { const t = (s.noteText || '').trim(); if (!t) return this.say('Write something first', '', C.amber); this.setState({ noteText: t.charAt(0).toUpperCase() + t.slice(1).replace(/\s+/g, ' ').replace(/[.!]*$/, '.') }); },
+      gGroups: Object.entries(GK).map(([id, [label, c]]) => { const items = notes.filter(n => (n.kind || 'note') === id); return { name:label.toUpperCase() + 'S', c, count:String(items.length), items: items.map(n => ({ ...n, img:n.img || '', canToggle: id !== 'note', track: n.on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: n.on ? 'flex-end' : 'flex-start', tTitle: n.on ? 'Active — Octopus follows it' : 'Off — ignored', op: n.on || id === 'note' ? '1' : '0.55', bd: n.on && id !== 'note' ? tint(c, 0.25) : 'rgba(255,255,255,0.06)',
+        useTxt: id === 'note' ? '' : n.on ? ' · used in ' + (n.used || 0) + ' tasks' : ' · off', toggle:() => setN(a => a.map(x => x.id === n.id ? { ...x, on: x.on ? 0 : 1 } : x)), del:() => setN(a => a.filter(x => x.id !== n.id)) })) }; }).filter(g => g.items.length),
+      gEmpty: !notes.length
+    };
+  }
+  dirRef = el => { this.dirEl = el; };
+  projDirRef = el => { this.projDirEl = el; };
+  pathDirRef = el => { this.pathDirEl = el; };
+  async pickDir(target) {
+    if (window.showDirectoryPicker) { try { const h = await window.showDirectoryPicker(); const out = []; const walk = async (dir, pre) => { for await (const [name, ent] of dir.entries()) { if (/^(node_modules|\.git)$/.test(name)) continue; if (ent.kind === 'directory') await walk(ent, pre + name + '/'); else if (out.length < 600) { const fl = await ent.getFile(); out.push({ path: pre + name, file: fl }); } } }; await walk(h, ''); this.ingestList(h.name, out, target); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    const el = target === 'files' ? this.dirEl : target === 'path' ? this.pathDirEl : this.projDirEl; el && el.click();
+  }
+  ingest(fileList, target) { const arr = Array.from(fileList || []); if (!arr.length) return; const root = (arr[0].webkitRelativePath || arr[0].name).split('/')[0];
+    this.ingestList(root, arr.filter(fl => !/(^|\/)(node_modules|\.git)\//.test(fl.webkitRelativePath)).slice(0, 600).map(fl => ({ path: (fl.webkitRelativePath || fl.name).split('/').slice(1).join('/') || fl.name, file: fl })), target); }
+  ingestList(root, items, target) {
+    if (target === 'path') { const pid = this.state.sel; this.setState(st => ({ meta:{ ...(st.meta || {}), [pid]:{ ...((st.meta || {})[pid] || {}), folder:'~/' + root, updated:'just now' } } })); this.say('Folder linked', '~/' + root + ' · ' + items.length + ' files', C.green); return; }
+    if (target === 'proj') { const id = 'p' + Date.now(); this.setState(st => ({ extraProj:[...(st.extraProj || []), { id, name:root, color:'#45E0C8', st:'idle', branch:'main', path:'~/' + root, queued:0, done:0, last:'now', model:'Auto', desc: items.length + ' files · added just now' }] })); this.say('Project added', root + ' · ' + items.length + ' files', C.green); return; }
+    this._fobj = {}; const files = {};
+    items.forEach(({ path, file }) => { const parts = path.split('/'); for (let i = 1; i < parts.length; i++) files[parts.slice(0, i).join('/') + '/'] = null; files[path] = undefined; this._fobj[path] = file; });
+    const firstDirs = {}; Object.keys(files).filter(p => p.endsWith('/') && p.split('/').length === 2).forEach(p => firstDirs[p] = 1);
+    const first = items.map(i => i.path).find(p => /readme/i.test(p)) || items[0].path;
+    this.setState({ picked:{ root, files }, fopen:firstDirs, ftabs:[], fact:undefined, fedits:{}, fsaved:{} }); this.say('Opened ' + root, items.length + ' files', C.blue);
+    setTimeout(() => { this.setState(st => ({ ftabs:[first], fact:first })); this.loadPicked(first); }, 0);
+  }
+  loadPicked(p) { const fl = this._fobj && this._fobj[p]; if (!fl || (this.state.fsaved || {})[p] !== undefined) return;
+    if (fl.size > 400000 || /\.(png|jpe?g|gif|webp|pdf|zip|ico|woff2?|mp4|mov)$/i.test(p)) { this.setState(st => ({ fsaved:{ ...(st.fsaved || {}), [p]:'// ' + p + ' — binary or large file (' + Math.round(fl.size / 1024) + ' KB), not shown' } })); return; }
+    fl.text().then(t => this.setState(st => ({ fsaved:{ ...(st.fsaved || {}), [p]:t } }))); }
+  fileVals(s, curP) {
+    const picked = s.picked; const files = picked ? { ...picked.files, ...(s.fileAdds || {}) } : { ...TREE, ...(s.fileAdds || {}) }; const saved = s.fsaved || {}; const edits = s.fedits || {};
+    const open = s.fopen || { 'src/':1, 'src/queue/':1 }; const fq = (s.fq || '').toLowerCase();
+    const paths = Object.keys(files).sort((a, b) => { const pa = a.split('/'), pb = b.split('/'); for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const x = pa[i], y = pb[i]; if (x === y) continue; if (x === undefined) return -1; if (y === undefined) return 1; const xd = i < pa.length - 1 || a.endsWith('/') && i === pa.length - 2, yd = i < pb.length - 1 || b.endsWith('/') && i === pb.length - 2; if (xd !== yd) return xd ? -1 : 1; return x.localeCompare(y); } return 0; });
+    const vis = p => { const parts = p.replace(/\/$/, '').split('/'); for (let i = 1; i < parts.length; i++) if (!fq && !open[parts.slice(0, i).join('/') + '/']) return false; return !fq || (!p.endsWith('/') && p.toLowerCase().includes(fq)); };
+    const contentOf = p => edits[p] !== undefined ? edits[p] : saved[p] !== undefined ? saved[p] : files[p];
+    const isDirty = p => edits[p] !== undefined && edits[p] !== (saved[p] !== undefined ? saved[p] : files[p]);
+    const tabs = s.ftabs || ['src/queue/runner.ts']; const act = s.fact !== undefined ? s.fact : tabs[0];
+    const ext = p => (p.split('.').pop() || '').toLowerCase(); const GL = { ts:['TS', C.blue], tsx:['TSX', C.teal], md:['M↓', '#C2CDD8'], json:['{}', C.amber], example:['ENV', C.green] };
+    const openFile = p => { this.setState(st => { const t = st.ftabs || tabs; return { ftabs: t.includes(p) ? t : [...t, p], fact:p, fphone:true }; }); this.loadPicked(p); };
+    const save = () => { if (!act) return; const v = contentOf(act); this.setState(st => ({ fsaved:{ ...(st.fsaved || {}), [act]:v }, fedits:{ ...(st.fedits || {}), [act]:undefined } })); this.say('Saved', act, C.green); };
+    const txt = act ? contentOf(act) || '' : ''; const nLines = txt.split('\n').length;
+    const isPhone = !!this.props.isPhone;
+    return {
+      tabFiles: s.tab === 'files', rootName: picked ? picked.root.toUpperCase() : curP.path.split('/').pop().toUpperCase(), isPicked: !!picked, treeEmpty: !Object.keys(files).length,
+      dirRef:this.dirRef, pickFolder:() => this.pickDir('files'), onDirPick:e => { this.ingest(e.target.files, 'files'); e.target.value = ''; },
+      closeFolder:() => this.setState({ picked:null, ftabs:null, fact:undefined, fopen:null, fedits:{}, fsaved:{} }), fq: s.fq || '', onFq:e => this.setState({ fq:e.target.value }),
+      showTree: !isPhone || !s.fphone, showEditor: !isPhone || !!s.fphone, treeFlex: '0 0 250px', fileBack:() => this.setState({ fphone:false }),
+      tree: paths.filter(vis).map(p => { const dir = p.endsWith('/'); const parts = p.replace(/\/$/, '').split('/'); const name = parts[parts.length - 1]; const depth = fq ? 0 : parts.length - 1; const g = GL[ext(p)] || ['·', '#93A1B0'];
+        return { path:p, name: fq && !dir ? p : name, pad:(8 + depth * 14) + 'px', chev: dir ? (open[p] ? '▾' : '▸') : '', glyph: dir ? '' : g[0], ic:g[1], dirty: !dir && isDirty(p), git: GIT[p] || '', gc: GIT[p] === 'U' ? C.green : C.amber,
+          bg: p === act ? 'rgba(255,123,92,0.12)' : 'transparent', fg: p === act ? '#FFFFFF' : dir ? '#C2CDD8' : '#A3B0BE',
+          click:() => dir ? this.setState(st => ({ fopen:{ ...(st.fopen || open), [p]: !(st.fopen || open)[p] } })) : openFile(p) }; }),
+      collapseAll:() => this.setState({ fopen:{} }),
+      newFile:() => { const n = 'src/untitled-' + (Object.keys(s.fileAdds || {}).length + 1) + '.ts'; this.setState(st => ({ fileAdds:{ ...(st.fileAdds || {}), [n]:'' }, fopen:{ ...(st.fopen || open), 'src/':1 } })); openFile(n); },
+      ftabs: tabs.map(p => { const on = p === act; const d = isDirty(p); return { name:p.split('/').pop(), bg: on ? 'rgba(10,14,19,0.9)' : 'transparent', fg: on ? '#E8EEF3' : '#93A1B0', line: on ? 'inset 0 2px 0 #FF7B5C' : 'none', x: d ? '●' : '×', xc: d ? '#FFB547' : '#6B7A8A', closeTitle: d ? 'Unsaved — close anyway' : 'Close',
+        pick:() => this.setState({ fact:p }), close:e => { e.stopPropagation(); const rest = tabs.filter(x => x !== p); this.setState(st => ({ ftabs:rest, fact: act === p ? rest[rest.length - 1] || null : act, fedits:{ ...(st.fedits || {}), [p]:undefined } })); } }; }),
+      hasFile: !!act, noFile: !act, crumbs: act ? curP.path + '/' + act.split('/').join(' › ') : '',
+      fileText: txt, onFile:e => { const v = e.target.value; this.setState(st => ({ fedits:{ ...(st.fedits || {}), [act]:v } })); },
+      fileKey:e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); e.stopPropagation(); save(); } else if (e.key === 'Tab') { e.preventDefault(); const el = e.target; const a = el.selectionStart, b = el.selectionEnd; const v = el.value.slice(0, a) + '  ' + el.value.slice(b); this.setState(st => ({ fedits:{ ...(st.fedits || {}), [act]:v } })); requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = a + 2; }); } },
+      gutter: Array.from({ length:nLines }, (_, i) => i + 1).join('\n'), edH: (nLines * 20 + 24) + 'px', fLines:String(nLines), fLang: { ts:'TypeScript', tsx:'TypeScript JSX', md:'Markdown', json:'JSON' }[ext(act || '')] || 'Plain text',
+      fStatus: act && isDirty(act) ? '● unsaved' : act && GIT[act] ? (GIT[act] === 'U' ? 'untracked' : 'modified') : 'saved',
+      saveFile:save, saveBg: act && isDirty(act) ? '#FF7B5C' : 'rgba(255,255,255,0.06)', saveFg: act && isDirty(act) ? '#1A0A05' : '#93A1B0', dirtyOp: act && isDirty(act) ? '1' : '0.45',
+      revert:() => this.setState(st => ({ fedits:{ ...(st.fedits || {}), [act]:undefined } })),
+      askEdit:() => this.say('Ask Octopus to edit', act + ' — describe the change and it will propose a diff', C.violet)
+    };
+  }
+  extraTabs(s, curP) {
+    const docsL = [['README.md', 'MD', C.blue, '6 KB', '2d', 'You', '~/code/the-den/README.md', '# The Den\n\nA self-hosted workspace where Octopus runs tasks across your projects.\n\n## Run\nnpm i && npm run den\n\n## Folders\n- src/queue — task lifecycle\n- src/routing — model rules\n- src/ui — Home and pages'],
+      ['DEN_UI_HANDOVER.md', 'MD', C.blue, '38 KB', 'now', 'Octopus', '~/code/the-den/docs/DEN_UI_HANDOVER.md', '# Den UI handover\n\nThis document describes every screen of the Den, the state each one owns and how the queue, approvals and routing fit together.\n\n1. Home\n2. Projects\n3. Activity\n…'],
+      ['handover.pdf', 'PDF', C.err, '1.2 MB', 'rendering', 'Octopus', '~/code/the-den/docs/handover.pdf', 'PDF is being rendered (page 4 of 9). Preview appears when #828 finishes.'],
+      ['ARCHITECTURE.md', 'MD', C.blue, '11 KB', '1w', 'You', '~/code/the-den/docs/ARCHITECTURE.md', '# Architecture\n\nOctopus (agent runner) ← queue (sqlite) ← API ← UI\n\nApprovals block a task at a protected command until you answer.']];
+    const allDocs = [...(s.docsX || []).map(x => [x.name, x.ext, x.tone, x.size, 'just now', 'You', '~/code/' + curP.id + '/docs/' + x.name, 'Uploaded ' + x.name + ' (' + x.size + '). Octopus will index it for this project.']), ...docsL]; const ds = Math.min(s.docSel || 0, allDocs.length - 1); const d = allDocs[ds];
+    const MS = s.ms || [['2026-08-12', 'Project started', 'Folder added · 1st task', 'done'], ['2026-09-02', 'Queue + approvals', 'Phase 1 shipped', 'done'], ['2026-09-24', 'Routing rules', 'Phase 2 shipped', 'done'], ['2026-10-06', 'UI redesign', 'In progress · #828 running', 'now'], ['2026-10-09', 'Law Accounting launch', 'Deadline from Calendar', 'next'], ['2026-10-31', 'Phase 3 — widgets', 'Planned', 'next']];
+    const MSS = { done:['DONE', C.green], now:['NOW', C.teal], next:['PLANNED', '#93A1B0'] };
+    const fmt = x => { const dt = new Date(x + 'T00:00'); return dt.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.getMonth()]; };
+    const notes = s.pnotes || PN0; const ideas = s.ideas || IDEAS0; const iF = s.ideaF || 'parked'; const size = s.ideaSize || 'Medium';
+    const IS = { parked:['PARKED', C.violet], queued:['QUEUED', C.blue], backlog:['IN BACKLOG', '#93A1B0'] };
+    const setI = fn => this.setState(st => ({ ideas: fn(st.ideas || IDEAS0) }));
+    const addIdea = () => { const t = (this.state.ideaText || '').trim(); if (!t) return; setI(a => [{ id:Date.now(), text:t, size, status:'parked', when:'now' }, ...a]); this.setState({ ideaText:'', ideaF:'parked' }); this.say('Idea parked', 'It won\'t run until you press Run.', C.violet); };
+    const toTask = (i, col) => { const n = 840 + this.state.tasks.length; const id = '#' + n; this.setState(st => ({ tasks:[...st.tasks, { id, title: i.text.length > 60 ? i.text.slice(0, 57) + '…' : i.text, col, prio:'Normal', lane:'agent', progress:'', prompt:i.text }] })); setI(a => a.map(x => x.id === i.id ? { ...x, status: col === 'next' ? 'queued' : 'backlog' } : x)); this.say(col === 'next' ? 'Queued ' + id : 'Added to backlog', i.text.slice(0, 50), col === 'next' ? C.coral : '#93A1B0'); };
+    return {
+      tabDocs: s.tab === 'docs', tabTimeline: s.tab === 'timeline', tabNotes: s.tab === 'notes', tabActivity: s.tab === 'activity', tabRecipes: s.tab === 'recipes', tabIdeas: s.tab === 'ideas', tabTodos: s.tab === 'todos',
+      docCount:String(docsL.length + (s.docsX || []).length), docs: [...(s.docsX || []).map(x => [x.name, x.ext, x.tone, x.size, 'just now', 'You', '~/code/' + curP.id + '/docs/' + x.name, 'Uploaded ' + x.name + ' (' + x.size + '). Octopus will index it for this project.']), ...docsL].map(([name, ext, tone, size, when, by], i) => ({ name, ext, tone, tint:tint(tone, 0.14), size, when, by, bg: i === ds ? 'rgba(255,123,92,0.08)' : 'rgba(20,28,38,0.45)', bd: i === ds ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.06)', pick:() => this.setState({ docSel:i }) })),
+      doc:{ name:d[0], path:d[6], body:d[7] }, askDoc:() => this.say('Ask about ' + d[0], 'Opens a chat with this file attached', C.violet), openDoc:() => this.say('Opening', d[6], C.blue), uploadDoc:() => this.say('Add a document', 'Drop a file or link one from the project folder', C.coral),
+      msText: s.msText || '', onMs:e => this.setState({ msText:e.target.value }), msDate: s.msDate || '2026-10-20', onMsDate:e => this.setState({ msDate:e.target.value }),
+      addMs:() => { const t = (s.msText || '').trim(); if (!t) return; this.setState(st => ({ ms:[...MS, [st.msDate || '2026-10-20', t, 'Added by you', 'next']].sort((a, b) => a[0].localeCompare(b[0])), msText:'' })); },
+      milestones: MS.map(([date, title, sub, st]) => { const [state, c] = MSS[st]; return { date:fmt(date), title, sub, state, c, sbg:tint(c === '#93A1B0' ? '#93A1B0' : c, 0.12), fill: st === 'done' ? c : '#0A0E13', dc: st === 'now' ? C.teal : '#93A1B0', tc: st === 'next' ? '#C2CDD8' : '#E8EEF3' }; }),
+      ...this.guideVals(s), ...this.fileVals(s, curP), ...this.dropVals(s),
+      pacts:[['18:24', 'RUNNING', C.teal, '#828 Document den structure', 'Claude Code · LA'], ['18:22', 'APPROVAL', C.amber, 'Asked to push docs/den-handover', 'waiting on you'], ['17:10', 'REVIEW', C.violet, '#827 Split routing config', 'Claude Code'], ['13:12', 'FAILED', C.err, '#823 Generate phase 3 to-dos', 'GPT-5'], ['Mon', 'DONE', C.green, '#822 Back up the den database', 'Claude Code · Tushar'], ['Mon', 'COMMIT', C.blue, '9be03d1 feat: queue dependencies', 'You']].map(([when, kind, c, text, who]) => ({ when, kind, c, bg:tint(c, 0.12), text, who })),
+      precipes: [['Nightly backlog run', 'daily · 23:00', 'If idle → run backlog in order → morning summary', 'yesterday', 'r1'], ['Back up the den database', 'Sun · 02:00', 'Copy den.db to backups/ → keep last 8', '5 days ago', 'r2']].map(([name, when, steps, last, id]) => { const on = (s.precOn || { r1:1, r2:0 })[id];
+        return { name, when, steps, last, track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle:() => this.setState(st => ({ precOn:{ ...(st.precOn || { r1:1, r2:0 }), [id]: on ? 0 : 1 } })), run:() => this.say('Running ' + name, curP.name, C.coral) }; }),
+      newRecipe:() => this.say('New recipe', 'Opens the builder scoped to ' + curP.name, C.coral),
+      ideaText: s.ideaText || '', onIdea:e => this.setState({ ideaText:e.target.value }), ideaKey:e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addIdea(); } }, addIdea,
+      ideaSizes: ['Small', 'Medium', 'Big'].map(z => ({ label:z, pick:() => this.setState({ ideaSize:z }), bg: size === z ? 'rgba(165,139,255,0.16)' : 'rgba(255,255,255,0.03)', fg: size === z ? '#FFFFFF' : '#A3B0BE', bd: size === z ? 'rgba(165,139,255,0.45)' : 'rgba(255,255,255,0.08)' })),
+      ideaFilters: [['parked', 'Parked'], ['done', 'Sent to queue'], ['all', 'All']].map(([id, label]) => ({ label, count:String(ideas.filter(i => id === 'all' || (id === 'parked' ? i.status === 'parked' : i.status !== 'parked')).length), pick:() => this.setState({ ideaF:id }), bg: iF === id ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: iF === id ? '#FFA48C' : '#A3B0BE', bd: iF === id ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.07)' })),
+      ideas: ideas.filter(i => iF === 'all' || (iF === 'parked' ? i.status === 'parked' : i.status !== 'parked')).map(i => { const [st, c] = IS[i.status]; const editing = s.ideaEdit === i.id;
+        return { ...i, status:st, sc:c, sbg:tint(c === '#93A1B0' ? '#93A1B0' : c, 0.14), parked: i.status === 'parked', editing, notEditing: !editing, editLabel: editing ? 'Done' : 'Edit', bd: editing ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.06)', op: i.status === 'parked' ? '1' : '0.7',
+          onEdit:e => { const v = e.target.value; setI(a => a.map(x => x.id === i.id ? { ...x, text:v } : x)); }, edit:() => this.setState({ ideaEdit: editing ? null : i.id }),
+          run:() => toTask(i, 'next'), backlog:() => toTask(i, 'backlog'), del:() => { setI(a => a.filter(x => x.id !== i.id)); this.say('Idea deleted', '', C.err); } }; }),
+      ideasEmpty: !ideas.filter(i => iF === 'all' || (iF === 'parked' ? i.status === 'parked' : i.status !== 'parked')).length
+    };
+  }
+  moveTask(id, col) { if (!id) return; const t = this.state.tasks.find(x => x.id === id); this.setState(st => ({ tasks: st.tasks.map(x => x.id === id ? { ...x, col, progress: col === 'running' ? '4%' : '' } : x), dragId:null, overCol:null })); if (t && t.col !== col) this.say(id + ' → ' + COLS.find(c => c[0] === col)[1], t.title, COLS.find(c => c[0] === col)[2]); }
+  addTask(col) { const n = 835 + Object.keys(this.state.extra).length + this.state.tasks.length - SEED.length; const id = '#' + n; this.setState(st => ({ tasks:[...st.tasks, { id, title:'New task — click to describe it', col, prio:'Normal', lane:'agent', progress:'' }] })); this.say('Added ' + id, 'To ' + COLS.find(c => c[0] === col)[1], C.coral); }
+  send(id) { const t = this.state.chatText.trim(); if (!t) return; this.setState(st => ({ chatText:'', extra:{ ...st.extra, [id]:[...(st.extra[id] || []), { you:1, text:t }, { step:1, text:'Routed back to the same agent', dot:C.blue }] } })); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+/* The team: the Team page and an employee's page (views/team.js). Builds on the clients / contacts styles. */
+.tm-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.tm-stat { display: flex; flex-direction: column; gap: 2px; min-width: 84px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--inset); }
+.tm-stat b { font: 700 20px/1.2 var(--font-ui); color: var(--text); }
+.tm-stat--late b, .tm-late { color: var(--sleep, #e5584f); }
+.tm-late { font: 600 12.5px/1.4 var(--font-ui); }
+.tm-away { font: 600 12px/1.5 var(--font-ui); color: var(--review); }
+.tm-pill { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; background: var(--inset); border: 1px solid var(--line); color: var(--text-2); font: 600 11.5px/1.6 var(--font-ui); }
+.tm-pill--high { color: var(--sleep, #e5584f); border-color: currentColor; }
+.tm-tasks, .tm-leaves { display: flex; flex-direction: column; }
+.tm-task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.tm-task:last-child { border-bottom: 0; }
+.tm-task__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tm-task__title { font: 600 14px/1.4 var(--font-ui); color: var(--text); overflow-wrap: anywhere; }
+.tm-task.is-done .tm-task__title { text-decoration: line-through; color: var(--text-meta); }
+.tm-task__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tm-check { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 7px; border: 1.5px solid var(--line); background: none; color: var(--bg); display: grid; place-items: center; cursor: pointer; font: 700 13px var(--font-ui); }
+.tm-check.is-on { background: var(--run); border-color: var(--run); }
+.tm-leave { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.tm-leave:last-child { border-bottom: 0; }
+.tm-kv { display: flex; gap: 12px; padding: 6px 0; align-items: baseline; }
+.tm-kv__l { flex: none; width: 92px; font: 600 12px var(--font-ui); color: var(--text-meta); text-transform: uppercase; letter-spacing: .04em; }
+.tm-kv__v { min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 6px; }
+.tm-link { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.tm-sub { display: block; margin: 10px 0 4px; font: 600 12px var(--font-ui); color: var(--text-meta); text-transform: uppercase; letter-spacing: .04em; }
+.tm-meet .meta { margin-left: auto; padding-left: 10px; white-space: nowrap; }

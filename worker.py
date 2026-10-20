@@ -4,14 +4,17 @@ Background worker loops:
 - the agent lane: pulls the next queued task, runs Claude Code
   non-interactively in that task's project directory, records what it does
   step by step, and automatically retries after a usage-limit hit;
-- the api lane: plain model calls (OpenAI, Gemini...) that touch no files;
+- the api lane: plain model calls (OpenAI, Gemini...) that touch no files,
+  one at a time per model, the models side by side;
 - the scheduler: queues scheduled prompts when they come due.
 
-The agent lane is deliberately a single global queue across all active
-projects (in queue_pos order - see db.get_next_queued_task) rather than one
-loop per project - you only have one Claude Code usage allowance, so running
-more than one task "at once" wouldn't actually get you more throughput,
-just interleaved/confusing output.
+The agent lane is one queue across all active projects (in queue_pos order -
+see db.runnable_tasks) that runs one task at a time *per Claude account*
+(accounts.py): each account is one usage allowance, so two tasks on the same
+account wouldn't get more done, but projects on different accounts run side by
+side. A project always runs on its own account (or the default one); when that
+account hits its usage limit, only the projects on it wait - they resume on
+the same account once it resets, and never move to another account.
 """
 
 import asyncio
@@ -21,18 +24,28 @@ import os
 import re
 import shlex
 import signal
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 import accounts
+import activities
 import approval_links
 import db
+import documents
 import providers
+import mailer
+import restart_control
 import router
+import den_recipes
+import den_system
+import den_work
+import phases
 import timeline
 import uploads
+import webpush
 from assistant import actions as assistant_actions
 from assistant import orchestrator, planner
 from octopus import execution, registry as octopus_registry
@@ -52,8 +65,15 @@ PUSH_LEVEL = {"approval": "time-sensitive", "reminder": "time-sensitive", "failu
 
 
 def notify_phone(title: str, message: str, kind: str = "info", actions: Optional[list] = None,
-                 open_hash: str = "") -> bool:
-    """open_hash: where tapping it lands in the dashboard ("#/project/3/timeline")."""
+                 open_hash: str = "", approval_id: Optional[int] = None) -> bool:
+    """The phone (ActivitySmith) and every browser that allowed desktop alerts (webpush:
+    the Dock / Home Screen web app). True if either took it.
+    open_hash: where tapping it lands in the dashboard ("#/project/3/timeline")."""
+    web = webpush.send_all(title, message, kind, "/dashboard" + open_hash, approval_id) > 0
+    return _push_activitysmith(title, message, kind, actions, open_hash) or web
+
+
+def _push_activitysmith(title: str, message: str, kind: str, actions: Optional[list], open_hash: str) -> bool:
     if not ACTIVITYSMITH_API_KEY:
         return False
     try:
@@ -101,6 +121,9 @@ def notify(kind: str, project_id: Optional[int], title: str, message: str) -> No
             return
         if ps["quiet_hours"] and in_quiet_hours():
             return
+    # Workspace quiet hours (Settings › Notifications): only failures get through at night.
+    if kind != "failure" and db.get_setting("quiet_hours") and in_quiet_hours():
+        return
     notify_phone(title, message, kind)
 
 
@@ -148,7 +171,42 @@ PERMISSION_PROMPT_TOOL = "mcp__approval__approval_prompt"
 
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "10"))
 TASK_TIMEOUT_SECONDS = int(os.environ.get("TASK_TIMEOUT_SECONDS", str(60 * 60)))  # 1 hour/task cap
+
+
+def task_timeout_seconds() -> int:
+    """The per-task cap: Settings › General › Task timeout, else TASK_TIMEOUT_SECONDS."""
+    m = db.get_setting("task_timeout_min")
+    return int(m) * 60 if isinstance(m, (int, float)) and m > 0 else TASK_TIMEOUT_SECONDS
+
+
+# Stuck watch: a running Claude Code task that has printed nothing for stuck_after_seconds() -
+# not paused, not waiting on an approval - is flagged on the task (stuck_since / stuck_reason,
+# shown red on the dashboard) and pushed once. It clears itself when output comes again.
+STUCK_CHECK_SECONDS = 15
+STUCK_AFTER_DEFAULT_MIN = 10
+
+
+def stuck_after_seconds() -> int:
+    """Settings › General › Flag as stuck after, else STUCK_AFTER_DEFAULT_MIN."""
+    m = db.get_setting("stuck_after_min")
+    return int(m) * 60 if isinstance(m, (int, float)) and m > 0 else STUCK_AFTER_DEFAULT_MIN * 60
+
+
+def flag_stuck(task_id: int, quiet_seconds: float) -> None:
+    task = db.get_task(task_id)
+    if not task or task["status"] != "running":
+        return
+    step = (task.get("current_step") or "Thinking").strip()
+    if step.startswith("Claude account: "):
+        step = "starting up"    # nothing has happened since the run's opening note
+    reason = f"No output from Claude Code for {max(1, int(quiet_seconds // 60))} min · last step: {step}"
+    since = (datetime.now(timezone.utc) - timedelta(seconds=quiet_seconds)).isoformat()
+    db.set_stuck(task_id, since, reason)
+    log.warning("Task %s looks stuck: %s", task_id, reason)
+    notify("failure", task["project_id"], f"Task #{task_id} looks stuck",
+           f"{_task_name(task)[:120]} - {reason}. Open it to stop or retry.")
 SCHEDULER_INTERVAL_SECONDS = 30
+_STARTED_TS = time.time()   # when this process started: code edited after it means a restart is due
 
 # If a rate-limit message doesn't include a parseable reset time, back off
 # by this much and try again (then keep doubling, capped) rather than
@@ -238,10 +296,13 @@ def record_claude_usage(info: dict[str, Any], account_id: Optional[str] = None) 
     accounts.record_usage(account_id or accounts.active_id(), accounts.usage_from_event(info))
 
 
-def _hold_low_priority() -> bool:
+def _hold_low_priority(account_id: Optional[str] = None) -> bool:
+    """Whether Low tasks should wait on this account (default: the default account)."""
     if not db.get_setting("hold_low_when_busy") or db.sleep_mode_active():
         return False  # asleep there's no urgent work to save the session for
-    w = ((db.get_setting("claude_usage") or {}).get("windows") or {}).get("five_hour") or {}
+    usage = ((db.get_setting("claude_usage_by_account") or {}).get(account_id) if account_id
+             else db.get_setting("claude_usage"))
+    w = ((usage or {}).get("windows") or {}).get("five_hour") or {}
     util, resets = w.get("utilization"), w.get("resets_at")
     if util is None or not resets:
         return False
@@ -413,6 +474,31 @@ class TaskResult:
 # API runs in this same process - see main.py).
 _running: dict[int, asyncio.subprocess.Process] = {}
 _stopped: set[int] = set()
+_mode_switch: dict[int, str] = {}  # running task -> permission mode to restart it under
+
+
+_turns: dict[int, dict[str, int]] = {}  # running task -> messages sent / answered, to know when the run is over
+
+
+def _send_user_message(task_id: int, proc: asyncio.subprocess.Process, text: str) -> bool:
+    if not proc.stdin or proc.stdin.is_closing():
+        return False
+    try:
+        proc.stdin.write((json.dumps({"type": "user", "message": {"role": "user", "content": text}}) + "\n").encode())
+    except (BrokenPipeError, ConnectionResetError, RuntimeError):
+        return False
+    _turns[task_id]["sent"] += 1
+    return True
+
+
+def inject_message(task_id: int, text: str) -> bool:
+    """Hand a running Claude Code task a further message mid-run; it picks it up
+    as soon as it can. False if the run isn't taking messages (already wrapping
+    up, or not running here) - the caller then queues it as a normal reply."""
+    proc = _running.get(task_id)
+    if not proc or task_id not in _turns or _turns[task_id]["done"] >= _turns[task_id]["sent"]:
+        return False
+    return _send_user_message(task_id, proc, text)
 
 
 def _kill_tree(proc: asyncio.subprocess.Process) -> None:
@@ -463,13 +549,31 @@ def stop_task(task_id: int) -> bool:
     return True
 
 
-# ------------------------------------------------------------ restart (the dashboard's Restart button)
+def switch_mode(task_id: int, mode: str) -> bool:
+    """Apply a new permission mode to a task that is running now. The CLI fixes its mode
+    at launch, so the process is stopped and run_claude_task resumes the same session under
+    the new mode."""
+    proc = _running.get(task_id)
+    if not proc or mode not in db.PERMISSION_MODES:
+        return False
+    _mode_switch[task_id] = mode
+    _kill_tree(proc)
+    if task_id in _frozen:
+        resume_task(task_id)
+    return True
+
+
+# ------------------------------------------------------------ restart (the dashboard's two Restart buttons)
 # Exiting mid-run would orphan Claude Code: it runs in its own process group, so it
 # outlives this process, and the restarted worker would start the same task again
-# beside it. So a restart drains first - no lane picks up new work - and exits once
-# nothing is running. launchd (KeepAlive) starts the service again with fresh code.
+# beside it. So a normal restart drains first - no lane picks up new work - and exits once
+# nothing is running. A hard restart kills what's running instead. Either way the waiting
+# tasks are held and let go again on the next start (restart_control.py), and launchd
+# (KeepAlive) starts the service again with fresh code.
 draining = False
+restart_hard = False
 _restart_task: Optional[asyncio.Task] = None
+HARD_RESTART_GRACE = 5   # seconds for killed runs to wind down before exiting
 
 
 def busy_task_ids() -> list[int]:
@@ -481,16 +585,47 @@ def busy_task_ids() -> list[int]:
 async def _restart_when_idle() -> None:
     while busy_task_ids():
         await asyncio.sleep(2)
+    restart_control.hold_waiting()   # anything queued while draining (a reply, a schedule)
     log.warning("Restarting (asked from the dashboard) - launchd starts the service again")
     await asyncio.sleep(0.5)  # let the API answer whoever is polling
     os._exit(0)
 
 
-def request_restart() -> list[int]:
-    """Stop taking new work and restart as soon as nothing is running. Must be
-    called on the event loop (the API's async route). Returns what it waits on."""
-    global draining, _restart_task
+async def _restart_now(killed: list[int]) -> None:
+    for _ in range(HARD_RESTART_GRACE * 4):
+        if not _running:
+            break
+        await asyncio.sleep(0.25)
+    restart_control.mark_stopped(killed)   # last word on their status, after the lanes wrote theirs
+    restart_control.hold_waiting()
+    log.warning("Hard restart (asked from the dashboard): stopped %s - launchd starts the service again",
+                ", ".join(f"#{i}" for i in killed) or "nothing")
+    await asyncio.sleep(0.5)
+    os._exit(0)
+
+
+def request_restart(hard: bool = False) -> list[int]:
+    """Stop taking new work, hold the waiting tasks, and restart - once nothing is running,
+    or (hard) right away, killing what is. A hard restart can overtake a normal one that
+    is still waiting. Must be called on the event loop (the API's async route). Returns
+    what a normal restart waits on, or what a hard one stopped."""
+    global draining, restart_hard, _restart_task
+    first = not draining
     draining = True
+    restart_control.hold_waiting()
+    if first:
+        mailer.note_restart_requested(hard, busy_task_ids())
+    if hard and not restart_hard:
+        restart_hard = True
+        if _restart_task is not None:
+            _restart_task.cancel()
+        killed = sorted(_running)
+        for task_id in killed:
+            if task_id in _frozen:
+                resume_task(task_id)   # a frozen process can't act on the kill
+            _kill_tree(_running[task_id])
+        _restart_task = asyncio.get_running_loop().create_task(_restart_now(killed))
+        return killed
     if _restart_task is None:
         _restart_task = asyncio.get_running_loop().create_task(_restart_when_idle())
     return busy_task_ids()
@@ -530,13 +665,20 @@ def _with_permission_mode(args: list[str], mode: Optional[str]) -> list[str]:
 async def run_claude_task(prompt: str, project_path: str, task_id: int,
                           session_id: Optional[str] = None, model: Optional[str] = None,
                           permission_mode: Optional[str] = None, extra_args: Optional[list[str]] = None,
-                          observer: Optional[execution.RunObserver] = None) -> TaskResult:
+                          observer: Optional[execution.RunObserver] = None,
+                          account_id: Optional[str] = None) -> TaskResult:
     # Resuming an existing session_id (the caller's thread, from
     # db.get_thread_session_id) keeps this task in the same conversation -
     # so "remove the thing you just added" refers to what Claude actually
     # did, not a blank first message. Each task is otherwise its own fresh
     # `claude -p` process with no memory of previous invocations.
-    cmd = [CLAUDE_BIN, "-p", prompt]
+    # The prompt goes in over stdin (stream-json) rather than as an argument, so
+    # the chat can hand Claude a further message while it is still working
+    # (inject_message) - the way a message typed mid-run works in VS Code.
+    if not (project_path or "").strip():
+        # An empty cwd would run Claude in the service's own folder - never do that.
+        return TaskResult(success=False, error=NO_FOLDER_ERROR)
+    cmd = [CLAUDE_BIN, "-p", "--input-format", "stream-json"]
     if session_id:
         cmd += ["--resume", session_id]
     if model:
@@ -547,8 +689,8 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
     cmd += extra_args or []   # the agent's instructions and the tools it was not given (octopus/execution.py)
     log.info("Running: %s (cwd=%s)", " ".join(cmd[:3]) + " ...", project_path)
 
-    # The Claude account chosen on the dashboard (accounts.py) - fixed for this run even if it's switched meanwhile.
-    account_id = accounts.active_id()
+    # The project's Claude account (accounts.py) - fixed for this run even if it's changed meanwhile.
+    account_id = account_id or accounts.active_id()
     env = accounts.env_for(account_id, {**os.environ, "THE_DEN_TASK_ID": str(task_id)})
     db.add_task_event(task_id, "note", "Claude account: " + accounts.label(account_id))
 
@@ -557,7 +699,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
             *cmd,
             cwd=project_path,
             env=env,
-            stdin=asyncio.subprocess.DEVNULL,
+            stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             # A tool result line can carry a whole file; the default 64 KiB
@@ -569,17 +711,25 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
         return TaskResult(False, error=f"Could not find '{CLAUDE_BIN}' on PATH. Set CLAUDE_BIN to its full path.")
 
     _running[task_id] = proc
+    _turns[task_id] = {"sent": 0, "done": 0}
+    if not _send_user_message(task_id, proc, prompt):
+        _kill_tree(proc)
     result_msg: Optional[dict[str, Any]] = None
+    result_texts: list[str] = []
     rejected_reset: Optional[datetime] = None
     loose_lines: list[str] = []  # non-JSON stdout (e.g. an old CLI's plain text)
+    seen_session: Optional[str] = None
+    last_output = time.monotonic()   # the stuck watch: when Claude Code last printed anything
+    stuck = False
 
     async def read_stdout() -> None:
-        nonlocal result_msg, rejected_reset
+        nonlocal result_msg, rejected_reset, seen_session, last_output
         assert proc.stdout is not None
         while True:
             raw = await proc.stdout.readline()
             if not raw:
                 return
+            last_output = time.monotonic()
             line = raw.decode("utf-8", errors="replace").strip()
             if not line:
                 continue
@@ -592,6 +742,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
             if not isinstance(msg, dict):
                 continue
             kind = msg.get("type")
+            seen_session = msg.get("session_id") or seen_session
             if observer:
                 observer.observe(msg)
             if kind == "assistant":
@@ -600,6 +751,12 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
                         text = describe_tool(block.get("name", ""), block.get("input") or {}, project_path)
                         if text:
                             db.add_task_event(task_id, "tool", text)
+                    elif isinstance(block, dict) and block.get("type") == "thinking":
+                        db.set_current_step(task_id, "Thinking")
+            elif kind == "user" and any(isinstance(b, dict) and b.get("type") == "tool_result"
+                                        for b in (msg.get("message") or {}).get("content") or []):
+                # The tool's answer is back, so the model is working out what to do next.
+                db.set_current_step(task_id, "Thinking")
             elif kind == "rate_limit_event":
                 info = msg.get("rate_limit_info") or {}
                 record_claude_usage(info, account_id)
@@ -609,6 +766,15 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
                     rejected_reset = _parse_iso(iso) if iso else None
             elif kind == "result":
                 result_msg = msg
+                if isinstance(msg.get("result"), str) and msg["result"].strip():
+                    result_texts.append(msg["result"])
+                turns = _turns.get(task_id)
+                if turns:
+                    turns["done"] += 1
+                    # Every message sent has been answered: end the run. A message
+                    # passed in meanwhile makes another turn, so it waits for that.
+                    if turns["done"] >= turns["sent"] and proc.stdin and not proc.stdin.is_closing():
+                        proc.stdin.close()
 
     try:
         stdout_task = asyncio.ensure_future(read_stdout())
@@ -616,23 +782,50 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
         # The time cap counts only time spent running, not time paused.
         finished = asyncio.ensure_future(asyncio.gather(stdout_task, stderr_task, proc.wait()))
         active = 0.0
+        ticks = 0
         while not finished.done():
             await asyncio.wait({finished}, timeout=1)
             if task_id not in _frozen:
                 active += 1
-            if active > TASK_TIMEOUT_SECONDS and not finished.done():
+            if active > task_timeout_seconds() and not finished.done():
                 finished.cancel()
                 raise asyncio.TimeoutError
+            ticks += 1
+            if ticks % STUCK_CHECK_SECONDS == 0 and not finished.done():
+                if task_id in _frozen or await asyncio.to_thread(db.has_pending_approval, task_id):
+                    last_output = time.monotonic()   # paused, or waiting for you - not stuck
+                quiet = time.monotonic() - last_output
+                if not stuck and quiet >= stuck_after_seconds():
+                    stuck = True
+                    await asyncio.to_thread(flag_stuck, task_id, quiet)
+                elif stuck and quiet < stuck_after_seconds():
+                    stuck = False
+                    await asyncio.to_thread(db.set_stuck, task_id, None, None)
+                    log.info("Task %s is giving output again - no longer stuck", task_id)
         await finished
         stderr = stderr_task.result().decode("utf-8", errors="replace")
     except asyncio.TimeoutError:
         _kill_tree(proc)
         await proc.wait()
         db.expire_pending_approvals(task_id)
-        return TaskResult(False, error=f"Task exceeded {TASK_TIMEOUT_SECONDS}s and was killed.")
+        return TaskResult(False, error=f"Task exceeded {task_timeout_seconds()}s and was killed.")
     finally:
         _running.pop(task_id, None)
+        _turns.pop(task_id, None)
+        if stuck:
+            db.set_stuck(task_id, None, None)
         _frozen.discard(task_id)
+
+    if result_msg is not None and len(result_texts) > 1:
+        result_msg = {**result_msg, "result": "\n\n".join(result_texts)}   # every turn's answer, not just the last
+
+    new_mode = _mode_switch.pop(task_id, None)
+    if new_mode and task_id not in _stopped and result_msg is None:
+        db.add_task_event(task_id, "note", f"Permission mode changed to {new_mode} - continuing the same session")
+        return await run_claude_task(
+            f"The permission mode was just changed to {new_mode}. Carry on exactly where you left off.",
+            project_path, task_id, seen_session or session_id, model=model, permission_mode=new_mode,
+            extra_args=extra_args, observer=observer, account_id=account_id)
 
     if task_id in _stopped:
         _stopped.discard(task_id)
@@ -736,21 +929,41 @@ def catch_up_prompt(task: dict[str, Any], root_id: int, session_id: Optional[str
             + _transcript(history, CATCH_UP_MAX_CHARS) + "\n\n---\nThe user's new message:\n")
 
 
-async def run_agent_task(task: dict[str, Any]) -> bool:
-    """Run one agent-lane task start to finish. Used by the queue (one at a
-    time) and by "Proceed now" (alongside it). True if it hit the usage
-    limit - it's then rate_limited, and the queue resumes it after the reset."""
+NO_FOLDER_ERROR = "This project has no folder, so Octopus can't work on it. " + db.NO_FOLDER_HINT + "."
+
+
+def _refuse_folderless(task: dict[str, Any], project: Optional[dict[str, Any]]) -> bool:
+    """A CRM-only project (no folder) never runs anything: the task is marked as an error saying
+    why, rather than being run in some other folder. True if it was refused."""
+    if project is None or db.has_folder(project):
+        return False
+    db.mark_error(task["id"], NO_FOLDER_ERROR, needs_review=False)
+    log.warning("Refused task %s: project '%s' has no folder", task["id"], project["name"])
+    return True
+
+
+async def run_agent_task(task: dict[str, Any], account_id: Optional[str] = None) -> bool:
+    """Run one agent-lane task start to finish on its project's Claude account
+    (account_id if the caller worked it out already). Used by the queue (one
+    at a time per account) and by "Proceed now" (alongside it). True if it hit
+    the usage limit - it's then rate_limited, and the queue resumes it on the
+    same account after the reset."""
     project = db.get_project(task["project_id"])
     if not project or not project["active"]:
         db.mark_error(task["id"], "Project missing or inactive", needs_review=False)
         return False
+    if _refuse_folderless(task, project):
+        return False
     if over_budget(project):
         return False
 
+    account_id = account_id or _task_account(task)
+    if _account_blocked(task, account_id):
+        return False
     resuming = task["status"] == "rate_limited"
-    if not db.claim_task(task["id"]):
+    if not db.claim_task(task["id"], account_id):
         return False  # already started elsewhere, or cancelled meanwhile
-    log.info("Starting task %s for project '%s'", task["id"], project["name"])
+    log.info("Starting task %s for project '%s' on Claude account %s", task["id"], project["name"], account_id)
     if resuming and db.get_setting("notify_on_resume"):
         db.set_setting("notify_on_resume", False)
         notify_phone("Octopus is back", f"Usage limit reset · resuming {_task_name(task)}")
@@ -764,18 +977,22 @@ async def run_agent_task(task: dict[str, Any]) -> bool:
     started = datetime.now(timezone.utc)
     # Where git stood before this run, so what it changed can be shown afterwards.
     # A resumed (rate-limited) task keeps its original starting point.
+    workdir = db.task_workdir(task, project)
+    if not workdir:   # can't happen past _refuse_folderless; never let Claude start in "wherever"
+        db.mark_error(task["id"], NO_FOLDER_ERROR, needs_review=False)
+        return False
     if task.get("git_base") is None:
-        snapshot = await asyncio.to_thread(execution.git_snapshot, project["path"])
+        snapshot = await asyncio.to_thread(execution.git_snapshot, workdir)
         if snapshot is not None:
             db.set_task_git_base(task["id"], snapshot)
             task = {**task, "git_base": snapshot}
     observer = execution.RunObserver(task["id"])
     prompt = catch_up_prompt(task, thread_root_id, resume_session_id) + task["prompt"]
-    result = await run_claude_task(uploads.prompt_for_agent(prompt, task.get("images")), project["path"], task["id"], resume_session_id,
+    result = await run_claude_task(uploads.prompt_for_agent(prompt, task.get("images")), workdir, task["id"], resume_session_id,
                                    model=model_cfg.get("model"), permission_mode=task.get("permission_mode"),
-                                   extra_args=execution.claude_args(task), observer=observer)
+                                   extra_args=execution.claude_args(task), observer=observer, account_id=account_id)
     try:
-        artifacts = await asyncio.to_thread(execution.collect_artifacts, task, project["path"], observer)
+        artifacts = await asyncio.to_thread(execution.collect_artifacts, task, workdir, observer)
         db.set_task_artifacts(task["id"], artifacts)
         if artifacts["validation"]["status"] in ("passed", "failed", "unverified"):
             db.add_task_event(task["id"], "note", "Checked: " + artifacts["validation"]["note"])
@@ -800,14 +1017,24 @@ async def run_agent_task(task: dict[str, Any]) -> bool:
         if resume_at.tzinfo is None:
             resume_at = resume_at.replace(tzinfo=timezone.utc)
         db.mark_rate_limited(task["id"], resume_at.isoformat())
-        log.warning("Task %s hit a usage limit. Resuming at %s", task["id"], resume_at.isoformat())
+        accounts.record_hit(account_id)
+        log.warning("Task %s hit Claude account %s's usage limit. Its projects wait until %s",
+                    task["id"], account_id, resume_at.isoformat())
         return True
 
     if result.success:
         _backoff_minutes.pop(task["id"], None)
-        db.mark_done(task["id"], result.summary)
-        log.info("Task %s done", task["id"])
-        notify("completion", project["id"], "Done · " + project["name"], _task_name(task))
+        # A run that ended by asking the owner something isn't finished: it waits for the answer (Den 2.1).
+        summary, waiting = execution.split_waiting(result.summary)
+        db.mark_done(task["id"], summary)
+        if waiting:
+            db.set_awaiting_reply(task["id"], True)
+            log.info("Task %s is waiting for an answer", task["id"])
+            question = next((l.strip() for l in reversed(summary.strip().splitlines()) if l.strip()), "")
+            notify("approval", project["id"], "Octopus has a question · " + project["name"], (question or _task_name(task))[:180])
+        else:
+            log.info("Task %s done", task["id"])
+            notify("completion", project["id"], "Done · " + project["name"], _task_name(task))
     else:
         db.mark_error(task["id"], result.error, needs_review=False)
         log.error("Task %s failed: %s", task["id"], result.error[:300])
@@ -815,28 +1042,89 @@ async def run_agent_task(task: dict[str, Any]) -> bool:
     return False
 
 
+# The queue's run on each Claude account (account id -> its asyncio task): at most one per account.
+_account_runs: dict[str, asyncio.Task] = {}
+_agent_lane_wake: Optional[tuple[asyncio.AbstractEventLoop, asyncio.Event]] = None
+
+
+def wake_agent_lane() -> None:
+    """Look at the queue again now rather than at the next poll (a run finished,
+    a project's account changed). Safe from any thread; a no-op if not running."""
+    if _agent_lane_wake:
+        loop, event = _agent_lane_wake
+        loop.call_soon_threadsafe(event.set)
+
+
+async def _run_on_account(task: dict[str, Any], account_id: str) -> None:
+    try:
+        await run_agent_task(task, account_id)
+    except Exception as e:
+        log.exception("Task %s crashed on Claude account %s", task["id"], account_id)
+        if (db.get_task(task["id"]) or {}).get("status") == "running":
+            db.mark_error(task["id"], f"Unexpected error: {e}", needs_review=False)
+    finally:
+        wake_agent_lane()
+
+
+def _task_account(task: dict[str, Any], default: Optional[str] = None) -> str:
+    """The account a task runs on: the one the user pinned it to when queuing it, else its project's own / the default."""
+    pinned = task.get("pinned_account")
+    if pinned and accounts.exists(pinned):
+        return pinned
+    return accounts.for_project(task["project_id"], task.get("project_account", "?"), default)
+
+
+def _account_blocked(task: dict[str, Any], account: str) -> bool:
+    """A task limited to one account (only_account) never starts on any other: it
+    waits, untouched and unsent to Claude, until the user changes its account."""
+    only = task.get("only_account")
+    return bool(only) and only != account
+
+
+def start_ready_tasks() -> list[tuple[int, str]]:
+    """Start the first waiting task of every Claude account that is free: not
+    already running one of the queue's tasks, and not waiting out its usage
+    limit. A task only ever goes to its own project's account - an account's
+    limit holds its projects, and never sends them to another account.
+    Returns [(task id, account id)] started. Must run on the event loop."""
+    default = accounts.active_id()
+    limited = db.claude_account_limits(default)
+    busy = {a for a, t in _account_runs.items() if not t.done()}
+    hold_low: dict[str, bool] = {}
+    started = []
+    for task in db.runnable_tasks("agent"):
+        account = _task_account(task, default)
+        if _account_blocked(task, account):
+            continue
+        if account in busy or account in limited:
+            continue
+        if task["status"] == "queued" and task["priority"] < 0:
+            if account not in hold_low:
+                hold_low[account] = _hold_low_priority(account)
+            if hold_low[account]:
+                continue
+        busy.add(account)
+        _account_runs[account] = asyncio.get_running_loop().create_task(_run_on_account(task, account))
+        started.append((task["id"], account))
+    return started
+
+
 async def worker_loop(stop_event: asyncio.Event) -> None:
-    """The agent lane - Claude Code running inside the project, one task at
-    a time in queue order."""
+    """The agent lane - Claude Code running inside the projects, in queue order,
+    one task at a time per Claude account (see start_ready_tasks)."""
+    global _agent_lane_wake
     log.info("Worker loop started (polling every %ss)", POLL_INTERVAL_SECONDS)
+    wake = asyncio.Event()
+    _agent_lane_wake = (asyncio.get_running_loop(), wake)
     while not stop_event.is_set():
-        task = None if draining else db.get_next_queued_task("agent", hold_low_priority=_hold_low_priority())
-        if not task:
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-            continue
-        if not await run_agent_task(task):
-            continue
-        # Usage limit: it's account-wide, so the whole agent lane waits. Re-read
-        # the task each time: "Retry now" or Cancel on the dashboard ends the
-        # wait early.
-        while not stop_event.is_set():
-            current = db.get_task(task["id"])
-            if not current or current["status"] != "rate_limited" or not current["resume_at"]:
-                break
-            remaining = (_parse_iso(current["resume_at"]) - datetime.now(timezone.utc)).total_seconds()
-            if remaining <= 0:
-                break
-            await asyncio.sleep(min(POLL_INTERVAL_SECONDS, remaining))
+        LAST_TICK["agent"] = time.time()
+        if not draining and not queue_paused():
+            try:
+                for task_id, account in start_ready_tasks():
+                    log.info("Queue: task %s -> Claude account %s", task_id, account)
+            except Exception:
+                log.exception("Worker tick failed")
+        await _nap(wake, POLL_INTERVAL_SECONDS)
 
 
 RUN_NOW_POLL_SECONDS = 2
@@ -850,7 +1138,7 @@ async def run_now_loop(stop_event: asyncio.Event) -> None:
     while not stop_event.is_set():
         try:
             for task in ([] if draining else db.run_now_tasks()):
-                if task["lane"] != "agent":
+                if task["lane"] != "agent" or _account_blocked(task, _task_account(task)):
                     continue
                 t = asyncio.create_task(run_agent_task(task))
                 _run_now_active.add(t)
@@ -915,7 +1203,8 @@ def wake_api_lane() -> None:
         loop.call_soon_threadsafe(event.set)
 
 
-async def _api_lane_nap(event: asyncio.Event, seconds: float) -> None:
+async def _nap(event: asyncio.Event, seconds: float) -> None:
+    """Sleep for `seconds`, or until `event` is set."""
     try:
         await asyncio.wait_for(event.wait(), seconds)
     except asyncio.TimeoutError:
@@ -923,75 +1212,177 @@ async def _api_lane_nap(event: asyncio.Event, seconds: float) -> None:
     event.clear()
 
 
+def _fail_over(task: dict[str, Any], model_cfg: dict[str, Any], err: Exception) -> bool:
+    """AI Providers › "Fall back to another provider": move an answer-only task its
+    provider couldn't take to the next usable model in its category on another provider.
+    True when it was moved (back in the queue)."""
+    fo = db.get_setting("failover") or {}
+    if not fo.get("other", True) or task.get("thread_id") or task.get("routed_by") == "manual":
+        return False     # a reply stays on its chat's model; a model you picked is kept
+    from octopus import plan as octo_plan
+    cat = (router.registry().get("routing", {}).get("categories", {}).get(task.get("category") or "general") or {})
+    ids = [i for i in cat.get("candidates") or [] if i != model_cfg["id"]]
+    other = [i for i in ids if (router.get_model(i) or {}).get("provider") != model_cfg.get("provider")]
+    choice = octo_plan.choose_model(task.get("category") or "general", task["prompt"], None, other) if other else {"model": None}
+    m = choice.get("model")
+    if not m or router.lane_for(m) != "api":
+        return False
+    db.reroute_task(task["id"], m["id"], "api", f"{model_cfg.get('label', model_cfg['id'])} failed ({str(err)[:120]}) - moved to {m.get('label', m['id'])}")
+    log.warning("API lane: task %s moved from %s to %s after: %s", task["id"], model_cfg["id"], m["id"], err)
+    if fo.get("notify", True):
+        notify_phone("Switched provider", f"{model_cfg.get('label')} failed - #{task['id']} now runs on {m.get('label', m['id'])}", "info")
+    wake_api_lane()
+    return True
+
+
+async def run_api_task(task: dict[str, Any], project: Optional[dict[str, Any]], model_cfg: dict[str, Any]) -> None:
+    """One api-lane call start to finish. The task is already claimed (running)."""
+    started = datetime.now(timezone.utc)
+    try:
+        # The agent Octopus planned this for supplies its own instructions (agents.json).
+        agent = octopus_registry.get_agent(task.get("agent_id"))
+        instructions = (agent or {}).get("instructions") or API_INSTRUCTIONS
+        if project and not db.is_general_project(project):
+            instructions += f"\nThe user currently has the project '{project['name']}' selected."
+        for block in (db.project_notes_prompt(task["project_id"]), timeline.prompt_for(task["project_id"]),
+                      phases.prompt_for(task["project_id"]), documents.prompt_for_api(task["project_id"])):
+            if block:
+                instructions += "\n\n" + block
+        if model_cfg.get("modality") == "image":
+            completion = await asyncio.to_thread(providers.generate_image, model_cfg, task["prompt"], API_TASK_TIMEOUT_SECONDS)
+        else:
+            extra = {"web": True} if "web" in (task.get("tools") or []) else {}
+            completion = await asyncio.to_thread(
+                providers.complete, model_cfg, _api_messages(task, model_cfg), instructions, API_TASK_TIMEOUT_SECONDS, **extra)
+    except providers.ProviderError as e:
+        if e.rate_limited:
+            resume_at = datetime.now(timezone.utc) + timedelta(seconds=e.retry_after or 60)
+            db.set_model_rate_limited(model_cfg["id"], resume_at.isoformat(), str(e))
+        if _fail_over(task, model_cfg, e):
+            return
+        if e.rate_limited:
+            db.mark_rate_limited(task["id"], resume_at.isoformat())
+            log.warning("API lane: %s rate-limited until %s", model_cfg["id"], resume_at.isoformat())
+        else:
+            db.mark_error(task["id"], str(e), needs_review=False)
+            log.error("API lane: task %s failed: %s", task["id"], e)
+            notify("failure", task["project_id"], "Octopus couldn't answer",
+                   f"{model_cfg.get('label')}: {_task_name(task)}")
+        return
+    except Exception as e:
+        db.mark_error(task["id"], f"Unexpected error: {e}", needs_review=False)
+        log.exception("API lane: task %s crashed", task["id"])
+        return
+
+    duration_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+    db.clear_model_rate_limit(model_cfg["id"])
+    db.set_task_usage(task["id"], duration_ms, completion.input_tokens, completion.output_tokens,
+                      providers.estimate_cost(model_cfg, completion.input_tokens, completion.output_tokens))
+    db.mark_done(task["id"], completion.text[:API_RESULT_MAX_CHARS] or "(empty response)")
+    log.info("API lane: task %s done in %sms", task["id"], duration_ms)
+    notify("completion", task["project_id"], "Octopus answered", f"{model_cfg.get('label')}: {_task_name(task)}")
+
+
+# The api lane's run on each model (model id -> its asyncio task): at most one per
+# model, so a GPT question never waits behind a Gemini one, and a model's next task
+# starts the moment it's free.
+_api_runs: dict[str, asyncio.Task] = {}
+
+
+async def _run_api_on_model(task: dict[str, Any], project: Optional[dict[str, Any]], model_cfg: dict[str, Any]) -> None:
+    try:
+        await run_api_task(task, project, model_cfg)
+    finally:
+        wake_api_lane()
+
+
+def start_ready_api_tasks() -> list[tuple[int, str]]:
+    """Start the first waiting task of every api model that is free: not already
+    answering one, and not waiting out a rate limit. Returns [(task id, model id)]
+    started. Must run on the event loop."""
+    limited = tuple(m["id"] for m in router.registry().get("models", [])
+                    if router.lane_for(m) == "api" and db.model_rate_limited_until(m["id"]))
+    busy = {m for m, t in _api_runs.items() if not t.done()}
+    started = []
+    for task in db.runnable_tasks("api", exclude_models=limited):
+        model_id = task.get("model_id") or ""
+        if model_id in busy:
+            continue
+        model_cfg = router.get_model(task.get("model_id"))
+        if not model_cfg:
+            db.mark_error(task["id"], f"Model '{task.get('model_id')}' is no longer in models.json", needs_review=False)
+            continue
+        project = db.get_project(task["project_id"])
+        if _refuse_folderless(task, project):
+            continue
+        if project and over_budget(project):
+            continue
+        if not db.claim_task(task["id"]):
+            continue  # cancelled or paused meanwhile
+        busy.add(model_id)
+        _api_runs[model_id] = asyncio.get_running_loop().create_task(_run_api_on_model(task, project, model_cfg))
+        started.append((task["id"], model_cfg["id"]))
+    return started
+
+
+_budget_note: dict[str, str] = {}
+
+
+# When each lane's loop last went round (Den 2.0 system health: a lane that stopped ticking is "down").
+LAST_TICK: dict[str, float] = {}
+
+
+def queue_paused() -> bool:
+    """"Pause Octopus" (Den 2.0: a voice command, a Stream Deck key, Smart devices): nothing new
+    starts until it's resumed. Running tasks finish, and "Proceed now" still starts a task."""
+    return bool(db.get_setting("queue_paused"))
+
+
+def api_budget_hit() -> Optional[str]:
+    """Why new API tasks shouldn't start right now (a workspace cap is used up and
+    "Pause API tasks at 100%" is on), else None. Pushes once per cap per day/month at
+    80% and at 100% when "Warn me at 80%" is on."""
+    sp = db.spend_summary()
+    caps = (("today", sp.get("today_usd") or 0, db.get_setting("daily_budget_usd"), datetime.now().date().isoformat()),
+            ("this month", sp.get("month_usd") or 0, db.get_setting("monthly_budget_usd"), datetime.now().strftime("%Y-%m")))
+    hit = None
+    for label, spent, cap, period in caps:
+        if not cap or cap <= 0:
+            continue
+        for level in (80, 100):
+            key = f"{label}:{period}:{level}"
+            if spent >= cap * level / 100 and key not in _budget_note and db.get_setting("budget_warn", True):
+                _budget_note[key] = period
+                notify_phone(f"API budget {level}% used {label}", f"${spent:.2f} of ${cap:.2f}" +
+                             (" - API tasks are paused until you raise the cap." if level == 100 and db.get_setting("budget_pause", True) else "."),
+                             "warning", open_hash="#/usage/budget")
+        if spent >= cap and db.get_setting("budget_pause", True):
+            hit = f"API budget for {label} used up (${spent:.2f} of ${cap:.2f})"
+    return hit
+
+
 async def api_worker_loop(stop_event: asyncio.Event) -> None:
+    """Plain model calls, one at a time per model, the models side by side."""
     global _api_lane_wake
     log.info("API lane started (polling every %ss)", POLL_INTERVAL_SECONDS)
     wake = asyncio.Event()
     _api_lane_wake = (asyncio.get_running_loop(), wake)
     while not stop_event.is_set():
-        try:
-            limited = tuple(m["id"] for m in router.registry().get("models", [])
-                            if router.lane_for(m) == "api" and db.model_rate_limited_until(m["id"]))
-        except Exception as e:  # a half-saved models.json shouldn't kill the lane
-            log.error("Could not read models.json: %s", e)
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
-            continue
-
-        task = None if draining else db.get_next_queued_task("api", exclude_models=limited)
-        if not task:
-            await _api_lane_nap(wake, POLL_INTERVAL_SECONDS)
-            continue
-
-        project = db.get_project(task["project_id"])
-        model_cfg = router.get_model(task.get("model_id"))
-        if not model_cfg:
-            db.mark_error(task["id"], f"Model '{task.get('model_id')}' is no longer in models.json", needs_review=False)
-            continue
-        if project and over_budget(project):
-            continue
-
-        db.mark_running(task["id"])
-        log.info("API lane: task %s -> %s", task["id"], model_cfg["id"])
-        started = datetime.now(timezone.utc)
-        try:
-            # The agent Octopus planned this for supplies its own instructions (agents.json).
-            agent = octopus_registry.get_agent(task.get("agent_id"))
-            instructions = (agent or {}).get("instructions") or API_INSTRUCTIONS
-            if project and not db.is_general_project(project):
-                instructions += f"\nThe user currently has the project '{project['name']}' selected."
-            for block in (db.project_notes_prompt(task["project_id"]), timeline.prompt_for(task["project_id"])):
-                if block:
-                    instructions += "\n\n" + block
-            if model_cfg.get("modality") == "image":
-                completion = await asyncio.to_thread(providers.generate_image, model_cfg, task["prompt"], API_TASK_TIMEOUT_SECONDS)
-            else:
-                extra = {"web": True} if "web" in (task.get("tools") or []) else {}
-                completion = await asyncio.to_thread(
-                    providers.complete, model_cfg, _api_messages(task, model_cfg), instructions, API_TASK_TIMEOUT_SECONDS, **extra)
-        except providers.ProviderError as e:
-            if e.rate_limited:
-                resume_at = datetime.now(timezone.utc) + timedelta(seconds=e.retry_after or 60)
-                db.set_model_rate_limited(model_cfg["id"], resume_at.isoformat(), str(e))
-                db.mark_rate_limited(task["id"], resume_at.isoformat())
-                log.warning("API lane: %s rate-limited until %s", model_cfg["id"], resume_at.isoformat())
-            else:
-                db.mark_error(task["id"], str(e), needs_review=False)
-                log.error("API lane: task %s failed: %s", task["id"], e)
-                notify("failure", task["project_id"], "Octopus couldn't answer",
-                       f"{model_cfg.get('label')}: {_task_name(task)}")
-            continue
-        except Exception as e:
-            db.mark_error(task["id"], f"Unexpected error: {e}", needs_review=False)
-            log.exception("API lane: task %s crashed", task["id"])
-            continue
-
-        duration_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
-        db.clear_model_rate_limit(model_cfg["id"])
-        db.set_task_usage(task["id"], duration_ms, completion.input_tokens, completion.output_tokens,
-                          providers.estimate_cost(model_cfg, completion.input_tokens, completion.output_tokens))
-        db.mark_done(task["id"], completion.text[:API_RESULT_MAX_CHARS] or "(empty response)")
-        log.info("API lane: task %s done in %sms", task["id"], duration_ms)
-        notify("completion", task["project_id"], "Octopus answered", f"{model_cfg.get('label')}: {_task_name(task)}")
+        LAST_TICK["api"] = time.time()
+        if not draining and not queue_paused():
+            try:
+                held = await asyncio.to_thread(api_budget_hit)
+                if held:
+                    if _budget_note.get("_held") != held:
+                        _budget_note["_held"] = held
+                        log.warning("API lane held: %s", held)
+                else:
+                    _budget_note.pop("_held", None)
+                    for task_id, model_id in start_ready_api_tasks():
+                        log.info("API lane: task %s -> %s", task_id, model_id)
+            except Exception:  # e.g. a half-saved models.json shouldn't kill the lane
+                log.exception("API lane tick failed")
+        await _nap(wake, POLL_INTERVAL_SECONDS)
 
 
 # ------------------------------------------------------------ assistant lane
@@ -1015,12 +1406,27 @@ def _assistant_notifier(task: dict[str, Any]):
     return notify_approval
 
 
+_assistant_lane_wake: Optional[tuple[asyncio.AbstractEventLoop, asyncio.Event]] = None
+
+
+def wake_assistant_lane() -> None:
+    """Safe to call from any thread; does nothing if the lane isn't running."""
+    if _assistant_lane_wake:
+        loop, event = _assistant_lane_wake
+        loop.call_soon_threadsafe(event.set)
+
+
 async def assistant_worker_loop(stop_event: asyncio.Event) -> None:
+    global _assistant_lane_wake
     log.info("Assistant lane started (polling every %ss)", ASSISTANT_POLL_SECONDS)
+    wake = asyncio.Event()
+    _assistant_lane_wake = (asyncio.get_running_loop(), wake)
     while not stop_event.is_set():
-        task = None if draining else db.get_next_queued_task("assistant")
+        task = None if draining or queue_paused() else db.get_next_queued_task("assistant")
         if not task:
-            await asyncio.sleep(ASSISTANT_POLL_SECONDS)
+            await _nap(wake, ASSISTANT_POLL_SECONDS)
+            continue
+        if _refuse_folderless(task, db.get_project(task["project_id"])):
             continue
 
         db.mark_running(task["id"])
@@ -1054,6 +1460,17 @@ async def assistant_worker_loop(stop_event: asyncio.Event) -> None:
                  f" ({len(out.approvals)} approval(s) requested)" if out.approvals else "")
 
 
+def _start_new_task_now(task: dict[str, Any]) -> None:
+    """db.add_task hook: a new task starts right away if its lane (its model, or
+    its Claude account) is free, instead of at the next poll."""
+    wake = {"agent": wake_agent_lane, "api": wake_api_lane, "assistant": wake_assistant_lane}.get(task.get("lane"))
+    if wake:
+        wake()
+
+
+db.task_added_hooks.append(_start_new_task_now)
+
+
 def fire_due_reminders() -> int:
     """Push each reminder that has come due. A reminder is marked fired first,
     so a crash below can't make it ring every tick."""
@@ -1085,8 +1502,39 @@ def check_timeline_alerts(now: Optional[datetime] = None) -> int:
     return sent
 
 
+def check_followup_reminders(now: Optional[datetime] = None) -> int:
+    """Push a reminder for each CRM follow-up whose due time has come (activities.py). Held through
+    quiet hours (not marked, so they go out when those end); otherwise marked first, so a failed
+    push can't make it ring every tick."""
+    local = (now or datetime.now()).astimezone()
+    if in_quiet_hours(local):
+        return 0
+    sent = 0
+    for r in activities.pending_reminders(now):
+        activities.mark_reminded(r["followup"], now)
+        notify_phone(r["title"], r["message"], "reminder", open_hash=r["open_hash"])
+        sent += 1
+    return sent
+
+
 # How late the morning push may still go out (the Mac was asleep at briefing_time).
 BRIEFING_LATE_HOURS = 3
+
+
+def run_phase_autopilot(now: Optional[datetime] = None) -> int:
+    """Let Octopus work the projects' phases (see phases.py): start the ones whose time has come,
+    queue the next to-do of the active ones, and push when a phase starts, stops or finishes.
+    Holds off while a restart is waiting, so it can't start a phase or feed one meanwhile."""
+    if draining:
+        return 0
+    alerts = phases.tick(now)
+    for a in alerts:
+        kind = a["kind"]
+        notify_phone(a["title"], a["message"], kind, open_hash=f"#/project/{a['phase']['project_id']}/phases")
+    if db.runnable_tasks("agent") or alerts:
+        wake_agent_lane()
+        wake_api_lane()
+    return len(alerts)
 
 
 def send_morning_briefing(now: Optional[datetime] = None) -> bool:
@@ -1113,11 +1561,45 @@ def send_morning_briefing(now: Optional[datetime] = None) -> bool:
     return notify_phone(f"{b['greeting']} ☀️", b["headline"] + " Tap for your briefing.", "info", open_hash="#/briefing")
 
 
+NIGHTLY_BACKLOG_FROM, NIGHTLY_BACKLOG_UNTIL = 23, 3   # local hours: the window it may start in
+
+
+def nightly_backlog(now: Optional[datetime] = None) -> int:
+    """Projects with "Nightly backlog run" on: once a night, as soon as nothing is
+    running between 23:00 and 03:00, queue every pending to-do in order.
+    Returns how many tasks it queued."""
+    local = (now or datetime.now()).astimezone()
+    if not (local.hour >= NIGHTLY_BACKLOG_FROM or local.hour < NIGHTLY_BACKLOG_UNTIL):
+        return 0
+    night = (local - timedelta(hours=NIGHTLY_BACKLOG_UNTIL + 1)).date().isoformat()   # 01:00 belongs to the night before
+    if db.get_setting("nightly_backlog_on") == night:
+        return 0
+    if db.list_tasks(statuses=["running"]):
+        return 0
+    projects = [p for p in db.list_projects(active_only=True)
+                if db.has_folder(p) and db.get_project_settings(p["id"]).get("nightly_backlog")]
+    db.set_setting("nightly_backlog_on", night)
+    queued = 0
+    for p in projects:
+        pending = [t for t in db.list_todos(p["id"]) if t["status"] == "pending"]
+        if not pending:
+            continue
+        decisions = phases.todo_decisions(p, pending)
+        db.run_checked_todos(p["id"], decisions=decisions, only_ids=[t["id"] for t in pending])
+        queued += len(pending)
+        log.info("Nightly backlog: queued %s to-do(s) in %s", len(pending), p["name"])
+    return queued
+
+
 # ----------------------------------------------------------------- scheduler
 
 def queue_prompt(project: dict[str, Any], prompt: str, priority: int = 0, model: str = "auto",
                  routed_by: str = "schedule") -> Optional[dict[str, Any]]:
-    """Route a prompt like the Ask box does and queue it. None if no model can take it."""
+    """Route a prompt like the Ask box does and queue it. None if no model can take it, or the
+    project has no folder to work in."""
+    if not db.has_folder(project):
+        log.warning("Not queueing '%s' for %s: it has no folder", prompt[:60], project["name"])
+        return None
     try:
         decision = router.route(prompt, project_name=None if db.is_general_project(project) else project["name"],
                                 force_model=model)
@@ -1136,7 +1618,7 @@ def fire_schedule(sc: dict[str, Any]) -> int:
         project = db.get_project(sc["project_id"])
         targets = [project] if project else []
     else:
-        targets = [p for p in db.list_projects(active_only=True) if not db.is_general_project(p)]
+        targets = [p for p in db.list_projects(active_only=True) if not db.is_general_project(p) and db.has_folder(p)]
     queued = sum(1 for p in targets if queue_prompt(p, sc["prompt"], sc["priority"], sc["model"]))
     log.info("Schedule %s ('%s') fired: queued %s task(s)", sc["id"], sc["label"], queued)
     return queued
@@ -1150,7 +1632,14 @@ async def scheduler_loop(stop_event: asyncio.Event) -> None:
                 await asyncio.to_thread(fire_schedule, sc)  # routing may call the classifier model
             await asyncio.to_thread(fire_due_reminders)
             await asyncio.to_thread(check_timeline_alerts)
+            await asyncio.to_thread(check_followup_reminders)
+            await asyncio.to_thread(run_phase_autopilot)
+            await asyncio.to_thread(mailer.check_needs_restart, _STARTED_TS, time.time())
             await asyncio.to_thread(send_morning_briefing)    # may read Google Calendar
+            await asyncio.to_thread(nightly_backlog)          # routing may call the classifier model
+            await asyncio.to_thread(den_recipes.tick)         # Den 2.0 recipes: schedules, events, approvals waited on
+            await asyncio.to_thread(den_system.tick)          # Den 2.1: scheduled backups, Claude account auto-switch (off by default)
+            await asyncio.to_thread(den_work.wake_snoozed)    # Den 2.1: snoozed chats come back on time
             await asyncio.to_thread(assistant_actions.expire_stale)
         except Exception:
             log.exception("Scheduler tick failed")

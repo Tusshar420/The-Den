@@ -1,0 +1,49 @@
+/* Queue backlog items sheet (views/run-review.js): tick, reword and set up items before they join the queue. */
+.app--desk .sheet--runReview { width: 760px; max-height: 84vh; margin-top: 6vh; }
+.sheet--runReview .sheet__head { padding-bottom: 4px; }
+
+/* Select all · 3 of 5 ticked · Bulk update */
+.rq-tools { flex: none; display: flex; align-items: center; gap: 12px; padding: 4px 18px 10px; border-bottom: 1px solid var(--line); }
+.rq-tools .btn.is-on { background: var(--surface-3); border-color: var(--line-focus); }
+
+.rq-bulk { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; padding: 12px; border-radius: var(--r-card-sm); background: var(--surface-2); border: 1px solid var(--line-focus); animation: rise .15s ease; }
+.rq-bulk__note { font: 600 13px var(--font-ui); }
+.rq-bulk__grid { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 10px; }
+.rq-bulk__grid .pal-label { padding: 0; }
+.rq-bulk__grid > .segmented, .rq-bulk__grid > select { justify-self: start; }
+
+.rq-list { gap: 0; padding-top: 0; }
+.rq-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.rq-row:last-child { border-bottom: none; }
+.rq-row > .check { flex: none; margin-top: 4px; cursor: pointer; }
+.rq-row.is-off .rq-row__main { opacity: .45; }
+.rq-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; transition: opacity .15s; }
+.rq-row__top { display: flex; align-items: flex-start; gap: 8px; }
+.rq-row__pics { flex: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; }
+
+/* Looks like plain text until tapped. */
+.rq-row__text { flex: 1; min-width: 0; resize: none; overflow-y: auto; margin: 0; padding: 4px 8px; margin-left: -8px; border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--text); font: 500 14.5px/1.4 var(--font-ui); outline: none; }
+.rq-row__text:hover { border-color: var(--line); }
+.rq-row__text:focus { border-color: var(--line-focus); background: var(--inset-deep); }
+
+.rq-row__opts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rq-model { width: auto; max-width: 180px; height: 36px; padding: 0 10px; font-size: 13px; }
+.rq-seg .segmented__opt { height: 30px; padding: 0 10px; }
+.rq-key { padding: 0 4px; white-space: nowrap; }   /* an API model's key, in place of the account pick */
+
+/* Pinned at the bottom: what happens + the one button. */
+.rq-foot { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg-sheet); }
+.rq-foot .btn--primary { min-width: 150px; }
+
+@media (max-width: 520px) {
+  .rq-foot { flex-wrap: wrap; }
+  .rq-foot .meta { flex-basis: 100%; }
+  .rq-foot .btn--primary { flex: 1; }
+  .rq-row__opts .rq-model { width: 108px; padding: 0 6px; }   /* shares a line with Mode */
+  .rq-seg .segmented__opt { padding: 0 8px; }
+  .rq-row { gap: 10px; }
+}
+
+/* Backlog header: Select all · Queue… */
+.section__acts { display: flex; gap: 14px; }

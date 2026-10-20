@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1280px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); align-self:flex-start;">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+  </div>
+
+  <sc-if value="{{ isConn }}" hint-placeholder-val="{{ true }}">
+    <section data-tour="conn-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
+      <sc-for list="{{ conns }}" as="c" hint-placeholder-count="6">
+        <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid {{ c.bd }}; backdrop-filter:blur(20px);">
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:{{ c.tint }}; color:{{ c.color }};"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ c.icon }}"></path></svg></span><div style="flex:1; min-width:0;"><div style="font-size:15px; font-weight:700;">{{ c.name }}</div><div style="font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ c.sub }}</div></div></div>
+          <div style="font-size:12.5px; line-height:1.5; color:#A3B0BE; text-wrap:pretty;">{{ c.desc }}</div>
+          <sc-if value="{{ c.warn }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 10px; border-radius:10px; background:rgba(255,181,71,0.08); border:1px solid rgba(255,181,71,0.25); font-size:12px; color:#FFCB7A;">{{ c.warn }}</div></sc-if>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:auto;">
+            <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:{{ c.stC }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ c.stC }};"></span>{{ c.st }}</span><span style="flex:1;"></span>
+            <button onClick="{{ c.act }}" style="height:32px; padding:0 13px; border-radius:10px; cursor:pointer; font-size:12.5px; font-weight:650; background:{{ c.btnBg }}; color:{{ c.btnFg }}; border:1px solid {{ c.btnBd }};">{{ c.btn }}</button>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isVoice }}" hint-placeholder-val="{{ false }}">
+    <section style="display:flex; flex-direction:column; align-items:center; gap:14px; padding:28px 18px; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); text-align:center;">
+      <button onClick="{{ mic }}" style="width:96px; height:96px; display:grid; place-items:center; border-radius:50%; border:0; cursor:pointer; background:{{ micBg }}; color:{{ micFg }}; box-shadow:{{ micSh }}; transition:all .2s;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>
+      <div style="display:flex; align-items:flex-end; gap:4px; height:34px;"><sc-for list="{{ levels }}" as="l" hint-placeholder-count="16"><div style="width:5px; height:{{ l.h }}; border-radius:3px; background:{{ l.c }}; transition:height .12s;"></div></sc-for></div>
+      <div style="font-size:16px; font-weight:700;">{{ micTitle }}</div>
+      <div style="font-size:13px; color:#93A1B0; max-width:420px;">{{ micSub }}</div>
+    </section>
+    <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; align-items:start;">
+      <div style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">OCTOPUS' VOICE</div>
+        <sc-for list="{{ voices }}" as="v" hint-placeholder-count="3">
+          <button onClick="{{ v.pick }}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:13px; cursor:pointer; text-align:left; background:{{ v.bg }}; border:1px solid {{ v.bd }};"><span style="flex:1;"><span style="display:block; font-size:13.5px; font-weight:650; color:#E8EEF3;">{{ v.label }}</span><span style="display:block; font-size:12px; color:#93A1B0;">{{ v.desc }}</span></span><span onClick="{{ v.play }}" style="width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:rgba(255,255,255,0.05); color:#C2CDD8;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"></path></svg></span></button>
+        </sc-for>
+        <div style="display:flex; flex-direction:column; gap:6px;"><div style="display:flex; font-size:13px;"><span style="flex:1; font-weight:600;">Speaking speed</span><span style="font-family:'JetBrains Mono', monospace; color:#FFA48C;">{{ speedLabel }}</span></div><input type="range" min="0.7" max="1.6" step="0.1" value="{{ speed }}" onChange="{{ onSpeed }}" style="accent-color:#FF7B5C;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">HANDS-FREE</div>
+        <sc-for list="{{ vopts }}" as="o" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:10px;"><div style="flex:1;"><div style="font-size:13.5px; font-weight:600;">{{ o.label }}</div><div style="font-size:12px; color:#93A1B0;">{{ o.hint }}</div></div><button onClick="{{ o.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ o.track }}; display:flex; justify-content:{{ o.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+        <div style="display:flex; align-items:center; gap:10px;"><span style="flex:1; font-size:13.5px; font-weight:600;">Language</span><select ref="{{ fixSel }}" data-v="{{ lang }}" value="{{ lang }}" onChange="{{ onLang }}" style="height:32px; padding:0 8px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#DCE4EB; font-family:inherit; font-size:12.5px;"><sc-for list="{{ langs }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for></select></div>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isDev }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <sc-for list="{{ devKpis }}" as="k" hint-placeholder-count="4"><div style="padding:12px 16px; border-left:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ k.label }}</div><div style="display:flex; align-items:center; gap:7px; margin-top:4px; font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:{{ k.c }};">{{ k.v }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ k.sub }}</div></div></sc-for>
+      </div>
+      <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:2 1 520px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:8px;"><h3 style="margin:0; flex:1; font-size:15px; font-weight:700;">Devices &amp; assistants</h3><button onClick="{{ devAdd }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;">+ Add device</button></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;">
+            <sc-for list="{{ devices }}" as="d" hint-placeholder-count="6">
+              <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid {{ d.bd }}; opacity:{{ d.op }};">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:{{ d.tint }}; color:{{ d.tone }};"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ d.icon }}"></path></svg></span>
+                  <div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:700;">{{ d.name }}</div><div style="display:flex; align-items:center; gap:5px; font-size:11.5px; color:#93A1B0;"><span style="width:6px; height:6px; border-radius:50%; background:{{ d.sc }};"></span>{{ d.status }}</div></div>
+                  <button onClick="{{ d.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ d.track }}; display:flex; justify-content:{{ d.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button>
+                </div>
+                <div style="font-size:12px; line-height:1.5; color:#A3B0BE;">{{ d.desc }}</div>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <sc-for list="{{ d.chips }}" as="c" hint-placeholder-count="2"><span style="flex:none; white-space:nowrap; height:22px; padding:0 8px; display:flex; align-items:center; border-radius:999px; background:rgba(255,255,255,0.05); font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#C2CDD8;">{{ c }}</span></sc-for>
+                  <span style="flex:1;"></span>
+                  <button onClick="{{ d.cfg }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; height:28px; font-size:12px;">{{ d.cfgLabel }}</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><h3 style="margin:0; flex:1; font-size:15px; font-weight:700;">Voice commands</h3><span style="font-size:12px; color:#93A1B0;">Say “{{ wake }}, …” on any enabled device</span></div>
+            <div style="display:flex; flex-direction:column; border-radius:14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+              <sc-for list="{{ cmds }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-height:52px; padding:8px 12px; border-top:1px solid rgba(255,255,255,0.04); opacity:{{ c.op }};">
+                  <div style="flex:1 1 220px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">“{{ c.phrase }}”</div><div style="font-size:11.5px; color:#93A1B0;">→ {{ c.action }}</div></div>
+                  <div style="display:flex; gap:3px;"><sc-for list="{{ c.devs }}" as="v" hint-placeholder-count="3"><span title="{{ v.name }}" style="width:22px; height:22px; display:grid; place-items:center; border-radius:6px; background:{{ v.tint }}; color:{{ v.tone }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ v.icon }}"></path></svg></span></sc-for></div>
+                  <sc-if value="{{ c.confirm }}" hint-placeholder-val="{{ false }}"><span title="Asks to confirm" style="height:20px; padding:0 7px; display:flex; align-items:center; border-radius:6px; background:rgba(255,181,71,0.12); font-family:'JetBrains Mono', monospace; font-size:9.5px; color:#FFB547;">CONFIRM</span></sc-if>
+                  <button onClick="{{ c.test }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; height:28px; font-size:12px;">Test</button>
+                  <button onClick="{{ c.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ c.track }}; display:flex; justify-content:{{ c.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;"><input value="{{ cmdPhrase }}" onChange="{{ onCmdPhrase }}" placeholder="When I say…" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; flex:1 1 180px; min-width:0;"><select ref="{{ fixSel }}" data-v="{{ cmdAction }}" value="{{ cmdAction }}" onChange="{{ onCmdAction }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; flex:1 1 180px; background:#141B24; cursor:pointer;"><sc-for list="{{ cmdActions }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select><button onClick="{{ addCmd }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05; height:36px;">Add command</button></div>
+          </div>
+        </div>
+
+        <div style="flex:1 1 320px; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Shortcuts &amp; webhooks</h3>
+            <div style="font-size:12.5px; line-height:1.5; color:#93A1B0;">Trigger Den from Apple Shortcuts, Stream Deck, IFTTT or anything that can call a URL.</div>
+            <sc-for list="{{ hooks }}" as="w" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:6px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; min-width:0; font-size:13px; font-weight:650;">{{ w.name }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ w.last }}</span></div>
+                <div style="display:flex; align-items:center; gap:6px;"><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11px; color:#7FB2FF; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ w.url }}</span><button onClick="{{ w.copy }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB; height:26px; padding:0 9px; font-size:11.5px;">Copy</button></div>
+              </div>
+            </sc-for>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;"><button onClick="{{ getShortcut }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Get Apple Shortcut</button><button onClick="{{ newHook }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">+ New webhook</button></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Voice safety</h3>
+            <sc-for list="{{ safety }}" as="t" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:600;">{{ t.label }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ t.hint }}</div></div><button onClick="{{ t.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ t.track }}; display:flex; justify-content:{{ t.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12.5px; color:#93A1B0;">Wake phrase</span><input value="{{ wake }}" onChange="{{ onWake }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; flex:1; min-width:0; height:32px;"></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+            <h3 style="margin:0; font-size:15px; font-weight:700;">Recent</h3>
+            <sc-for list="{{ devLog }}" as="l" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="flex:none; width:44px; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ l.when }}</span><span style="flex:none; width:6px; height:6px; border-radius:50%; background:{{ l.c }};"></span><span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#C2CDD8;">{{ l.text }}</span><span style="flex:none; font-size:11px; color:#93A1B0;">{{ l.dev }}</span></div></sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+const SVC = {
+  'google:email':['M3 6h18v12H3zM3 7l9 6 9-6', '#FF8A7A'], 'google:calendar':['M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', C.blue],
+  'microsoft:email':['M3 6h18v12H3zM3 7l9 6 9-6', '#5FB6F0'], 'microsoft:calendar':['M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', '#5FB6F0'],
+  github:['M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 9a9 9 0 0 1-9 9', '#C2CDD8'],
+  telegram:['M21 4L3 11l6 2 2 6 3-4 5 4z', '#5FB6F0'], tailscale:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', C.teal],
+  push:['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4', C.coral],
+  slack:['M8 4v8M16 12v8M4 16h8M12 8h8', C.violet], whatsapp:['M4 20l1.5-4A8 8 0 1 1 8 18.5z', C.green], drive:['M8 4h8l5 9-4 7H7l-4-7z', C.amber]
+};
+const IC = { siri:'M12 3a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4M6 11a6 6 0 0 0 12 0M12 17v4', alexa:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8 15c1-3 3-6 4-8 1 2 3 5 4 8', ghome:'M4 11l8-7 8 7v9H4zM10 20v-5h4v5', homekit:'M3 11l9-8 9 8M6 9v11h12V9M10 14h4', deck:'M3 5h18v14H3zM7 9h2M11 9h2M15 9h2M7 13h2M11 13h2M15 13h2', watch:'M8 5h8v14H8zM9 2h6v3M9 19h6v3', push:'M7 3h10v18H7zM11 18h2' };
+const TONE = { siri:C.violet, alexa:C.teal, ghome:C.blue, homekit:C.amber, deck:C.coral, watch:C.green, push:C.coral };
+const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+const copy = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
+
+class Component extends DCLogic {
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { tab:null, listening:false, t:0, heard:'', lang:null, speed:null, cmdPhrase:'', cmdAction:null, wake:null, allHooks:false };
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : D.say(t, s, c); }
+  componentWillUnmount() { this.stopMic(); clearTimeout(this.wt); clearTimeout(this.st); }
+  reload() { D.invalidate('den-conn'); }
+  set(body, ok) { return D.act(() => D.api('/settings', { method:'PATCH', body }), { ok, reload:['den-conn', 'voice'] }); }
+
+  // ------------------------------------------------------------ mic test: real levels, and what the browser heard
+  async startMic() {
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)(); const an = ctx.createAnalyser(); an.fftSize = 64;
+      ctx.createMediaStreamSource(this.stream).connect(an); const buf = new Uint8Array(an.frequencyBinCount); this.levels = Array(16).fill(4);
+      this.iv = setInterval(() => { an.getByteFrequencyData(buf); this.levels = Array.from({ length:16 }, (_, i) => 4 + (buf[i + 1] || 0) / 255 * 30); this.setState(st => ({ t:st.t + 1 })); }, 90);
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SR) { const r = this.rec = new SR(); r.lang = (navigator.language || 'en-IN'); r.interimResults = true; r.continuous = true;
+        r.onresult = e => this.setState({ heard: Array.from(e.results).map(x => x[0].transcript).join(' ').trim() }); r.onerror = () => {}; try { r.start(); } catch (e) {} }
+      this.setState({ listening:true, heard:'' });
+    } catch (e) { this.say('Couldn’t open the microphone', e.message, C.err); this.stopMic(); }
+  }
+  stopMic() { clearInterval(this.iv); try { this.rec && this.rec.stop(); } catch (e) {} this.rec = null;
+    try { this.stream && this.stream.getTracks().forEach(t => t.stop()); } catch (e) {} this.stream = null; try { this.ctx && this.ctx.close(); } catch (e) {} this.ctx = null;
+    if (this.state.listening) this.setState({ listening:false }); }
+
+  play(name, sample) {
+    const v = (window.speechSynthesis && speechSynthesis.getVoices().find(x => x.name === name)) || null;
+    if (v) { const u = new SpeechSynthesisUtterance(sample); u.voice = v; u.rate = this.rate || 1; speechSynthesis.cancel(); speechSynthesis.speak(u); this.say('Playing sample', name, C.coral); return; }
+    D.act(() => D.api('/voice/speak', { method:'POST', body:{ text:sample, voice:name, provider:'macos', on:'mac' } }), { ok:['Playing on the Mac', name, C.coral], core:false });
+  }
+  async pushSubscribe() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return this.say('This browser can’t take push', 'On iPhone, add the Den to the Home Screen first.', C.amber);
+      const perm = await Notification.requestPermission(); if (perm !== 'granted') return this.say('Notifications are blocked', 'Allow them for this site in the browser settings.', C.amber);
+      const reg = await navigator.serviceWorker.register('/sw.js'); const pk = await D.api('/push/key'); const key = pk.publicKey || pk.key;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64(key) });
+      await D.api('/push/subscribe', { method:'POST', body:sub.toJSON() }); this.reload(); this.say('This device gets notifications', 'Approvals come with Approve / Deny buttons.', C.green);
+    } catch (e) { this.say('Couldn’t turn on notifications', e.message, C.err); }
+  }
+  connect(c, reconnect) {
+    if (!c.can_add && !reconnect) return this.say(c.name + ' isn’t set up yet', c.note || 'Add its client id and secret to the service first.', C.amber);
+    D.act(() => D.api('/assistant/connections/' + c.provider + '/connect', { method:'POST', body:{ services:[c.service], account: reconnect || null } }), { core:false })
+      .then(r => { if (r && r.auth_url) window.location.href = r.auth_url; }).catch(() => {});
+  }
+  manage(c) {
+    const acc = c.accounts || []; if (!acc.length) return;
+    const list = acc.map((a, i) => (i + 1) + '. ' + a.account + (a.default ? ' (default)' : '')).join('\n');
+    const pick = window.prompt(c.name + ' accounts:\n' + list + '\n\nType a number to disconnect it, or "+" to add another account.', '');
+    if (pick == null || !pick.trim()) return;
+    if (pick.trim() === '+') return this.connect(c);
+    const a = acc[+pick.trim() - 1]; if (!a) return;
+    if (!window.confirm('Disconnect ' + a.account + '? The Den stops reading its ' + (c.service === 'email' ? 'mail' : 'calendar') + '.')) return;
+    D.act(() => D.api('/assistant/connections/' + encodeURIComponent(a.id), { method:'DELETE' }), { ok:['Disconnected', a.account, C.blue], reload:['den-conn', 'inbox'], core:false });
+  }
+
+  devVals(s, tab, data, base) {
+    const tg = on => ({ track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start' });
+    const ds = data.devices || []; const cs = data.commands || [];
+    const wake = s.wake != null ? s.wake : (D.store.settings && D.store.settings.voice_wake) || 'Octo';
+    const alexa = ds.find(d => d.id === 'alexa');
+    const voiceDevs = ds.filter(d => d.on && (d.id === 'siri' || d.id === 'alexa'));
+    const acts = data.actions || []; const actLabel = v => (acts.find(a => a.v === v) || {}).l || v;
+    const curAct = s.cmdAction || (acts[0] && acts[0].l) || '';
+    const recipes = acts.filter(a => a.v.startsWith('recipe:'));
+    const hk = (name, method, path, body) => ({ name, last: method, url: base + path, curl: 'curl -X ' + method + " '" + base + path + "' -H 'X-API-Key: YOUR_KEY'" + (body ? " -H 'Content-Type: application/json' -d '" + JSON.stringify(body) + "'" : '') });
+    const hooks = [hk('Add task', 'POST', '/octopus', { text:'…' }), hk('Ask by voice text', 'POST', '/voice/command', { text:'what’s in my queue' }), hk('Pause queue', 'PATCH', '/settings', { queue_paused:true }),
+      hk('Resume queue', 'PATCH', '/settings', { queue_paused:false }), hk('Morning briefing', 'GET', '/briefing'),
+      ...(s.allHooks ? recipes : recipes.slice(0, 1)).map(r => hk(r.l, 'POST', '/den/recipes/' + r.v.slice(7) + '/run'))];
+    const log = data.log || [];
+    return {
+      isDev: tab === 'devices',
+      devKpis:[{ label:'DEVICES ON', v:ds.filter(d => d.on).length + '/' + ds.length, c:'#E8EEF3', sub:'assistants & phones' }, { label:'VOICE COMMANDS', v:String(cs.filter(c => c.on).length), c:C.coral, sub: data.queue_paused ? 'queue is paused' : 'active' },
+        { label:'USED TODAY', v:String(data.used_today || 0), c:C.teal, sub: log[0] ? 'last: ' + D.ago(log[0].at) : 'no commands yet' }, { label:'LINKS', v:String(hooks.length), c:C.blue, sub:'Shortcuts, Deck, IFTTT' }],
+      devices: ds.map(d => { const tone = TONE[d.id] || C.blue;
+        return { ...d, icon:IC[d.id] || IC.push, tone, chips:d.chips || [], tint:tint(tone, 0.14), ...tg(d.on), op: d.on ? '1' : '0.72', bd: d.on ? tint(tone, 0.25) : 'rgba(255,255,255,0.06)', sc: d.on ? C.green : '#6B7A8A',
+          cfgLabel: d.soon ? 'Not built yet' : d.id === 'push' ? (d.on ? 'Add this device' : 'Turn on here') : d.id === 'alexa' ? (d.on ? 'Test' : 'How to set up') : 'Links below',
+          toggle:() => {
+            if (d.soon) return this.say(d.name + ' isn’t built yet', 'Tell me if you want it and I’ll add it.', C.amber);
+            if (d.id === 'push') return this.pushSubscribe();
+            if (d.id === 'alexa') { const on = !(d.prefs && (d.prefs.notify_approvals || d.prefs.notify_results));
+              return D.act(() => D.api('/alexa/prefs', { method:'PATCH', body:{ notify_approvals:on, notify_results:on } }), { ok:[on ? 'Alexa will tell you about approvals and results' : 'Alexa notifications off', '', on ? C.green : '#93A1B0'], reload:['den-conn'], core:false }); }
+            this.say(d.name, 'Always on while your API key works.', tone); },
+          cfg:() => {
+            if (d.soon) return this.say(d.name + ' isn’t built yet', 'Tell me if you want it and I’ll add it.', C.amber);
+            if (d.id === 'push') return this.pushSubscribe();
+            if (d.id === 'alexa') return d.on ? D.act(() => D.api('/alexa/test-notification', { method:'POST', body:{} }), { ok:['Test sent to Alexa', 'Your Echo should chime', C.teal], core:false })
+              : this.say('Alexa skill', 'Set ALEXA_SKILL_ID and the Funnel URL for the service, then say “Alexa, open the Den”. See alexa/README.', C.teal);
+            this.say('Siri & Shortcuts', 'Copy a link below into a Shortcut’s “Get contents of URL” step.', C.violet); } }; }),
+      devAdd:() => this.say('Add a device', 'Phones: open the Den there and turn on notifications. Siri, Stream Deck, IFTTT: use the links on the right.', C.coral),
+      wake, onWake:e => { const v = e.target.value; this.setState({ wake:v }); clearTimeout(this.wt); this.wt = setTimeout(() => this.set({ voice_wake:v.trim() }), 700); },
+      cmds: cs.map(c => ({ ...c, action:c.label || actLabel(c.action), confirm: !!c.confirm, ...tg(c.on), op: c.on ? '1' : '0.55',
+        devs: voiceDevs.map(d => ({ name:d.name, icon:IC[d.id], tone:TONE[d.id], tint:tint(TONE[d.id], 0.16) })),
+        toggle:() => D.act(() => D.api('/den/voice-commands/' + c.id, { method:'PATCH', body:{ on:!c.on } }), { reload:['den-conn'], core:false }),
+        test:() => D.act(() => D.api('/den/voice-commands/' + c.id + '/test', { method:'POST', body:{} }), { ok:r => ['“' + wake + ', ' + c.phrase.toLowerCase() + '”', (r && r.spoken) || '', C.violet], reload:['den-conn'] }) })),
+      cmdPhrase: s.cmdPhrase, onCmdPhrase:e => this.setState({ cmdPhrase:e.target.value }), cmdAction: curAct, onCmdAction:e => this.setState({ cmdAction:e.target.value }), cmdActions: acts.map(a => a.l),
+      addCmd:() => { const p = s.cmdPhrase.trim(); if (!p) return this.say('Type the phrase first', '', C.amber); const a = acts.find(x => x.l === curAct); if (!a) return;
+        D.act(() => D.api('/den/voice-commands', { method:'POST', body:{ phrase:p, action:a.v, on:true, confirm:false } }), { ok:['Command added', '“' + p + '” → ' + a.l, C.green], reload:['den-conn'], core:false }).then(() => this.setState({ cmdPhrase:'' })).catch(() => {}); },
+      hooks: hooks.map(h => ({ name:h.name, url:h.url, last:h.last, copy:() => this.say(copy(h.curl) ? 'Copied' : 'Copy this', copy(h.curl) ? h.name + ' · paste into Terminal or a Shortcut (add your key)' : h.curl, C.green) })),
+      newHook:() => { if (!recipes.length) return this.say('No recipes yet', 'Every recipe you make in Recipes gets a link here.', C.amber); this.setState({ allHooks:!s.allHooks }); },
+      getShortcut:() => { const t = 'In Shortcuts: add “Get Contents of URL”, URL ' + base + '/voice/command, Method POST, Header X-API-Key = your key, Request Body JSON {"text": Dictated Text}. Then “Speak Text” with the result’s spoken.';
+        this.say(copy(t) ? 'Shortcut steps copied' : 'Shortcut steps', t.slice(0, 140) + '…', C.violet); },
+      safety: [['pin', 'Alexa approval code', alexa && alexa.prefs && alexa.prefs.approval_pin_set ? 'Alexa asks for your code before approving' : 'Say a 4–8 digit code before Alexa approves anything', !!(alexa && alexa.prefs && alexa.prefs.approval_pin_set)],
+        ['confirm', 'Read back before running', 'Every spoken command repeats what it’ll do; say it again with “yes”', !!data.voice_readback],
+        ['quiet', 'Quiet hours 23:00–07:00', 'Only “Pause” and “Going to sleep” commands work at night', !!data.voice_quiet]].map(([k, label, hint, on]) => ({ label, hint, ...tg(on), toggle:() => {
+          if (k === 'confirm') return this.set({ voice_readback:!on }, [on ? 'Read-back off' : 'Read-back on', '', C.blue]);
+          if (k === 'quiet') return this.set({ voice_quiet:!on }, [on ? 'Voice quiet hours off' : 'Voice quiet hours on', '23:00–07:00', C.blue]);
+          if (!alexa) return this.say('Alexa isn’t set up', '', C.amber);
+          const pin = on ? '' : window.prompt('Choose a 4–8 digit code to say before Alexa approves anything:', ''); if (pin == null) return;
+          D.act(() => D.api('/alexa/prefs', { method:'PATCH', body:{ approval_pin:pin } }), { ok:[pin ? 'Approval code set' : 'Approval code off', '', C.green], reload:['den-conn'], core:false }); } })),
+      devLog: (log.length ? log : [{ at:null, text:'No spoken commands yet — add one and press Test', dev:'' }]).map(l => ({ when: l.at ? D.ago(l.at) : '', text:l.text, dev:l.dev, c:C.violet }))
+    };
+  }
+  renderVals() {
+    const s = this.state; const tab = s.tab || this.props.tab || 'connections';
+    const data = D.need('den-conn', '/den/connections', 60000) || { services:[], devices:[], commands:[], actions:[], log:[] };
+    const ts = (data.services || []).find(x => x.id === 'tailscale');
+    const base = (ts && ts.url) || location.origin;
+    const conns = (data.services || []).map(c => { const [icon, color] = SVC[c.id] || ['M4 12h16', C.blue]; const on = !!c.on;
+      return { ...c, icon, color, tint:tint(color, 0.14), bd: c.warn ? 'rgba(255,181,71,0.28)' : 'rgba(255,255,255,0.06)', warn: c.warn || (!on && c.hint ? c.hint : ''),
+        st: on ? 'Connected' : c.soon ? 'Not built' : 'Off', stC: on ? C.green : '#6B7A8A',
+        btn: c.soon ? 'Request' : c.reauth ? 'Sign in again' : c.provider ? (on ? 'Manage' : 'Connect') : c.id === 'push' ? (on ? 'Add device' : 'Turn on') : 'Check',
+        btnBg: on || c.soon ? 'rgba(255,255,255,0.04)' : '#FF7B5C', btnFg: on || c.soon ? '#DCE4EB' : '#1A0A05', btnBd: on || c.soon ? 'rgba(255,255,255,0.08)' : 'transparent',
+        act:() => {
+          if (c.soon) return this.say(c.name + ' isn’t built yet', 'Tell me if you want it — I’ll need a bot token or app from you.', C.amber);
+          if (c.reauth) return this.connect(c, c.reauth);
+          if (c.provider) return on ? this.manage(c) : this.connect(c);
+          if (c.id === 'push') return this.pushSubscribe();
+          D.act(() => D.api('/den/connections?refresh=true'), { ok:[c.name, c.sub, color], core:false }).then(() => this.reload()).catch(() => {}); } }; });
+
+    // ------------------------------------------------------------ voice
+    const vs = D.need('voice', '/voice', 120000) || { settings:{}, voices:[], languages:[], stt:[], tts:[] };
+    const set0 = vs.settings || {}; const langs = vs.languages && vs.languages.length ? vs.languages : [{ code:'en', label:'English', sample:'Hello, this is how I sound.' }];
+    const lang = langs.find(l => l.label === s.lang) || langs.find(l => l.code === 'en') || langs[0];
+    const picked = (set0.voice_language_voices || {})[lang.code] || (lang.code === 'en' ? set0.voice_tts_voice : '') || '';
+    const pool = (vs.voices || []).filter(v => String(v.language || '').toLowerCase().startsWith(lang.code));
+    const pref = (navigator.language || '').replace('-', '_');
+    pool.sort((a, b) => (b.name === picked) - (a.name === picked) || (b.language === pref) - (a.language === pref) || a.name.localeCompare(b.name));
+    const speed = s.speed != null ? s.speed : (+set0.voice_rate || 1); this.rate = speed;
+    const L = s.listening;
+    const sttW = (vs.stt || []).find(p => p.id === 'whisper'); const ttsM = (vs.tts || []).find(p => p.id === 'macos');
+    const alexa = (data.devices || []).find(d => d.id === 'alexa');
+    const opt = (label, hint, on, fn) => ({ label, hint, track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle:fn });
+    return {
+      tabs:[['connections', 'Connections'], ['devices', 'Smart devices'], ['voice', 'Voice']].map(([id, label]) => ({ label, pick:() => this.setState({ tab:id }), bg: tab === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: tab === id ? '#FFFFFF' : '#93A1B0' })),
+      isConn: tab === 'connections', isVoice: tab === 'voice', conns, ...this.devVals(s, tab, data, base), fixSel:this.fixSel,
+      mic:() => (L ? this.stopMic() : this.startMic()),
+      micBg: L ? '#FF7B5C' : 'rgba(255,123,92,0.12)', micFg: L ? '#1A0A05' : '#FF7B5C', micSh: L ? '0 0 0 10px rgba(255,123,92,0.15), 0 0 0 22px rgba(255,123,92,0.07)' : 'none',
+      levels: Array.from({ length:16 }, (_, i) => ({ h: L ? Math.round((this.levels || [])[i] || 4) + 'px' : '4px', c: L ? '#FF7B5C' : 'rgba(255,255,255,0.15)' })),
+      micTitle: L ? (s.heard ? '“' + D.firstLine(s.heard, 60) + '”' : 'Listening…') : 'Test your mic',
+      micSub: L ? 'Try “' + ((D.store.settings && D.store.settings.voice_wake) || 'Octo') + ', what’s in my queue”. This is only a test — nothing runs. Tap again to stop.' : 'Checks the microphone and shows what the browser hears. Spoken requests from the Ask bar go through the same path.',
+      voices:(pool.length ? pool.slice(0, 4) : [{ name:'', language:lang.code }]).map(v => { const on = v.name === picked || (!picked && !v.name);
+        return { label: v.name || 'System voice', desc: v.name ? v.language.replace('_', ' · ') + (on ? ' — in use' : '') : 'The device’s default voice', bg: on ? 'rgba(255,123,92,0.1)' : 'rgba(255,255,255,0.03)', bd: on ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.06)',
+          pick:() => this.set({ voice_language_voices:{ ...(set0.voice_language_voices || {}), [lang.code]:v.name } }, ['Voice for ' + lang.label, v.name || 'System voice', C.coral]),
+          play:e => { e.stopPropagation(); this.play(v.name, lang.sample || 'Hello, this is how I sound.'); } }; }),
+      speed:String(speed), speedLabel:speed.toFixed(1) + '×', onSpeed:e => { const v = +e.target.value; this.setState({ speed:v }); clearTimeout(this.st); this.st = setTimeout(() => this.set({ voice_rate:v }), 500); },
+      vopts:[
+        opt('Speak Octopus’ replies', 'Reads the answer aloud after a spoken request', !!set0.voice_speak_replies, () => this.set({ voice_speak_replies:!set0.voice_speak_replies })),
+        opt('Transcribe on this Mac', sttW && !sttW.available ? sttW.reason : 'whisper.cpp, offline — instead of the browser', set0.voice_stt === 'whisper', () => { if (sttW && !sttW.available && set0.voice_stt !== 'whisper') return this.say('Whisper isn’t installed', sttW.reason, C.amber); this.set({ voice_stt: set0.voice_stt === 'whisper' ? 'browser' : 'whisper' }); }),
+        opt('Use the Mac’s voices', 'Same voice on every device, made on the Mac', set0.voice_tts === 'macos', () => { if (ttsM && !ttsM.available) return this.say('Not available', ttsM.reason, C.amber); this.set({ voice_tts: set0.voice_tts === 'macos' ? 'browser' : 'macos' }); }),
+        opt('Alexa tells me what’s waiting', alexa ? (alexa.on ? 'Approvals and finished work on your Echo' : 'Alexa isn’t paired yet') : 'Alexa isn’t set up', !!(alexa && alexa.prefs && alexa.prefs.notify_approvals), () => { if (!alexa) return this.say('Alexa isn’t set up', '', C.amber); const on = !(alexa.prefs && alexa.prefs.notify_approvals); D.act(() => D.api('/alexa/prefs', { method:'PATCH', body:{ notify_approvals:on, notify_results:on } }), { reload:['den-conn'], core:false }); })],
+      lang:lang.label, onLang:e => this.setState({ lang:e.target.value }), langs:langs.map(l => l.label)
+    };
+  }
+}
+</script>
+</body>
+</html>

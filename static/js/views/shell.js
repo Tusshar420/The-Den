@@ -1,13 +1,16 @@
-// App chrome: topbar (with the notification bell), desktop sidebar, phone tab bar + FAB, skeletons.
+// App chrome: topbar (with the Claude account switcher and the notification bell), desktop sidebar, phone tab bar + FAB, skeletons.
 
 import { plural } from '../format.js';
-import { orderedProjects, projectColor, queuedTasks, pendingApprovals, SCOPES } from '../data.js';
+import { orderedProjects, projectColor, projectById, queuedTasks, pendingApprovals, threadSummaries, SCOPES, crmOnly, clientById, clientFill, projectFill } from '../data.js';
 import { isAssistant } from './assistant-card.js';
+import { ACTIVITY_FILTERS } from './activity.js';
 import { searchBox } from './search.js';
+import { accountSwitcher, accountById, shortName, sidebarAccounts } from './accounts.js';
+import { dueBadge } from './overview.js';
 import { esc, icon, octo, sk, scopeSwitch, clock, dayWord, spinner } from '../ui.js';
 
-const TITLES = { home: 'Command Center', projects: 'Projects', recipes: 'Recipes & schedules', activity: 'Activity', personal: 'Personal assistant', messages: 'Messages',
-  routing: 'Routing', providers: 'AI Providers', settings: 'Settings', voice: 'Voice', usage: 'Token usage', calendar: 'Calendar', briefing: 'Good morning' };
+const TITLES = { home: 'Den Home', projects: 'Projects', recipes: 'Recipes & schedules', activity: 'Activity', personal: 'Personal assistant', messages: 'Messages',
+  routing: 'Routing', providers: 'AI Providers', settings: 'Settings', voice: 'Voice', usage: 'Token usage', calendar: 'Calendar', briefing: 'Good morning', bin: 'Recycle bin', hidden: 'Hidden', notes: 'Notes', clients: 'Clients', crm: 'CRM', team: 'Team' };
 const OCTOPUS_NAV = [['usage', 'Token usage'], ['providers', 'AI Providers'], ['routing', 'Routing'], ['voice', 'Voice'], ['settings', 'Settings']];
 const PERSONAL_NAV = [['email', 'Email'], ['calendar', 'Calendar'], ['reminders', 'Reminders'], ['connections', 'Connections']];
 
@@ -16,6 +19,9 @@ export function viewTitle(c) {
   if (!desk && ui.view === 'home') return 'Workspace';
   if (!desk && ui.view === 'project') return 'Projects';
   if (ui.view === 'project') return (c.project && c.project.name) || 'Project';
+  if (ui.view === 'client') { const cl = (c.d.clientPages || {})[ui.clientId] || clientById(ui.clientId, c.d); return (cl && cl.name) || 'Client'; }
+  if (ui.view === 'employee') { const em = (c.d.employeePages || {})[ui.employeeId] || (c.d.employees || []).find(x => x.id === ui.employeeId); return (em && em.name) || 'Employee'; }
+  if (ui.view === 'contact') { const ct = (c.d.contacts || []).find(x => x.id === ui.contactId); return (ct && ct.name) || 'Contact'; }
   return TITLES[ui.view] || 'Workspace';
 }
 
@@ -55,7 +61,8 @@ function usagePill(c) {
 
 // Restart Octopus: reload the service's code, then this page. On phone it lives in the Usage sheet.
 export function restartText(r) {
-  if (!r) return 'Loads the latest code, then reloads this page. If something is running, it finishes first.';
+  if (!r) return "Loads the latest code, then reloads this page. Restart lets what's running finish first; Hard restart stops it now. Waiting tasks are paused meanwhile and resumed after.";
+  if (r.hard) return "Hard restart… stopping what's running. This page reloads when it's back.";
   return r.waitingOn.length
     ? `Waiting for ${r.waitingOn.map(id => '#' + id).join(', ')} to finish, then restarting. Nothing new starts meanwhile.`
     : "Restarting… this page reloads when it's back.";
@@ -65,16 +72,23 @@ function restartButton(c) {
   return `<button class="icon-btn${r ? ' is-on' : ''}" data-action="restartOctopus" aria-label="Restart Octopus" title="${r ? esc(restartText(r)) : 'Restart Octopus · load the latest code'}"${r ? ' disabled' : ''}>${r ? spinner() : icon('restart', 18)}</button>`;
 }
 
+// Phone / tablet only: desktop has no pull-to-refresh gap to fill, and polling keeps it live anyway.
+function refreshButton(c) {
+  const on = c.ui.refreshing;
+  return `<button class="icon-btn topbar__refresh${on ? ' is-on' : ''}" data-action="refreshNow" aria-label="Refresh" title="Refresh"${on ? ' disabled' : ''}>${on ? spinner() : icon('restart', 18)}</button>`;
+}
+
 export function topbar(c) {
   const { ui, desk, d } = c;
-  const onProject = ui.view === 'project';
+  const onProject = ui.view === 'project' || ui.view === 'client' || ui.view === 'contact';
   const back = !desk && onProject ? `<button class="icon-btn icon-btn--44 back-btn" data-action="goBack" aria-label="Back">←</button>` : '';
   const eyebrow = !desk ? `<span class="topbar__eyebrow">${ui.view === 'home' ? "TUSHAR'S" : 'WORKSPACE'}</span>` : '';
   const live = !(onProject && !desk)
     ? (d.error ? `<span class="live live--off">offline</span>` : `<span class="live">live</span>`) : '';
   // Phone: the sidebar is a drawer, opened from here (a project page has the back button instead).
-  const menu = (desk ? !c.navOpen : !onProject)
-    ? `<button class="icon-btn topbar__menu" data-action="toggleSidebar" aria-label="${desk ? 'Expand sidebar' : 'Open menu'}" title="Expand sidebar · [" aria-expanded="false" aria-controls="sidebar">${icon('sidebar', 20)}</button>` : '';
+  // Desktop expands it from the collapsed rail instead.
+  const menu = !desk && !onProject
+    ? `<button class="icon-btn topbar__menu" data-action="toggleSidebar" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">${icon('sidebar', 20)}</button>` : '';
   // #bell stays empty here: NotificationCenter owns its contents and classes, and morph
   // leaves anything it didn't create alone. The data-key keeps it the same element.
   // On a phone the open search takes over the whole header (CSS hides the rest, the bell included -
@@ -87,10 +101,10 @@ export function topbar(c) {
     ${desk ? searchBox(c) : ''}
     <span class="topbar__spacer"></span>
     ${live}
-    ${usagePill(c)}
-    ${desk ? restartButton(c) : searchBox(c)}
+    ${accountSwitcher(c)}
+    ${desk && accountSwitcher(c) ? '' : usagePill(c)}
+    ${desk ? restartButton(c) : searchBox(c) + refreshButton(c)}
     <button id="bell" data-key="bell"></button>
-    ${desk ? `<button class="topbar__new" data-action="openPalette">+ New task<span>⌘K</span></button>` : ''}
   </header>`;
 }
 
@@ -100,45 +114,113 @@ function projectMeta(p, c) {
   const live = d.tasks.find(t => t.project_id === p.id && !t.dismissed && (w.apTask.has(t.id) || ['running', 'rate_limited', 'error'].includes(t.status)));
   if (live) {
     const s = w.uiStatus(live);
-    return s === 'approval' ? ['needs you', 'var(--wait)'] : s === 'running' ? ['running', 'var(--run)'] : s === 'rate_limited' ? ['asleep', 'var(--sleep)'] : ['failed', 'var(--err)'];
+    if (s === 'rate_limited') { const a = accountById(c, live.claude_account); return [a ? shortName(a) + ' at limit' : 'asleep', 'var(--sleep)']; }
+    return s === 'approval' ? ['needs you', 'var(--wait)'] : s === 'running' ? ['running', 'var(--run)'] : ['failed', 'var(--err)'];
   }
   const qn = queuedTasks(d).filter(t => t.project_id === p.id).length;
   return qn ? [qn + ' queued', 'var(--text-meta)'] : ['', 'var(--text-meta)'];
 }
 
-// Quick glance at the bottom of the sidebar: live counts, 5h usage, next schedule, and the
-// compact-layout switch.
-function sidebarDetails(c) {
-  const { w } = c;
-  const stat = (label, n, color) => `<div class="sidebar__stat"><span class="sidebar__stat-n" style="color:${n ? color : 'var(--text-meta)'}">${n}</span><span class="sidebar__stat-l">${label}</span></div>`;
-  const s = w.session;
-  const next = w.nextSched;
-  return `<div class="sidebar__details">
-    <div class="sidebar__stats">${stat('running', w.running.length, 'var(--run)')}${stat('queued', w.nq, 'var(--text)')}${stat('need you', w.needs.length, 'var(--wait)')}</div>
-    ${s ? `<div class="sidebar__row"><span class="usage-pill__lbl">5h</span><div class="bar4"><div style="width:${s.pct}%;background:${sessionColor(s.pct)}"></div></div><span class="usage-pill__pct">${s.pct}%</span></div>` : ''}
-    ${next ? `<div class="sidebar__row sidebar__row--meta"><span>Next schedule</span><span>${esc(dayWord(next.next_run_at))} ${clock(next.next_run_at)}</span></div>` : ''}
-    <div class="sidebar__row sidebar__row--meta"><span>Compact layout</span><button class="toggle" role="switch" aria-checked="${c.compact}" data-action="toggleDensity" aria-label="Compact layout"></button></div>
-  </div>`;
+// ---------------------------------------------------------------- sidebar rows that fold open
+const CARET = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l4 4 4-4"/></svg>';
+
+// Projects: the projects the Work / Personal switch shows (General, Work, Personal headings under All).
+function navProjects(c) {
+  const { ui, d } = c;
+  const navProj = p => {
+    const [meta, mc] = projectMeta(p, c);
+    const on = ui.view === 'project' && ui.projectId === p.id;
+    return `<button class="nav-item nav-proj${on ? ' is-active' : ''}" data-action="openProject" data-id="${p.id}" data-key="np${p.id}">
+      ${p.is_general ? octo('idle', 18, ';margin:0 -5px') : `<span class="nav-proj__swatch" style="background:${projectFill(p)}"></span>`}
+      <span class="grow truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span>
+      ${crmOnly(p) ? '<span class="crm-badge" title="CRM only - no folder">CRM</span>' : ''}${dueBadge(p, { compact: true })}<span class="nav-proj__meta" style="color:${mc}">${meta}</span></button>`;
+  };
+  const all = orderedProjects(d);
+  const sec = (label, list) => list.length ? `<span class="sidebar__label">${label}</span>${list.map(navProj).join('')}` : '';
+  const list = ui.scope !== 'all' ? sec(ui.scope === 'work' ? 'WORK' : 'PERSONAL', all)
+    : sec('GENERAL', all.filter(p => p.is_general)) + sec('WORK', all.filter(p => !p.is_general && p.category === 'work'))
+      + sec('PERSONAL', all.filter(p => !p.is_general && p.category !== 'work'));
+  return `${list}<button class="nav-item nav-add" data-action="openSheet" data-sheet="addProject">+ New project</button>`;
+}
+
+// Activity: the history filters with how many chats each holds; picking one opens Activity on it.
+function navActivity(c) {
+  const { ui, d } = c;
+  const hist = threadSummaries(d).filter(t => ['done', 'cancelled', 'error', 'needs_review'].includes(t.status));
+  return ACTIVITY_FILTERS.map(([k, l]) => {
+    const n = k === 'all' ? hist.length : hist.filter(t => t.status === k).length;
+    const on = ui.view === 'activity' && ui.activityFilter === k;
+    return `<button class="nav-item nav-sub__item${on ? ' is-active' : ''}" data-action="go" data-view="activity" data-filter="${k}" data-key="na-${k}"><span class="grow">${l}</span><span class="nav-proj__meta">${n || ''}</span></button>`;
+  }).join('');
+}
+
+// Clients: every client (CRM), with how many projects each has; + New client opens the form on the Clients page.
+function navClients(c) {
+  const { ui, d } = c;
+  const list = (d.clients || []).filter(x => x.status !== 'past');
+  const past = (d.clients || []).length - list.length;
+  const row = cl => `<button class="nav-item nav-proj${ui.view === 'client' && ui.clientId === cl.id ? ' is-active' : ''}" data-action="openClient" data-id="${cl.id}" data-key="nc${cl.id}">
+      <span class="nav-proj__swatch" style="background:${clientFill(cl)}"></span><span class="grow truncate">${esc(cl.name)}</span>
+      <span class="nav-proj__meta">${cl.project_count || ''}</span></button>`;
+  return `${list.map(row).join('')}${past ? `<button class="nav-item nav-sub__item" data-action="go" data-view="clients"><span class="grow">${past} past client${past === 1 ? '' : 's'}</span></button>` : ''}
+    <button class="nav-item nav-add" data-action="clNewOpen">+ New client</button>`;
+}
+
+const NAV_SUBS = { projects: navProjects, clients: navClients, activity: navActivity };
+
+// Desktop, sidebar collapsed: a slim icon rail that stays put, with the expand button on top.
+// On narrower desktops it also sits under the floating drawer.
+function rail(c) {
+  const { ui, d, w } = c;
+  const item = (on, attrs, label, inner) => `<button class="rail__item${on ? ' is-active' : ''}" ${attrs} aria-label="${esc(label)}" title="${esc(label)}">${inner}</button>`;
+  const nav = [['home', 'Den Home', 'home'], ['projects', 'Projects', 'projects'], ['clients', 'Clients', 'clients'], ['crm', 'CRM', 'crm'], ['team', 'Team', 'team'], ['recipes', 'Recipes & schedules', 'recipes'], ['activity', 'Activity', 'activity']];
+  const needs = w.needs.length;
+  const paPending = pendingApprovals(d).filter(isAssistant).length;
+  const badge = n => n ? `<span class="rail__badge">${n}</span>` : '';
+  return `<nav class="rail" data-key="nav-rail" aria-label="Workspace (collapsed)">
+    <button class="rail__item rail__toggle" data-action="toggleSidebar" aria-label="Expand sidebar" title="Expand sidebar · [" aria-expanded="false" aria-controls="sidebar">${icon('sidebar', 20)}</button>
+    <button class="rail__brand" data-action="go" data-view="home" aria-label="Den Home" title="${esc(w.hero.short)}">${octo(w.mood, 30)}</button>
+    <div class="rail__scroll">
+      ${nav.map(([v, l, ic]) => item(ui.view === v || (v === 'clients' && (ui.view === 'client' || ui.view === 'contact')) || (v === 'team' && ui.view === 'employee'), `data-action="go" data-view="${v}"`, l, icon(ic, 20) + (v === 'home' ? badge(needs) : ''))).join('')}
+      ${item(ui.view === 'personal', 'data-action="goPersonal" data-tab="email"', 'Personal assistant', icon('personal', 20) + badge(paPending))}
+      ${item(ui.view === 'notes', 'data-action="go" data-view="notes"', 'Notes', icon('notes', 20))}
+      ${item(ui.view === 'settings', 'data-action="go" data-view="settings"', 'Settings', icon('settings', 20))}
+      ${item(ui.view === 'bin', 'data-action="go" data-view="bin"', 'Recycle bin', icon('trash', 20))}
+      <span class="rail__sep"></span>
+      ${orderedProjects(d).map(p => item(ui.view === 'project' && ui.projectId === p.id, `data-action="openProject" data-id="${p.id}" data-key="rp${p.id}"`, p.name,
+        p.is_general ? octo('idle', 20) : `<span class="rail__swatch" style="background:${projectFill(p)};opacity:${p.active ? 1 : 0.55}"></span>`)).join('')}
+    </div>
+    <button class="rail__new" data-action="openPalette" aria-label="New task" title="New task · ⌘K">+</button>
+  </nav>`;
 }
 
 export function sidebar(c) {
   const { ui, d, w } = c;
-  const nav = [['home', 'Command Center', '1'], ['projects', 'Projects', '2'], ['calendar', 'Calendar', '7'], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4'], ['messages', 'Messages', '6']];
+  const nav = [['home', 'Den Home', '1'], ['projects', 'Projects', '2'], ['clients', 'Clients', ''], ['crm', 'CRM', ''], ['team', 'Team', ''], ['recipes', 'Recipes & schedules', '3'], ['activity', 'Activity', '4']];
   const needs = w.needs.length;
-  return `<div class="sidebar-scrim${c.navOpen && c.navOverlay ? ' is-on' : ''}" data-action="toggleSidebar" data-key="sidebar-scrim" aria-hidden="true"></div>
+  return `${c.desk && (c.navOverlay || !c.navOpen) ? rail(c) : ''}<div class="sidebar-scrim${c.navOpen && c.navOverlay ? ' is-on' : ''}" data-action="toggleSidebar" data-key="sidebar-scrim" aria-hidden="true"></div>
   <nav class="sidebar${c.navOpen ? '' : ' is-collapsed'}${c.navOverlay ? ' sidebar--overlay' : ''}" id="sidebar" data-key="sidebar" aria-label="Workspace"${c.navOpen ? '' : ' inert'}>
+    <div class="sidebar__scroll">
     <div class="sidebar__head">
       <button class="sidebar__brand" data-action="go" data-view="home">${octo(w.mood, 42)}<span class="sidebar__brand-text"><span class="sidebar__brand-top">TUSHAR'S</span><span class="sidebar__brand-name">Workspace</span></span></button>
       <button class="icon-btn icon-btn--ghost sidebar__toggle" data-action="toggleSidebar" aria-label="Collapse sidebar" title="Collapse sidebar · [" aria-expanded="${c.navOpen}" aria-controls="sidebar">${icon('sidebar', 20)}</button>
     </div>
     <button class="sidebar__status" data-action="go" data-view="home"><span class="dot dot--pulse" style="--c:${w.hero.color}"></span><span class="grow">${esc(w.hero.short)}</span></button>
+    ${sidebarAccounts(c)}
     ${scopeSwitch(ui.scope, 'setScope', SCOPES)}
     <div class="sidebar__group">
-      ${nav.map(([v, l, k]) => `<button class="nav-item${ui.view === v ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span>${v === 'home' && needs ? `<span class="count-badge count-badge--sm">${needs}</span>` : ''}<span class="nav-item__key">${k}</span></button>`).join('')}
-    </div>
-    <div class="sidebar__group">
-      <span class="sidebar__label">OCTOPUS</span>
-      ${OCTOPUS_NAV.map(([v, l]) => `<button class="nav-item${ui.view === v ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span></button>`).join('')}
+      ${nav.map(([v, l, k]) => {
+        const item = on => `<button class="nav-item${on ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span>${v === 'home' && needs ? `<span class="count-badge count-badge--sm">${needs}</span>` : ''}${k ? `<span class="nav-item__key">${k}</span>` : ''}</button>`;
+        if (!NAV_SUBS[v]) return item(ui.view === v || (v === 'team' && ui.view === 'employee'));
+        const open = !!ui.navExpand[v];
+        // Collapsed, the parent row stands in for what's folded away (a project page lights up Projects).
+        const on = open ? ui.view === v && v !== 'activity' : ui.view === v || (v === 'projects' && ui.view === 'project') || (v === 'clients' && (ui.view === 'client' || ui.view === 'contact'));
+        return `<div class="nav-row">${item(on)}<button class="nav-caret${open ? ' is-open' : ''}" data-action="navExpand" data-k="${v}" aria-expanded="${open}" aria-label="${open ? 'Hide' : 'Show'} ${l.toLowerCase()} list" title="${open ? 'Collapse' : 'Expand'}">${CARET}</button></div>
+          ${open ? `<div class="nav-sub" data-key="nav-sub-${v}">${NAV_SUBS[v](c)}</div>` : ''}`;
+      }).join('')}
+      <button class="nav-item${ui.view === 'notes' ? ' is-active' : ''}" data-action="go" data-view="notes"><span class="grow">Notes</span></button>
+      <button class="nav-item${ui.view === 'bin' ? ' is-active' : ''}" data-action="go" data-view="bin"><span class="grow">Recycle bin</span></button>
+      ${c.desk ? '' : `<button class="nav-item${ui.view === 'hidden' ? ' is-active' : ''}" data-action="go" data-view="hidden"><span class="grow">Hidden</span>${(d.hiddenProjects || []).length ? `<span class="count-badge count-badge--sm">${d.hiddenProjects.length}</span>` : ''}</button>`}
     </div>
     <div class="sidebar__group">
       <span class="sidebar__label">PERSONAL ASSISTANT</span>
@@ -148,27 +230,13 @@ export function sidebar(c) {
       }).join('')}
     </div>
     <div class="sidebar__group">
-      ${(() => {
-        const navProj = p => {
-        const [meta, mc] = projectMeta(p, c);
-        const on = ui.view === 'project' && ui.projectId === p.id;
-        return `<button class="nav-item nav-proj${on ? ' is-active' : ''}" data-action="openProject" data-id="${p.id}" data-key="np${p.id}">
-          ${p.is_general ? octo('idle', 18, ';margin:0 -5px') : `<span class="nav-proj__swatch" style="background:${projectColor(p)}"></span>`}
-          <span class="grow truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span>
-          <span class="nav-proj__meta" style="color:${mc}">${meta}</span></button>`;
-        };
-        const all = orderedProjects(d);
-        if (ui.scope !== 'all') return `<span class="sidebar__label">${ui.scope === 'work' ? 'WORK' : 'PERSONAL'}</span>${all.map(navProj).join('')}`;
-        const sec = (label, list) => list.length ? `<span class="sidebar__label">${label}</span>${list.map(navProj).join('')}` : '';
-        return sec('GENERAL', all.filter(p => p.is_general)) + sec('WORK', all.filter(p => !p.is_general && p.category === 'work'))
-          + sec('PERSONAL', all.filter(p => !p.is_general && p.category !== 'work'));
-      })()}
-      <button class="nav-item nav-add" data-action="openSheet" data-sheet="addProject">+ Add project</button>
+      <span class="sidebar__label">OCTOPUS</span>
+      ${OCTOPUS_NAV.map(([v, l]) => `<button class="nav-item${ui.view === v ? ' is-active' : ''}" data-action="go" data-view="${v}"><span class="grow">${l}</span></button>`).join('')}
+      <button class="sidebar__keys" data-action="openSheet" data-sheet="keys">Keyboard shortcuts · ?</button>
+    </div>
     </div>
     <div class="sidebar__foot">
-      ${sidebarDetails(c)}
       <button class="sidebar__new" data-action="openPalette">New task<span>⌘K</span></button>
-      <button class="sidebar__keys" data-action="openSheet" data-sheet="keys">Keyboard shortcuts · ?</button>
     </div>
   </nav>`;
 }

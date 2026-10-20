@@ -12,6 +12,7 @@
 // row while the request is still pending (approvalPending, onDecide).
 import { icon } from './icons.js';
 import { escapeHTML, money } from './format.js';
+import { pushActive, setBadge, syncPush } from './push.js';
 
 // ---------------------------------------------------------------- kinds
 // needs = the uiStatus that keeps this notification "waiting on you" (shows the CTA + counts in "Needs you").
@@ -22,6 +23,8 @@ export const KINDS = {
   approval: { c: '#FFB547', icon: 'nClock',  label: 'NEEDS APPROVAL', needs: 'approval',     cta: 'Review request' },
   approved: { c: '#FFB547', icon: 'nCheck',  label: 'APPROVED' },
   stop:     { c: '#FF8FA2', icon: 'close',   label: 'STOPPED' },
+  deleted:  { c: '#FF8FA2', icon: 'trash',   label: 'DELETED' },
+  restored: { c: '#6FCF97', icon: 'restart', label: 'RESTORED' },
   queue:    { c: '#FF7B5C', icon: 'nQueue',  label: 'QUEUED' },
   error:    { c: '#FF5470', icon: 'nAlert',  label: 'FAILED',         needs: 'error',        cta: 'See what broke' },
   review:   { c: '#7FB2FF', icon: 'nEye',    label: 'NEEDS REVIEW',   needs: 'needs_review', cta: 'Review changes' },
@@ -49,7 +52,9 @@ export function toastKind(text) {
   if (/^Done/.test(w)) return 'done';
   if (/^(Answered|→|Asked again)/.test(w)) return 'answer';
   if (/^Approved/.test(w)) return 'approved';
-  if (/^(Denied|Cancelled|Stopped|Deleted)/.test(w)) return 'stop';
+  if (/^(Denied|Cancelled|Stopped)/.test(w)) return 'stop';
+  if (/^(Deleted|Erased|Recycle bin emptied)/.test(w)) return 'deleted';
+  if (/^Restored/.test(w)) return 'restored';
   if (/^Limit cleared/.test(w)) return 'limit';
   if (/^(Text polished|Already reads well)/.test(w)) return 'polish';
   if (/^Added /.test(w)) return 'add';
@@ -61,7 +66,7 @@ export function toastKind(text) {
 export function parseToast(text) {
   const kind = toastKind(text), segs = text.split(' · ');
   let kicker = null, title = segs[0], sub = segs.slice(1).join(' · ');
-  const m = segs[0].match(/^(Done|Answered|Queued|Approved|Denied|Cancelled|Stopped)(?:\s+(.+))?$/);
+  const m = segs[0].match(/^(Done|Answered|Queued|Approved|Denied|Cancelled|Stopped|Deleted|Restored)(?:\s+(.+))?$/);
   if (m) {
     kicker = m[1].toUpperCase();
     if (m[2]) title = m[2];
@@ -76,8 +81,10 @@ export function parseToast(text) {
 const STORE = 'octopus-notifs', MAX = 60, MAX_TOASTS = 3;
 const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch { return []; } };
 
-// System notifications for when the dashboard is in a background tab. The API only exists in a
-// secure context (localhost / https) - over plain-http Tailscale the phone relies on ActivitySmith instead.
+// System notifications. The API only exists in a secure context (localhost / https) - over plain-http
+// Tailscale the phone relies on ActivitySmith instead. Over https (Tailscale Serve) allowing them also
+// subscribes to Web Push (push.js), which reaches the Dock / Home Screen app even while it's closed;
+// until then they only show while the dashboard is in a background tab.
 const canSystemNotify = () => typeof Notification !== 'undefined' && window.isSecureContext;
 
 export class NotificationCenter {
@@ -92,10 +99,11 @@ export class NotificationCenter {
    * @param {(approval:Object)=>string} [o.describeApproval]   what an approval wants to run
    * @param {(approvalId:number)=>boolean} [o.approvalPending] still waiting for a decision?
    * @param {(approvalId:number, approved:boolean)=>any} [o.onDecide]   Approve / Deny; buttons only show when given
+   * @param {(taskId:number)=>boolean} [o.isViewing]   that chat is on screen right now: it shows the news itself, so no toast
    */
   constructor({ root, bell, statusOf, onOpenTask, emptyArt = () => '', modelLabel = () => '',
-    describeApproval = () => '', approvalPending = null, onDecide = null }) {
-    Object.assign(this, { root, bell, statusOf, onOpenTask, emptyArt, modelLabel, describeApproval, approvalPending, onDecide });
+    describeApproval = () => '', approvalPending = null, onDecide = null, isViewing = () => false }) {
+    Object.assign(this, { root, bell, statusOf, onOpenTask, emptyArt, modelLabel, describeApproval, approvalPending, onDecide, isViewing });
     this.items = load();
     this.open = false; this.tab = 'all'; this.seq = Date.now();
     this.actions = new Map(); this.timers = new Map(); this.prevRef = null; this.prevTasks = null;
@@ -112,25 +120,30 @@ export class NotificationCenter {
     bell.addEventListener('click', () => (this.open ? this.close() : this.show()));
     this.renderBell();
     setInterval(() => this.open && this.renderPanel(), 30000);
+    syncPush();   // already allowed: keep this browser's push subscription current
   }
 
   // ---------------------------------------------------------------- public
   /** Replaces the old store.ui.toast. Every existing toast string keeps working. */
-  toast(text, { action, actionLabel, taskId } = {}) {
+  // keep: the action button stays on the row in the panel too, until used (e.g. Undo on a delete).
+  toast(text, { action, actionLabel, taskId, keep = false } = {}) {
     const p = parseToast(text);
-    return this.add({ ...p, taskId, actionLabel: action ? actionLabel : undefined }, { toast: true, action });
+    return this.add({ ...p, taskId, actionLabel: action ? actionLabel : undefined, keepAction: !!(action && keep) }, { toast: true, action });
   }
 
   /** Add one notification. key dedupes (poll-derived items use it so reloads don't repeat). */
   add(n, { toast = true, action } = {}) {
     if (n.key && this.items.some(x => x.key === n.key)) return null;
     const K = kindOf(n.kind);
-    const item = { id: 'n' + ++this.seq, at: Date.now(), read: !!K.ephemeral, ...n, life: action ? 6 : n.approvalId && this.onDecide ? 12 : 5 };
+    // The chat it's about is open in front of you: it lands there, so keep it in the list (already read) but don't toast.
+    // Toasts carrying an action (Undo) still show - the button only lives on the toast.
+    if (toast && !action && n.taskId != null && this.isViewing(n.taskId)) { toast = false; n = { ...n, read: true }; }
+    const item = { id: 'n' + ++this.seq, at: Date.now(), read: !!K.ephemeral, ...n, life: action ? 10 : n.approvalId && this.onDecide ? 12 : 5 };
     if (action) this.actions.set(item.id, action);
     this.items = [item, ...this.items].slice(0, MAX);
     this.save();
     if (toast && !this.open) this.showToast(item);
-    if (toast && !K.ephemeral && document.hidden) this.systemNotify(item);
+    if (toast && !K.ephemeral && document.hidden && !pushActive()) this.systemNotify(item);   // pushed already: don't show it twice
     this.renderBell(); if (this.open) this.renderPanel();
     return item.id;
   }
@@ -146,7 +159,7 @@ export class NotificationCenter {
 
   askSystemPermission() {
     if (!canSystemNotify()) return;
-    Promise.resolve(Notification.requestPermission()).finally(() => this.renderPanel());
+    Promise.resolve(Notification.requestPermission()).then(p => p === 'granted' && syncPush()).finally(() => this.renderPanel());
   }
 
   /** Call after every poll with store.data. First call backfills silently; later calls toast new events. */
@@ -155,6 +168,7 @@ export class NotificationCenter {
     const first = !this.prevTasks;
     const proj = id => data.projects.find(p => p.id === id)?.name || '';
     const now = Date.now();
+    setBadge(data.approvals.filter(x => x.status === 'pending').length);
     for (const a of data.approvals.filter(x => x.status === 'pending')) {
       const t = data.tasks.find(x => x.id === a.task_id); if (!t) continue;
       this.add({ key: 'ap:' + a.id, kind: 'approval', title: t.prompt, sub: proj(t.project_id) + ' · waiting for your OK', taskId: t.thread_id || t.id, at: Date.parse(a.created_at) || now,
@@ -166,7 +180,7 @@ export class NotificationCenter {
     for (const t of data.tasks) {
       const was = this.prevTasks?.get(t.id);
       if (!first && was === t.status) continue;
-      const kind = t.status === 'done' ? (t.lane === 'api' ? 'answer' : 'done') : t.status === 'error' ? 'error'
+      const kind = t.status === 'done' ? ((t.kind || (t.lane === 'api' ? 'message' : 'task')) === 'message' ? 'answer' : 'done') : t.status === 'error' ? 'error'
         : t.status === 'needs_review' ? 'review' : t.status === 'rate_limited' ? 'limit' : null;
       if (!kind) continue;
       const at = Date.parse(t.finished_at || t.started_at || t.created_at) || now;
@@ -180,8 +194,21 @@ export class NotificationCenter {
       this.add({ key: `t:${t.id}:${t.status}:${t.finished_at || ''}`, kind, title: t.prompt, sub, taskId: t.thread_id || t.id, at,
         read: first && !kindOf(kind).needs && now - at > 3600e3 }, { toast: !first });
     }
+    this.dropResolvedApprovals(data);
     this.prevRef = data;
     this.prevTasks = new Map(data.tasks.map(t => [t.id, t.status]));
+  }
+
+  /** An approval decided anywhere (task page, another device, a push action) must not leave its toast up. */
+  dropResolvedApprovals(data) {
+    const pending = new Set(data.approvals.filter(a => a.status === 'pending').map(a => a.id));
+    let changed = false;
+    for (const n of this.items) {
+      if (!n.approvalId || pending.has(n.approvalId)) continue;
+      this.dropToast(n.id);
+      if (!n.read) { n.read = true; changed = true; }
+    }
+    if (changed) { this.save(); this.renderBell(); if (this.open) this.renderPanel(); }
   }
 
   isOpen() { return this.open; }
@@ -192,6 +219,7 @@ export class NotificationCenter {
   }
   close() { this.open = false; this.markAllRead(false); this.renderPanel(); this.renderBell(); }   // closing marks everything read
   markAllRead(render = true) { this.items = this.items.map(x => (x.read ? x : { ...x, read: true })); this.save(); if (render) { this.renderBell(); this.renderPanel(); } }
+  clearAll() { this.items = this.items.filter(x => this.isLive(x)); this.save(); this.renderBell(); this.renderPanel(); }   // keeps ones still waiting on you
   clearRead() { this.items = this.items.filter(x => !x.read || this.isLive(x)); this.save(); this.renderBell(); this.renderPanel(); }
 
   // ---------------------------------------------------------------- internals
@@ -257,6 +285,7 @@ export class NotificationCenter {
     this.panel.innerHTML = `
       <div class="notif__head"><span class="notif__title">Notifications</span>${unread ? `<span class="notif__new">${unread} new</span>` : ''}<span class="notif__spacer"></span>
         ${unread ? `<button class="notif__link" data-act="mark">${desk ? 'Mark all read' : 'Read all'}</button>` : ''}
+        ${list.some(n => !this.isLive(n)) ? '<button class="notif__link" data-act="clearall">Clear all</button>' : ''}
         <button class="icon-btn" data-act="close" aria-label="Close">${icon('close', 14, { strokeWidth: 1.8 })}</button></div>
       <div class="notif__tabs">${tab('all', 'All', list.length)}${tab('needs', 'Needs you', needs.length)}</div>
       <div class="notif__list">${groups.map(([l, items]) => `<span class="notif__group">${l}</span>${items.map(n => this.row(n)).join('')}`).join('')
@@ -270,13 +299,15 @@ export class NotificationCenter {
 
   row(n) {
     const K = kindOf(n.kind), live = this.isLive(n), decide = this.canDecide(n);
-    // A row holding Approve / Deny can't itself be a <button>, so it becomes a focusable div.
-    const tag = decide ? 'div' : 'button', a11y = decide ? ' role="button" tabindex="0"' : '';
+    const act = n.keepAction && n.actionLabel && this.actions.has(n.id);   // the function only lives until the page reloads
+    // A row holding Approve / Deny (or an Undo) can't itself be a <button>, so it becomes a focusable div.
+    const tag = decide || act ? 'div' : 'button', a11y = decide || act ? ' role="button" tabindex="0"' : '';
     return `<${tag} class="nrow${n.read ? '' : ' is-unread'}" data-act="row" data-id="${n.id}"${a11y} style="${kvars(K)}">`
       + `<div class="nkind-ic">${icon(K.icon, 18, { strokeWidth: 1.8 })}</div>`
       + `<div class="nrow__body"><div class="nrow__top"><span class="nkind-kicker">${escapeHTML(n.kicker || K.label)}</span><span class="nrow__when">${when(n.at)}</span></div>`
       + `<span class="nrow__title">${escapeHTML(n.title)}</span>${n.sub ? `<span class="nkind-sub">${escapeHTML(n.sub)}</span>` : ''}${live || decide ? this.detailHTML(n) : ''}`
-      + `${decide ? this.decideHTML(n) : live && K.cta ? `<span class="nrow__cta">${K.cta} →</span>` : ''}</div><span class="nrow__dot"></span></${tag}>`;
+      + `${decide ? this.decideHTML(n) : live && K.cta ? `<span class="nrow__cta">${K.cta} →</span>` : ''}`
+      + `${act ? `<div class="ndecide"><button class="ndecide__btn" data-act="toast-act" data-id="${n.id}">${escapeHTML(n.actionLabel)}</button></div>` : ''}</div><span class="nrow__dot"></span></${tag}>`;
   }
 
   openItem(id) {
@@ -292,13 +323,17 @@ export class NotificationCenter {
     const el = e.target.closest('[data-act]'); if (!el || !this.root.contains(el)) return;
     const { act, id } = el.dataset;
     if (act === 'decide') { e.stopPropagation(); this.decide(id, el.dataset.ok === '1'); }
-    else if (act === 'toast-act') { e.stopPropagation(); this.actions.get(id)?.(); this.dropToast(id); }
+    else if (act === 'toast-act') {
+      e.stopPropagation(); const run = this.actions.get(id); this.actions.delete(id); this.dropToast(id); run?.();
+      if (this.open) this.renderPanel();
+    }
     else if (act === 'toast-close') { e.stopPropagation(); this.dropToast(id); }
     else if (act === 'toast-open') { if (this.items.find(x => x.id === id)?.taskId) this.openItem(id); }
     else if (act === 'row') this.openItem(id);
     else if (act === 'tab') { this.tab = el.dataset.tab; this.renderPanel(); }
     else if (act === 'mark') this.markAllRead();
     else if (act === 'clear') this.clearRead();
+    else if (act === 'clearall') this.clearAll();
     else if (act === 'allow') this.askSystemPermission();
     else if (act === 'close') this.close();
   }

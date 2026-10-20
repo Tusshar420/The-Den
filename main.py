@@ -16,10 +16,15 @@ import re
 
 import uvicorn
 
+import db
+
 from api import app, check_bind_is_safe
+import mailer
+import restart_control
 import titles
 from alexa import notifier as alexa_notifier
 import worker
+from den_modules import manager as module_manager
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -57,6 +62,14 @@ PORT = int(os.environ.get("PORT", "8787"))
 
 async def main() -> None:
     check_bind_is_safe(HOST)
+    # Before any lane starts: tasks the old process left "running", and the ones a restart held.
+    released = restart_control.on_startup()
+    mailer.on_started(db._now(), released)
+    # Optional modules (modules/): a broken one is isolated and logged; it can never stop The Den starting.
+    try:
+        module_manager.start_all()
+    except Exception:
+        log.exception("module startup failed; continuing without modules")
     stop_event = asyncio.Event()
 
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="info")
@@ -81,6 +94,10 @@ async def main() -> None:
     finally:
         stop_event.set()
         server.should_exit = True
+        try:
+            module_manager.stop_all()
+        except Exception:
+            log.exception("module shutdown failed")
 
 
 if __name__ == "__main__":

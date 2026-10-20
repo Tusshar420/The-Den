@@ -1,0 +1,16 @@
+{
+  "name": "approval_reminder",
+  "version": "1.0.0",
+  "description": "One email about an approval nobody has answered, with the project, task, queue and Approve / Deny buttons.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "minutes": {"type": "integer", "default": 10},
+    "times": {"type": "integer", "default": 1}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

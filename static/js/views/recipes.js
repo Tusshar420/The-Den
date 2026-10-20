@@ -1,6 +1,6 @@
 // Recipes & schedules: saved prompts you can run in two taps or put on a schedule.
 
-import { esc, clock } from '../ui.js';
+import { esc, clock, emptyState } from '../ui.js';
 import { projectById } from '../data.js';
 import { scheduleRow, cadenceLabel } from './home.js';
 
@@ -32,10 +32,10 @@ export function recipes(c) {
     <span class="page__intro">Recipes are saved prompts. Run one in two taps from +, or put it on a schedule. If the Mac is asleep when a schedule is due, it runs as soon as it wakes.</span>
     <div class="section"><div class="section__head"><span class="section__title">Schedules</span></div>
       ${scheds.length ? `<div class="list list--720">${scheds.map(s => scheduleRow(s)).join('')}</div>`
-        : `<div class="empty empty--720"><span>No schedules yet. Pick a time under "when" in New task, or tap Schedule on a recipe.</span></div>`}
+        : emptyState({ title: 'No schedules yet', body: 'Run a task automatically at a set time. If the Mac is asleep, it runs when it wakes.', label: 'Schedule a task', attrs: 'data-action="openPalette" data-when="daily"', cls: 'estate--720' })}
     </div>
     <div class="section"><div class="section__head"><span class="section__title">Recipes</span></div>
-      ${list.length ? `<div class="recipe-grid">${list.map(r => recipeCard(c, r)).join('')}</div>` : `<div class="empty">No recipes yet.</div>`}
+      ${list.length ? `<div class="recipe-grid">${list.map(r => recipeCard(c, r)).join('')}</div>` : emptyState({ title: 'No recipes yet', body: 'Recipes are saved prompts you can run in two taps from the + menu or put on a schedule.', label: 'Add your first task', attrs: 'data-action="openPalette"' })}
     </div>
   </div>`;
 }

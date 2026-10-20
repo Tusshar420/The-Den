@@ -1,0 +1,53 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-IN": {
+          "name": "Octopus",
+          "summary": "Talk to The Den and Octopus, your AI workers.",
+          "description": "Ask what's in the queue, what Octopus is working on and what needs your approval; approve or deny by voice; add tasks, push code and talk a task through before it's queued.",
+          "examplePhrases": ["Alexa, open my octopus", "Alexa, ask my octopus what's in the queue", "Alexa, ask my octopus what approvals are waiting"],
+          "keywords": ["octopus", "claude", "queue"]
+        },
+        "en-US": {
+          "name": "Octopus",
+          "summary": "Talk to The Den and Octopus, your AI workers.",
+          "description": "Ask what's in the queue, what Octopus is working on and what needs your approval; approve or deny by voice; add tasks, push code and talk a task through before it's queued.",
+          "examplePhrases": ["Alexa, open my octopus", "Alexa, ask my octopus what's in the queue", "Alexa, ask my octopus what approvals are waiting"],
+          "keywords": ["octopus", "claude", "queue"]
+        }
+      },
+      "isAvailableWorldwide": true,
+      "testingInstructions": "Personal skill - not for publication.",
+      "category": "PRODUCTIVITY",
+      "distributionCountries": []
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://YOUR-MAC.YOUR-TAILNET.ts.net/alexa",
+          "sslCertificateType": "Trusted"
+        }
+      }
+    },
+    "permissions": [
+      {"name": "alexa::devices:all:notifications:write"}
+    ],
+    "events": {
+      "publications": [
+        {"eventName": "AMAZON.MessageAlert.Activated"}
+      ],
+      "endpoint": {
+        "uri": "https://YOUR-MAC.YOUR-TAILNET.ts.net/alexa",
+        "sslCertificateType": "Trusted"
+      },
+      "subscriptions": [
+        {"eventName": "SKILL_PROACTIVE_SUBSCRIPTION_CHANGED"},
+        {"eventName": "SKILL_PERMISSION_ACCEPTED"},
+        {"eventName": "SKILL_PERMISSION_CHANGED"},
+        {"eventName": "SKILL_DISABLED"}
+      ]
+    },
+    "manifestVersion": "1.0"
+  }
+}

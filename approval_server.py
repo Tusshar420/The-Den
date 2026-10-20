@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import approval_links  # noqa: E402
 import db  # noqa: E402
 import risk  # noqa: E402
+import webpush  # noqa: E402
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
@@ -46,6 +47,8 @@ mcp = FastMCP("the-den-approval")
 
 
 def notify_phone(title: str, message: str, approval_id: int) -> None:
+    # The Dock / Home Screen web app too (webpush), with its own Approve / Deny.
+    webpush.send_all(title, message, "approval", "/dashboard", approval_id)
     if not ACTIVITYSMITH_API_KEY:
         return
     try:
@@ -93,7 +96,8 @@ def approval_prompt(tool_name: str, input: dict, tool_use_id: str = "") -> dict:
             approval["id"],
         )
 
-    deadline = time.time() + (min(TIMEOUT_SECONDS, SLEEP_TIMEOUT_SECONDS) if asleep else TIMEOUT_SECONDS)
+    quick = asleep and db.get_setting("sleep_auto_deny", True)   # Settings › Safety
+    deadline = time.time() + (min(TIMEOUT_SECONDS, SLEEP_TIMEOUT_SECONDS) if quick else TIMEOUT_SECONDS)
     while time.time() < deadline:
         time.sleep(POLL_SECONDS)
         current = db.get_approval(approval["id"])

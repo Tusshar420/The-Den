@@ -1,0 +1,144 @@
+/* Tushar's Workspace · phone polish
+   Loaded last so these win. Everything below 900px matches app.js isDesk() (innerWidth >= 900),
+   so the desktop look is untouched. */
+
+@media (max-width: 899.98px) {
+  /* ---------- 16px in every text box and select: anything smaller makes iOS zoom in on focus */
+  .edit-prompt, .backlog-add__input, .qopt__model, .tk-month, .tk-sel .input, .rq-row__text, .rq-model { font-size: var(--fs-input); }
+
+  /* ---------- tap targets: aim for --tap (44px), at least 40 where a row of them has to fit */
+  .btn--sm, .tool-btn { min-height: 40px; }
+  .tool-btn { min-width: 40px; }
+  .btn--text { min-height: var(--tap); padding: 0 4px; display: inline-flex; align-items: center; }
+  .segmented__opt, .set-seg .segmented__opt, .act-chip, .scope .chip, .tabs__opt, .pane__mode-opt, .composer__model, .qopt__model { min-height: 40px; }
+  .nav-item, .sidebar__toggle { min-height: var(--tap); }
+  .sidebar__toggle { min-width: var(--tap); }
+  .nav-sub__item { min-height: 40px; }
+  .nav-caret { width: 40px; height: 40px; }
+  .allow-chip button { width: 36px; height: 36px; }
+  .thumb__x { width: 30px; height: 30px; }
+  .attach-thumb__x { width: 28px; height: 28px; }
+  /* checkboxes and color dots keep their look; an invisible square around them takes the tap */
+  .check, .acct-swatch:not(.acct-swatch--custom) { position: relative; }
+  .check::before, .acct-swatch::before { content: ''; position: absolute; left: 50%; top: 50%; width: var(--tap); height: var(--tap); transform: translate(-50%, -50%); }
+  .acct-swatch { width: 28px; height: 28px; }
+
+  /* ---------- code diffs scroll sideways instead of cutting long lines off */
+  .diff { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .diff__line { width: max-content; min-width: 100%; box-sizing: border-box; overflow: visible; text-overflow: clip; }
+
+  /* ---------- bottom tab bar: a tab is never narrower than its label, so "Messages" isn't cut off on small phones
+     (the + can sit a few px off centre then, rather than the words running together) */
+  .tabbar { grid-template-columns: repeat(3, minmax(min-content, 1fr)) 56px repeat(3, minmax(min-content, 1fr)); column-gap: 2px; padding-left: 4px; padding-right: 4px; }
+  .tab { width: 100%; max-width: 64px; min-width: min-content; padding: 0 1px; white-space: nowrap; }
+  .tab__badge { right: calc(50% - 22px); }
+
+  /* ---------- the bulk bar sits above the tab bar, home indicator included */
+  .bulkbar { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+
+  /* ---------- the Usage sheet lists the Claude accounts (the header only has room for the usage pill) */
+  .acct-sw.acct-sw--sheet { flex-direction: column; gap: 8px; }
+  .acct-sw--sheet .acct-card { width: 100%; justify-content: space-between; min-height: 56px; }
+  .acct-sw--sheet .acct-card__name { max-width: 45%; }
+  .app .acct-sw--sheet .acct-card .usage-pill__row:nth-of-type(2) { display: grid; }   /* the sheet has room for the weekly limit too */
+
+  /* ---------- header: the usage pill keeps just "5h 26%" / "wk 38%" and the gaps tighten, so the page title has room
+     (bars and reset times are in the Usage sheet, one tap on the pill) */
+  .topbar { gap: 6px; }
+  .topbar .topbar__spacer { margin-left: -6px; }
+  .topbar .usage-pill { padding: 5px 10px; }
+  .topbar .usage-pill__reset, .topbar .usage-pill .bar4 { display: none; }
+  .topbar .usage-pill__row { grid-template-columns: 16px 30px; gap: 4px; }
+
+  /* tablet (iPad portrait): room for every account tile, so they replace the single usage pill; a phone keeps just the pill.
+     The tiles look as they do on desktop (both limits, with bars); "live" goes, as it does in a desktop header this narrow */
+  .topbar .acct-sw { display: none; }
+  @media (min-width: 640px) {
+    .topbar .acct-sw { display: flex; }
+    .topbar .acct-sw ~ .usage-pill, .topbar .acct-sw ~ .usage-ring { display: none; }   /* a project page's ring too: just the tiles, as on desktop */
+    .app .topbar .acct-card { padding: 6px 12px; }
+    .app .topbar .acct-card .usage-pill__row { grid-template-columns: 16px 44px 30px; gap: 6px; }
+    .app .topbar .acct-card .usage-pill__row:nth-of-type(2) { display: grid; }
+    .topbar .acct-card .bar4 { display: block; }
+    .topbar .live { display: none; }
+    .topbar__titles { min-width: 96px; }
+  }
+
+  .usage-ring { border: none; background: none; padding: 0; border-radius: 50%; color: var(--text); }   /* a project page's header ring: no default button box */
+
+  /* ---------- Home hero: a long command or path in the status line wraps instead of widening the page */
+  .hero__body, .hero__line { min-width: 0; overflow-wrap: anywhere; }
+
+  /* ---------- keyboard shortcut hints mean nothing without a keyboard */
+  .kbd-hint, .pal-cta span:not(.spinner) { display: none; }
+
+  /* ---------- tapped chart bar shows its numbers (no hover on a phone) */
+  .tk-col.is-tip .tk-tip { display: flex; }
+}
+
+/* very small phones (iPhone SE / mini) */
+@media (max-width: 360px) {
+  .tabbar { grid-template-columns: repeat(3, minmax(min-content, 1fr)) 52px repeat(3, minmax(min-content, 1fr)); padding-left: 2px; padding-right: 2px; }
+  .tab { font-size: 10px; letter-spacing: -.01em; }
+  .fab { width: 52px; height: 52px; border-radius: 17px; }
+}
+
+/* ---------- on-screen keyboard (app.js fitKeyboard): the app shrinks to what's visible above it */
+html.kb-open .app { height: var(--app-h, 100dvh); }
+html.kb-open .tabbar, html.kb-open .bulkbar { display: none; }
+html.kb-open .composer, html.kb-open .sticky-actions, html.kb-open .palette__foot { padding-bottom: 10px; }
+html.kb-open .sheet__body { padding-bottom: 14px; }
+
+/* ---------- hover highlights stay lit after a tap on touch screens; drop the most visible ones there */
+@media (hover: none) {
+  .acct-card:hover { background: var(--surface); }
+}
+
+/* ---------- phone Ask: a one-line bar on the page (home.js ask) ... */
+.ask--bar { gap: 6px; }
+.ask-bar { display: flex; align-items: center; gap: 10px; width: 100%; height: 50px; padding: 0 6px 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line-strong);
+  background: var(--surface); box-shadow: 0 10px 28px rgba(0, 0, 0, .38); color: var(--text-meta); font: 500 15px var(--font-ui); text-align: left; cursor: text; }
+.ask-bar__octo { flex: none; width: 22px; height: 22px; }
+.ask-bar__text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ask-bar__text.has-text { color: var(--text); }
+.ask-bar__go { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--coral); color: var(--on-coral); display: grid; place-items: center; font: 700 17px/1 var(--font-ui); }
+.ask-bar .spinner { flex: none; margin-right: 10px; }
+.proj-work__main > .ask--bar { bottom: calc(var(--tabbar-h) - 8px + env(safe-area-inset-bottom)); }
+
+/* ... which opens the full box at the top of the screen, controls under the text (askOverlay) */
+.ask-over { position: absolute; inset: 0; z-index: 36; }
+.ask-over__scrim { position: absolute; inset: 0; background: rgba(3, 5, 8, .62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fadein .18s ease; }
+.ask-over__panel { position: absolute; top: 0; left: 0; right: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: calc(8px + env(safe-area-inset-top)) 12px 14px;
+  background: var(--bg-sheet); border-bottom: 1px solid var(--line-strong); border-radius: 0 0 var(--r-sheet) var(--r-sheet); box-shadow: 0 18px 40px rgba(0, 0, 0, .5); animation: ask-drop .22s var(--ease-out); }
+.ask-over__head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 8px; }
+.ask-over__title { font: 800 18px var(--font-ui); letter-spacing: -.01em; }
+.ask-over .ask__box { box-shadow: none; }
+.ask-over .ask__input { min-height: 72px; }
+.ask-over .menu--up { top: calc(100% + 6px); bottom: auto; }   /* the box is at the top now, so its menus open downwards */
+.ask-over__panel--menu { overflow: visible; }                   /* ...past the panel's bottom edge, over the scrim */
+@keyframes ask-drop { from { transform: translateY(-24px); opacity: 0; } }
+
+/* ---------- phone right drawer: a thin grip on the right edge ... (queue-panel.js rightDrawer) */
+.rgrip { position: absolute; right: 0; top: 50%; z-index: 9; width: 18px; height: 84px; margin-top: -42px; padding: 0; border: none; background: none; display: flex; align-items: center; justify-content: flex-end; touch-action: pan-y; }
+.rgrip i { display: block; width: 4px; height: 44px; margin-right: 3px; border-radius: 3px; background: rgba(255, 255, 255, .2); transition: background var(--t), height var(--t); }
+.rgrip.has-work i { background: color-mix(in srgb, var(--coral) 70%, transparent); }
+.rgrip:active i { height: 56px; background: var(--coral); }
+html.kb-open .rgrip, .app:has(.pane, .scrim, .ask-over, .sidebar-scrim.is-on) .rgrip { display: none; }
+
+/* ... sliding in the Queue / Messages / Calendar sidebars */
+.rdrawer { position: absolute; inset: 0; z-index: 35; }
+.rdrawer__scrim { position: absolute; inset: 0; background: rgba(3, 5, 8, .55); animation: fadein .18s ease; }
+.rdrawer__panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(88vw, 400px); display: flex; flex-direction: column; background: var(--bg-pane); border-left: 1px solid var(--line-strong);
+  box-shadow: -18px 0 40px rgba(0, 0, 0, .45); padding-top: env(safe-area-inset-top); animation: rd-in .24s var(--ease-out); }
+.rdrawer__tabs { flex: none; padding: 10px 12px 2px; }
+.rdrawer__tabs .segmented { width: 100%; }
+.rdrawer__tabs .segmented__opt { flex: 1; min-height: 40px; }
+.rdrawer .queue-panel { width: 100%; flex: 1; min-height: 0; height: auto; border-left: none; animation: none; z-index: auto; }
+.rdrawer .queue-resizer { display: none; }
+.rdrawer .queue-panel__head { padding: 10px 14px; }
+.rdrawer .queue-panel__tools .icon-btn { width: 40px; height: 40px; }
+.rdrawer .queue-panel__body { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+/* no hover on a phone: Up next actions sit in the row instead of floating in on hover */
+.rdrawer .queue-panel .qrow--now .qrow__acts .btn { width: auto; padding: 0 12px; }   /* Retry now / Review, not squeezed into the stop button's 30px */
+.rdrawer .queue-panel .list--queue .qrow__acts { position: static; transform: none; opacity: 1; pointer-events: auto; padding: 0; background: none; border: none; box-shadow: none; grid-column: 1 / -1; justify-content: flex-end; }
+@keyframes rd-in { from { transform: translateX(100%); } }

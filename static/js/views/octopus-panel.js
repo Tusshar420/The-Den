@@ -1,11 +1,11 @@
-// Home, the Command Center parts that are new: what Octopus is doing right now (project, agent, model,
-// progress), plans waiting on you, which providers are usable, the autonomy switch and the way to the
+// Home, the Den Home parts that are new: what Octopus is doing right now (every running task with its
+// project, agent, model, progress and Pause / Play), plans waiting on you, which providers are usable, the autonomy switch and the way to the
 // Routing / AI Providers / Settings pages. Plus the extra controls on the Ask box (agent override, plan
 // preview, microphone).
 
-import { plural } from '../format.js';
+import { plural, startedAgo, taskName } from '../format.js';
 import { projectById } from '../data.js';
-import { esc, chipFor, octo } from '../ui.js';
+import { esc, chipFor, restartTag, octo, progressBar, icon } from '../ui.js';
 import { agentLabel } from '../octopus-data.js';
 import { micAvailable, voiceChoices } from '../voice.js';
 import { planLine } from './plan-card.js';
@@ -32,14 +32,16 @@ export function askControls(c) {
   const label = talking ? 'End conversation' : 'Talk to Octopus';
   return `<button class="ask__model ask__agent" data-action="askMenu" data-menu="agent" aria-label="Agent"${dis}>${esc(agent ? agent.label : 'Agent: Auto')}${chev}</button>
     <button class="tool-btn" data-action="askPreview" title="Preview Octopus's plan without running it" aria-label="Preview plan"${empty || a.sending ? ' disabled' : ''}>${EYE}</button>
-    ${micAvailable() || talking ? `<button class="tool-btn ask__mic${talking ? ' is-on' : ''}" data-action="voiceMic" title="${label}" aria-label="${label}" aria-pressed="${talking}">${MIC}</button>` : ''}
+    <button class="tool-btn ask__mic${talking ? ' is-on' : ''}${micAvailable() || talking ? '' : ' is-unsupported'}" data-action="voiceMic" title="${label}" aria-label="${label}" aria-pressed="${talking}">${MIC}</button>
     <button class="tool-btn" data-action="askMenu" data-menu="voice" title="Change Octopus's voice" aria-label="Change voice">${SPEAKER}</button>`;
 }
 
 export function askVoiceMenu(c) {
-  const voices = voiceChoices();
+  const voices = voiceChoices({ manual: true }), auto = !voices.some(x => x.on);
   return `<div class="menu-scrim" data-action="closeMenus"></div>
-    <div class="menu menu--model menu--voices" role="menu"><span class="menu__label">OCTOPUS'S VOICE</span>
+    <div class="menu menu--model menu--voices menu--up menu--anchored" style="--mx:${c.ui.ask.menuX || 0}px" role="menu"><span class="menu__label">OCTOPUS'S VOICE</span>
+    <button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${auto}" data-action="voicePick" data-id="">
+      <span></span><span class="menu__two"><span class="menu__main">Automatic</span><span class="menu__sub">The default voice for each language</span></span><span class="menu__check">${auto ? '✓' : ''}</span></button>
     ${voices.length ? voices.map(x => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${x.on}" data-action="voicePick" data-id="${esc(x.name)}">
       <span></span><span class="menu__two"><span class="menu__main">${esc(x.name)}</span><span class="menu__sub">${esc(x.language)}</span></span><span class="menu__check">${x.on ? '✓' : ''}</span></button>`).join('')
       : '<span class="meta" style="padding:8px 12px">No voices found on this device.</span>'}
@@ -51,7 +53,7 @@ export function askAgentMenu(c) {
   const opts = [{ id: 'auto', label: 'Auto - Octopus decides', sub: 'picks the agent for each request' },
     ...agents.filter(a => !['operator'].includes(a.id)).map(a => ({ id: a.id, label: a.label, sub: a.description }))];
   return `<div class="menu-scrim" data-action="closeMenus"></div>
-    <div class="menu menu--model" role="menu"><span class="menu__label">AGENT</span>
+    <div class="menu menu--model menu--up menu--anchored" style="--mx:${c.ui.ask.menuX || 0}px" role="menu"><span class="menu__label">AGENT</span>
     ${opts.map(x => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${o.agent === x.id}" data-action="askAgent" data-id="${x.id}">
       <span class="menu__two"><span class="menu__main">${esc(x.label)}</span><span class="menu__sub">${esc(x.sub || '')}</span></span><span class="menu__check">${o.agent === x.id ? '✓' : ''}</span></button>`).join('')}
     </div>`;
@@ -68,30 +70,40 @@ export function askVoiceStatus(c) {
 }
 
 // ---------------------------------------------------------------- the panel
-function nowBlock(c) {
-  const t = c.w.running[0];
-  if (!t) return `<div class="op-now op-now--idle">${octo(c.w.mood, 44)}<div class="op-now__body"><span class="op-now__title">Idle</span><span class="meta">${c.w.queue.length ? `${plural(c.w.queue.length, 'task')} waiting in the queue` : 'Nothing running, nothing waiting.'}</span></div></div>`;
+// Everything running, each with its details and its Pause / Play (this used to be a separate "Running now" list on Home).
+function nowItem(c, t, size) {
   const p = projectById(t.project_id);
   const steps = t.plan_steps || [];
-  const done = steps.filter(s => s.status === 'completed').length;
   const cur = steps.find(s => s.status === 'in_progress');
-  const pct = steps.length ? Math.round(100 * done / steps.length) : null;
+  const agentLane = t.lane !== 'api';
   const agent = t.agent_id ? agentLabel(t.agent_id) : (t.lane === 'agent' ? 'Coding Agent' : '');
-  const more = c.w.running.length - 1;
-  return `<button class="op-now" data-action="openChat" data-id="${t.id}">
-    ${octo('work', 44)}
+  const waiting = c.w.apTask.has(t.id);
+  const on = !!t.paused;
+  const step = waiting ? 'Waiting for your OK' : cur ? cur.content : t.current_step;
+  return `<div class="op-now-item${on ? ' is-paused' : ''}" data-key="r${t.id}"><button class="op-now" data-action="openChat" data-id="${t.id}">
+    ${octo(on ? 'sleep' : waiting ? 'wait' : 'work', size)}
     <span class="op-now__body">
-      <span class="op-now__title truncate">${esc(t.title || t.prompt.slice(0, 80))}</span>
+      <span class="op-now__title truncate"><span class="task-num">#${t.id}</span>${esc(taskName(t))}</span>
+      ${restartTag(t, 'span')}
       <span class="op-now__facts">
         ${p && !p.is_general ? `<span><i>PROJECT</i>${esc(p.name)}</span>` : ''}
         ${agent ? `<span><i>AGENT</i>${esc(agent)}</span>` : ''}
         <span><i>MODEL</i>${chipFor(t)}</span>
+        <span><i>STATUS</i>${on ? 'paused' : t.started_at ? startedAgo(t.started_at, c.now) : 'starting'}</span>
       </span>
-      ${pct != null ? `<span class="op-now__prog"><span class="bar6"><span style="width:${pct}%;background:var(--run);display:block;height:100%"></span></span><span class="meta">${done}/${steps.length}</span></span>` : ''}
-      ${cur || t.current_step ? `<span class="op-now__step truncate">› ${esc(cur ? cur.content : t.current_step)}</span>` : ''}
-      ${more > 0 ? `<span class="meta">+ ${plural(more, 'other task')} running</span>` : ''}
-    </span></button>`;
+      ${agentLane ? progressBar(t, c.now, 'op-now__prog') : ''}
+      ${agentLane && step ? `<span class="op-now__step truncate">› ${esc(step)}</span>` : ''}
+    </span></button>${agentLane && !waiting ? `<button class="op-now__hold" title="${on ? 'Play - carry on' : 'Pause - freeze it here'}" aria-label="${on ? 'Play' : 'Pause'}" data-action="${on ? 'playTask' : 'pauseTask'}" data-id="${t.id}">${icon(on ? 'play' : 'pause', 16)}</button>` : ''}</div>`;
 }
+
+function nowBlock(c) {
+  const rows = c.w.running, nq = c.w.queue.length;
+  if (!rows.length) return `<div class="op-now op-now--idle">${octo(c.w.mood, 44)}<div class="op-now__body"><span class="op-now__title">Idle</span><span class="meta">${nq ? `${plural(nq, 'task')} waiting in the queue` : 'Nothing running, nothing waiting.'}</span></div></div>`;
+  return `<div class="op-now-list">${rows.map(t => nowItem(c, t, rows.length > 1 ? 34 : 44)).join('')}</div>
+    ${nq ? `<span class="meta">${plural(nq, 'task')} waiting after ${rows.length > 1 ? 'these' : 'this'}</span>` : ''}`;
+}
+
+const block = (title, body, key) => `<div class="op-block"${key ? ` data-key="${key}"` : ''}><div class="op-block__head"><span class="op-block__t">${title}</span></div>${body}</div>`;
 
 function providerChips(c) {
   const ov = c.d.octo.providers;
@@ -103,18 +115,21 @@ function providerChips(c) {
   }).join('')}</div>`;
 }
 
+// One slim row on Home: what Octopus is doing now (or idle) and how much is waiting. The full controls live in Settings / Providers.
 export function octopusPanel(c) {
-  const autonomy = (c.d.settings && c.d.settings.autonomy) || 'execute';
-  const waiting = (c.d.octo.overview && c.d.octo.overview.plans_waiting) || [];
+  const rows = c.w.running, nq = c.w.queue.length;
+  const waiting = ((c.d.octo.overview && c.d.octo.overview.plans_waiting) || []).length;
+  const t = rows[0];
+  const title = t ? `<span class="task-num">#${t.id}</span>${esc(taskName(t))}` : 'Idle';
+  const facts = [t ? (t.paused ? 'paused' : t.started_at ? startedAgo(t.started_at, c.now) : 'starting') : '',
+    rows.length > 1 ? `+${rows.length - 1} more running` : '',
+    nq ? `${nq} in queue` : (t ? '' : 'nothing waiting'),
+    waiting ? `${plural(waiting, 'plan')} need you` : ''].filter(Boolean).join(' · ');
   return `<section class="section reveal" style="--i:45" data-key="octo-panel">
-    <div class="section__head"><span class="section__title">Octopus</span><span class="section__note">${esc(AUTONOMY_HELP[autonomy])}</span></div>
-    <div class="card op-card">
-      ${nowBlock(c)}
-      ${waiting.length ? `<div class="op-plans"><span class="op-label">PLANS WAITING ON YOU</span>${waiting.map(planLine).join('')}</div>` : ''}
-      <div class="op-row"><span class="op-label">PROVIDERS</span>${providerChips(c) || '<span class="meta">loading…</span>'}</div>
-      <div class="op-row"><span class="op-label">AUTONOMY</span>
-        <div class="segmented op-auto" data-noswipe>${AUTONOMY.map(([k, l]) => `<button class="segmented__opt${autonomy === k ? ' is-on' : ''}" data-action="setAutonomy" data-v="${k}">${l}</button>`).join('')}</div></div>
-      <div class="op-links"><button class="btn--text" data-action="go" data-view="routing">Routing history</button><button class="btn--text" data-action="go" data-view="providers">AI providers</button><button class="btn--text" data-action="go" data-view="settings">Settings</button></div>
-    </div>
+    <button class="card op-strip" ${t ? `data-action="openChat" data-id="${t.id}"` : 'data-action="go" data-view="activity"'}>
+      ${octo(t ? (t.paused ? 'sleep' : 'work') : c.w.mood, 28)}
+      <span class="op-strip__title truncate">${title}</span>
+      <span class="op-strip__meta meta truncate">${esc(facts)}</span>
+    </button>
   </section>`;
 }

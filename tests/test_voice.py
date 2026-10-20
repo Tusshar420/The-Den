@@ -31,6 +31,63 @@ class Speech(unittest.TestCase):
         self.assertTrue(out.endswith("."))
 
 
+class Languages(TestBase):
+    def test_every_sample_is_detected_as_its_own_language(self):
+        from octopus.voice import languages
+        for lang in languages.LANGUAGES:
+            self.assertEqual(languages.detect_language(lang.sample), lang.code, lang.label)
+
+    def test_detection_ignores_code_and_falls_back_to_english(self):
+        from octopus.voice import languages
+        self.assertEqual(languages.detect_language("Fixed it in `foo.py` - see https://example.com/a"), "en")
+        self.assertEqual(languages.detect_language("東京へ行く"), "ja")            # Han characters plus kana is Japanese, not Chinese
+        self.assertEqual(languages.detect_language("kya haal hai"), "en")          # romanised Hindi has no signal
+        self.assertEqual(languages.detect_language("12345 !!!"), "en")
+        self.assertEqual(languages.detect_language("Aquí está el archivo que pediste, es muy útil"), "es")
+
+    def test_the_voice_for_a_reply_follows_its_language(self):
+        installed = [{"name": "Samantha", "language": "en_US"}, {"name": "Lekha", "language": "hi_IN"}]
+        with mock.patch.object(voice, "macos_voices", lambda: installed):
+            db.set_setting("voice_tts_voice", "Samantha")
+            self.assertEqual(voice.voice_for("Hello there, this is the answer"), "Samantha")
+            self.assertEqual(voice.voice_for("नमस्ते, यह जवाब है"), "Samantha")        # no voice chosen for Hindi: the default
+            db.set_setting("voice_language_voices", {"hi": "Lekha", "fr": "Thomas"})
+            self.assertEqual(voice.voice_for("नमस्ते, यह जवाब है"), "Lekha")
+            self.assertEqual(voice.voice_for("Bonjour, voici la réponse que vous avez demandée"), "Samantha")   # Thomas isn't installed
+            db.set_setting("voice_tts_voice", "")
+            self.assertIsNone(voice.voice_for("Hello there, this is the answer"))
+
+    def test_a_voice_picked_by_hand_beats_the_language_voices_until_it_is_cleared(self):
+        installed = [{"name": "Samantha", "language": "en_US"}, {"name": "Lekha", "language": "hi_IN"}]
+        with mock.patch.object(voice, "macos_voices", lambda: installed):
+            db.set_setting("voice_language_voices", {"hi": "Lekha"})
+            db.set_setting("voice_manual", "")
+            self.assertEqual(voice.voice_for("नमस्ते, यह जवाब है"), "Lekha")           # automatic: Hindi gets its own voice
+            db.set_setting("voice_manual", "Samantha")
+            self.assertEqual(voice.voice_for("नमस्ते, यह जवाब है"), "Samantha")        # picked by hand: used for every language
+            db.set_setting("voice_manual", "Gone")
+            self.assertEqual(voice.voice_for("नमस्ते, यह जवाब है"), "Lekha")           # no longer installed: ignored
+            db.set_setting("voice_manual", "")
+            db.set_setting("voice_language_voices", {})
+
+    def test_speed_reaches_say(self):
+        t, seen = voice.MacOSTTS(), []
+
+        def fake_run(cmd, timeout, input_text=None):
+            seen.append(cmd)
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"RIFFwav")
+            return done()
+        with mock.patch.object(voice, "_run", fake_run), mock.patch.object(t, "available", lambda: (True, "")):
+            t.synthesize("Hello there")
+            db.set_setting("voice_rate", 1.5)
+            t.synthesize("Hello there")
+            db.set_setting("voice_rate", 9)                                        # out of range is clamped, not passed to say
+            t.synthesize("Hello there")
+        self.assertNotIn("-r", seen[0])
+        self.assertEqual(seen[1][1:3], ["-r", "262"])
+        self.assertEqual(seen[2][1:3], ["-r", "350"])
+
+
 class Providers(TestBase):
     def test_status_lists_providers_with_honest_availability(self):
         s = voice.status()
@@ -81,6 +138,22 @@ class Providers(TestBase):
         self.assertEqual(text, "Fix the login bug.")
         self.assertEqual(calls[0][:5], [voice.AFCONVERT, "-f", "WAVE", "-d", "LEI16@16000"])
         self.assertEqual(calls[1][:3], ["/bin/whisper-cli", "-m", "/m/ggml.bin"])
+        self.assertEqual(calls[1][-2:], ["-l", "auto"])            # a multilingual model follows the spoken language
+
+    def test_whisper_english_only_model_gets_no_language_flag(self):
+        w = voice.WhisperCppSTT()
+        calls = []
+
+        def fake_run(cmd, timeout, input_text=None):
+            calls.append(cmd)
+            if "whisper" in cmd[0]:
+                return done("hello")
+            Path(cmd[-1]).write_bytes(b"RIFF")
+            return done()
+        with mock.patch.object(w, "binary", lambda: "/bin/whisper-cli"), mock.patch.object(w, "model", lambda: "/m/ggml-base.en.bin"), \
+                mock.patch.object(voice, "_run", fake_run), mock.patch("shutil.which", lambda n: None):
+            w.transcribe(b"audio-bytes", "audio/mp4")
+        self.assertNotIn("-l", calls[1])
 
     def test_whisper_reports_what_is_missing(self):
         w = voice.WhisperCppSTT()
@@ -169,6 +242,16 @@ class VoiceApi(test_e2e.E2E):
         self.assertEqual({p["id"] for p in s["tts"]}, {"browser", "macos"})
         self.assertEqual(self.http("PATCH", "/settings", {"voice_tts": "macos", "voice_speak_replies": False})["voice_tts"], "macos")
         self.assertEqual(self.http("GET", "/voice")["settings"]["voice_speak_replies"], False)
+
+    def test_language_voices_and_speed_are_settings(self):
+        s = self.http("GET", "/voice")
+        self.assertEqual((s["settings"]["voice_rate"], s["settings"]["voice_language_voices"]), (1.0, {}))
+        self.assertEqual({lang["code"] for lang in s["languages"]} >= {"en", "hi", "es"}, True)
+        saved = self.http("PATCH", "/settings", {"voice_language_voices": {"hi": " Lekha ", "fr": ""}, "voice_rate": 1.25})
+        self.assertEqual((saved["voice_language_voices"], saved["voice_rate"]), ({"hi": "Lekha"}, 1.25))
+        self.assertEqual(self.http("PATCH", "/settings", {"voice_language_voices": {"xx": "Nobody"}})["_status"], 422)
+        self.assertEqual(self.http("PATCH", "/settings", {"voice_rate": 5})["_status"], 422)
+        self.assertEqual(self.http("PATCH", "/settings", {"voice_language_voices": {}})["voice_language_voices"], {})
 
     def test_a_spoken_command_goes_through_the_same_pipeline_as_typed_text(self):
         typed = self.http("POST", "/octopus", {"text": "what's happening?"})

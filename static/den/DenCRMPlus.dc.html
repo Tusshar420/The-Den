@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:14px; padding:4px 0 40px; min-width:0; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;"><sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4"><div style="padding:12px 16px; border-left:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ k.label }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:20px; font-weight:600; margin-top:4px; color:{{ k.c }};">{{ k.v }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ k.sub }}</div></div></sc-for></div>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); overflow-x:auto; scrollbar-width:none; max-width:100%;"><sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="flex:none; height:32px; display:flex; align-items:center; gap:6px; padding:0 13px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}<sc-if value="{{ t.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ t.n }}</span></sc-if></button></sc-for></div><span style="flex:1;"></span><sc-if value="{{ tTable }}" hint-placeholder-val="{{ false }}"><input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search deals" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:0 1 220px;"></sc-if></div>
+
+  <sc-if value="{{ skelOn }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:12px;"><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px;"><div style="height:118px; border-radius:18px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:118px; border-radius:18px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:118px; border-radius:18px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div></div><div style="height:16px; width:28%; border-radius:6px; margin-top:6px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:56px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:56px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:56px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div></div></sc-if>
+    <sc-if value="{{ tAct }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; margin-right:4px;">LOG</span><sc-for list="{{ actTypes }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }}; border:1px solid {{ t.bd }};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ t.icon }}"></path></svg>{{ t.label }}</button></sc-for></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <select ref="{{ fixSel }}" data-v="{{ af.who }}" value="{{ af.who }}" onChange="{{ afSet.who }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; background:#141B24; cursor:pointer; color-scheme:dark; flex:1 1 160px;"><sc-for list="{{ people }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+        <select ref="{{ fixSel }}" data-v="{{ af.deal }}" value="{{ af.deal }}" onChange="{{ afSet.deal }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; background:#141B24; cursor:pointer; color-scheme:dark; flex:1 1 180px;"><sc-for list="{{ dealOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+        <input value="{{ af.text }}" onChange="{{ afSet.text }}" onKeyDown="{{ afKey }}" placeholder="What happened? e.g. “Agreed on fee, sending SOW”" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:3 1 260px;">
+        <button onClick="{{ logAct }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;">Log</button>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ actFilters }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}<sc-if value="{{ c.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ c.n }}</span></sc-if></button></sc-for></div>
+    <sc-for list="{{ actGroups }}" as="g" hint-placeholder-count="2">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; padding:4px 2px;">{{ g.label }}</div>
+        <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+          <sc-for list="{{ g.items }}" as="a" hint-placeholder-count="3">
+            <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-top:1px solid rgba(255,255,255,0.04);">
+              <span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ a.tint }}; color:{{ a.c }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg></span>
+              <div style="flex:1; min-width:0;"><div style="font-size:13.5px; line-height:1.45;"><b style="font-weight:700;">{{ a.who }}</b> <span style="color:#93A1B0;">· {{ a.type }}</span></div><div style="font-size:13px; color:#DCE4EB; line-height:1.5; text-wrap:pretty;">{{ a.text }}</div><sc-if value="{{ a.deal }}" hint-placeholder-val="{{ false }}"><div style="margin-top:4px; display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 8px; border-radius:7px; background:rgba(255,255,255,0.04); font-size:11.5px; color:#C2CDD8;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 7h18v13H3zM8 7V4h8v3"></path></svg>{{ a.deal }}</div></sc-if></div>
+              <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ a.time }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ actEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:16px; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); font-size:12.5px; color:#6B7A8A; text-align:center;">{{ actEmptyText }}</div></sc-if>
+  </sc-if>
+
+  <sc-if value="{{ tFol }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <select ref="{{ fixSel }}" data-v="{{ ff.who }}" value="{{ ff.who }}" onChange="{{ ffSet.who }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; background:#141B24; cursor:pointer; color-scheme:dark; flex:1 1 160px;"><sc-for list="{{ people }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+      <input value="{{ ff.why }}" onChange="{{ ffSet.why }}" placeholder="Follow up about…" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:3 1 220px;">
+      <select ref="{{ fixSel }}" data-v="{{ ff.ch }}" value="{{ ff.ch }}" onChange="{{ ffSet.ch }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; background:#141B24; cursor:pointer; color-scheme:dark; flex:0 1 130px;"><sc-for list="{{ chans }}" as="o" hint-placeholder-count="4"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+      <div style="flex:1 1 170px; min-width:0;"><dc-import name="DenDatePicker" value="{{ ff.due }}" on-change="{{ ffSet.due }}" hint-size="100%,36px"></dc-import></div>
+      <button onClick="{{ addFol }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;">+ Follow-up</button>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; align-items:start;">
+      <sc-for list="{{ folBuckets }}" as="b" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:7px; padding:0 2px;"><span style="width:8px; height:8px; border-radius:50%; background:{{ b.c }};"></span><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:{{ b.lc }};">{{ b.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ b.n }}</span></div>
+          <sc-for list="{{ b.items }}" as="f" hint-placeholder-count="2">
+            <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:15px; background:rgba(20,28,38,0.45); border:1px solid {{ f.bd }}; opacity:{{ f.op }};">
+              <div style="display:flex; gap:10px; align-items:flex-start;">
+                <button onClick="{{ f.toggle }}" title="Mark done" style="flex:none; width:20px; height:20px; margin-top:1px; display:grid; place-items:center; border-radius:50%; border:1.5px solid {{ f.ring }}; background:{{ f.fill }}; cursor:pointer; color:#06200F;"><sc-if value="{{ f.done }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+                <div style="flex:1; min-width:0;"><div style="font-size:13.5px; font-weight:650; text-decoration:{{ f.deco }};">{{ f.why }}</div><div style="font-size:12px; color:#93A1B0;">{{ f.who }} · {{ f.ch }} · <span style="color:{{ f.dueC }};">{{ f.dueTxt }}</span></div></div>
+              </div>
+              <sc-if value="{{ f.open }}" hint-placeholder-val="{{ true }}"><div style="display:flex; gap:5px; flex-wrap:wrap; padding-left:30px;"><button onClick="{{ f.draft }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px; border-color:rgba(165,139,255,0.3); background:rgba(165,139,255,0.08); color:#C9B8FF;">Draft with Octopus</button><button onClick="{{ f.snooze }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px;">Snooze 1d</button><button onClick="{{ f.del }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; width:28px; padding:0; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ b.empty }}" hint-placeholder-val="{{ false }}"><div style="padding:16px; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); font-size:12.5px; color:#6B7A8A; text-align:center;">Nothing here</div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tTable }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;"><sc-for list="{{ stageChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}<sc-if value="{{ c.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ c.n }}</span></sc-if></button></sc-for><span style="flex:1;"></span><sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px; color:#93A1B0;">{{ selN }} selected</span><button onClick="{{ exportSel }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Export CSV</button></sc-if></div>
+    <div style="overflow-x:auto; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:grid; grid-template-columns:40px minmax(200px, 2fr) 150px 140px 100px 80px 100px minmax(160px, 1.4fr) 100px; min-width:1080px;">
+        <button onClick="{{ selAll }}" style="padding:10px 12px; border:0; background:rgba(255,255,255,0.03); cursor:pointer; font-family:inherit; text-align:left; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; white-space:nowrap; display:grid; place-items:center;"><span style="width:16px; height:16px; display:grid; place-items:center; border-radius:5px; border:1.5px solid {{ allBd }}; background:{{ allBg }}; color:#1A0A05;"><sc-if value="{{ allOn }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span></button>
+        <sc-for list="{{ heads }}" as="h" hint-placeholder-count="8"><button onClick="{{ h.sort }}" style="padding:10px 12px; border:0; background:rgba(255,255,255,0.03); cursor:pointer; font-family:inherit; text-align:left; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; white-space:nowrap; color:{{ h.fg }}; text-align:{{ h.al }};">{{ h.label }}</button></sc-for>
+        <sc-for list="{{ deals }}" as="d" hint-placeholder-count="7">
+          <button onClick="{{ d.sel }}" style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; justify-content:center; border-left:0; border-right:0; border-bottom:0; background:{{ d.rbg }}; cursor:pointer;"><span style="width:16px; height:16px; display:grid; place-items:center; border-radius:5px; border:1.5px solid {{ d.sBd }}; background:{{ d.sBg }}; color:#1A0A05;"><sc-if value="{{ d.on }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span></button>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }};"><div style="min-width:0;"><div style="font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.name }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ d.id }}</div></div></div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }};"><div style="min-width:0;"><div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.who }}</div><div style="font-size:11px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.co }}</div></div></div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }};"><select ref="{{ fixSel }}" data-v="{{ d.stage }}" value="{{ d.stage }}" onChange="{{ d.setStage }}" style="height:28px; padding:0 8px; border-radius:8px; border:1px solid {{ d.sbd }}; background:{{ d.sbg }}; color:{{ d.sc }}; font-family:inherit; font-size:12px; font-weight:650; cursor:pointer; color-scheme:dark;"><sc-for list="{{ stageOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.id }}">{{ o.label }}</option></sc-for></select></div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }}; justify-content:flex-end; font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600;">{{ d.val }}</div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }}; justify-content:flex-end; font-family:'JetBrains Mono', monospace; font-size:12px; color:#C2CDD8;">{{ d.prob }}</div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }}; color:#C2CDD8;">{{ d.owner }}</div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }}; color:#C2CDD8;"><span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ d.next }}</span></div>
+          <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; background:{{ d.rbg }}; justify-content:flex-end; font-size:12px; color:{{ d.lc }};">{{ d.last }}</div>
+        </sc-for>
+        <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; grid-column:1 / 5; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ footLabel }}</div>
+        <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; justify-content:flex-end; font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:700;">{{ footSum }}</div>
+        <div style="padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; min-width:0; display:flex; align-items:center; gap:7px; grid-column:6 / 10; font-size:12px; color:#93A1B0;">Weighted <b style="font-family:'JetBrains Mono', monospace; color:#E8EEF3; margin-left:4px;">{{ footW }}</b></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tRep }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="flex:2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+        <div style="display:flex; align-items:center;"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">Won revenue · last 6 months</h3><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#93A1B0;">{{ wonTotal }}</span></div>
+        <div style="display:flex; align-items:flex-end; gap:12px; height:180px; padding-top:10px;">
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="6"><div style="flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#C2CDD8;">{{ b.v }}</span><div title="{{ b.t }}" style="width:100%; max-width:46px; height:{{ b.h }}; border-radius:8px 8px 3px 3px; background:{{ b.bg }};"></div><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ b.m }}</span></div></sc-for>
+        </div>
+      </div>
+      <div style="flex:1 1 300px; min-width:0; display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+        <h3 style="margin:0; font-size:15px; font-weight:700;">Pipeline by stage</h3>
+        <sc-for list="{{ funnel }}" as="f" hint-placeholder-count="5"><div style="display:flex; flex-direction:column; gap:4px;"><div style="display:flex; font-size:12.5px;"><span style="flex:1; font-weight:600;">{{ f.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ f.n }} · {{ f.v }}</span></div><div style="height:8px; border-radius:6px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ f.w }}; border-radius:6px; background:{{ f.c }};"></div></div></div></sc-for>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; flex-wrap:wrap;"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">Exports</h3><span style="font-size:12.5px; color:#93A1B0;">Weekly report by email · Mon 09:00</span><button onClick="{{ weekly.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ weekly.track }}; display:flex; justify-content:{{ weekly.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div>
+      <sc-for list="{{ exports }}" as="x" hint-placeholder-count="4">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:56px; padding:8px 16px; border-top:1px solid rgba(255,255,255,0.05);">
+          <span style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:{{ x.tint }}; color:{{ x.c }};"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ x.icon }}"></path></svg></span>
+          <div style="flex:1 1 180px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ x.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ x.sub }}</div></div>
+          <div style="display:flex; gap:5px;"><sc-for list="{{ x.fmts }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.run }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:30px; font-family:'JetBrains Mono', monospace; font-size:11px;">{{ f.label }}</button></sc-for></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const D = window.Den;
+const G = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97', err:'#FF5470', mute:'#93A1B0' };
+const tn = (h, a) => { const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+const tabsOf = (cur, arr, set) => arr.map(([id, label, n]) => ({ label, n: n == null ? '' : String(n), pick:() => set(id), bg: cur === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: cur === id ? '#FFFFFF' : '#93A1B0' }));
+const chipsOf = (cur, arr, set, multi) => arr.map(([id, label, dot, n]) => { const on = multi ? cur.includes(id) : cur === id; const c = dot || '#FF7B5C'; return { label, dot: dot || '', n: n == null ? '' : String(n), pick:() => set(id), bg: on ? tn(c, 0.16) : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? tn(c, 0.5) : 'rgba(255,255,255,0.08)' }; });
+const tg = (on, toggle) => ({ track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle });
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dd = s => new Date(s + 'T00:00');
+const fmtD = s => { if (!s) return '—'; const d = dd(s); return d.getDate() + ' ' + MON[d.getMonth()]; };
+const relD = s => Math.round((dd(s) - dd(D.today())) / 864e5);
+const addD = (s, n) => { const d = dd(s); d.setDate(d.getDate() + n); return D.ymd(d); };
+class Base extends DCLogic {
+  componentDidMount() { this.props.onReady && this.props.onReady(); this.mounted && this.mounted(); }
+  say(t, s, c) { (this.props.say || D.say)(t, s || '', c || G.coral); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  inp = k => e => this.setState({ [k]:e.target.value });
+}
+
+// The design's stages -> the Den's (crm.STAGES). "Won" holds everything signed - active, on hold, done - as on the Pipeline board.
+const STG = { lead:['Lead', G.mute], proposal:['Proposal', G.violet], negotiation:['Negotiation', G.amber], won:['Won', G.green], lost:['Lost', '#FF8FA2'] };
+const ORDER = Object.keys(STG);
+const stageOf = s => (['active', 'on_hold', 'done'].includes(s) ? 'won' : STG[s] ? s : 'lead');
+const SAVE_AS = { lead:'lead', proposal:'proposal', negotiation:'negotiation', won:'active', lost:'lost' };
+// How likely each stage is to close (den_crmx.PROBABILITY, the Pipeline board's weights).
+const PROB = { lead:10, proposal:40, negotiation:70, won:100, lost:0 };
+// The composer's types (the design's four); the log also shows the Den's decisions and stage moves.
+const AT = { Call:['M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2', G.green], Email:['M4 6h16v12H4zM4 7l8 6 8-6', G.blue], Meeting:['M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', G.coral], Note:['M6 3h9l4 4v14H6zM9 13h7M9 17h5', G.violet] };
+const AT_MORE = { Decision:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 12l2.5 2.5 4.5-5', G.teal], 'Stage change':['M4 12h13M12 6l6 6-6 6', G.amber] };
+const ICON = { ...AT, ...AT_MORE };
+const KIND_TYPE = { call:'Call', email:'Email', meeting:'Meeting', note:'Note', decision:'Decision', stage:'Stage change' };
+const NO_DEAL = '— No deal —', NO_ONE = '— No contact —';
+const CHANNELS = ['Email', 'Call', 'WhatsApp', 'Meeting'];
+const money = n => D.cur() + Math.round(n || 0).toLocaleString('en-US');
+// Labels for a <select> whose options are plain strings: a name shared by two records gets its company added.
+const labelled = (items, name, extra) => { const n = {}; items.forEach(x => { n[name(x)] = (n[name(x)] || 0) + 1; }); return items.map(x => [n[name(x)] > 1 ? name(x) + ' (' + extra(x) + ')' : name(x), x]); };
+// A spreadsheet runs a cell starting with = + - @ as a formula.
+const safeCell = v => { const t = String(v == null ? '' : v); return /^[=+\-@]/.test(t) ? "'" + t : t; };
+
+class Component extends Base {
+  state = { tab:this.props.tab || 'activities', q:'', aType:'Call', af:{ who:null, deal:NO_DEAL, text:'' }, actF:'all', ff:{ who:null, why:'', ch:'Email', due:addD(D.today(), 1) }, stageF:'open', sort:['last', -1], sel:{}, stageNow:{}, delArm:null, busy:false };
+  mounted() { D.use(this); }
+  componentWillUnmount() { clearTimeout(this.armT); }
+  save(blob, name) { const u = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), { href:u, download:name }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 10000); }
+  csv(rows, name) { const head = ['ID', 'Deal', 'Contact', 'Company', 'Stage', 'Value', 'Currency', 'Probability', 'Owner', 'Next step', 'Last touch']; const body = rows.map(d => [d.id, d.name, d.who, d.co, STG[d.stage][0], d.val, d.cur, d.prob + '%', d.owner, d.next, d.lastDay]); const t = [head, ...body].map(r => r.map(v => '"' + safeCell(v).replace(/"/g, '""') + '"').join(',')).join('\n'); this.save(new Blob(['﻿' + t], { type:'text/csv' }), name); this.say('Exported ' + rows.length + ' rows', name, G.green); }
+  // Files come from the server with the API key, so they're fetched and saved as a blob (not a plain link).
+  download(path, name, fallback) { fetch(D.base() + path, { headers:{ 'X-API-Key':D.key() } }).then(r => { if (!r.ok) throw new Error(r.status === 404 ? 'Not available on this Den yet' : 'HTTP ' + r.status); return r.blob(); })
+    .then(b => { this.save(b, name); this.say('Downloaded', name, G.green); }).catch(e => (fallback ? fallback() : this.say('Couldn’t export', e.message, G.err))); }
+  renderVals() {
+    const s = this.state; const set = k => f => e => { const v = e && e.target ? e.target.value : e; this.setState(st => ({ [k]:{ ...st[k], [f]:v } })); };
+    const afS = set('af'), ffS = set('ff');
+    const contacts = D.need('contacts', '/contacts', 30000) || [];
+    const clients = D.need('clients', '/clients', 30000) || [];
+    const folsRaw = D.need('crmx:fol', '/followups', 20000);
+    const actsRaw = D.need('crmx:acts', '/den/crmx/activities?limit=300', 20000);
+    const chans = D.need('crmx:ch', '/den/crmx/channels', 30000) || {};
+    const wonOn = D.need('crmx:won', '/den/crmx/won', 60000) || {};
+    const weekly = D.need('crmx:weekly', '/den/crmx/weekly', 60000);
+    const CL = Object.fromEntries(clients.map(c => [c.id, c]));
+    const contactById = id => contacts.find(c => c.id === id);
+    const fols = (folsRaw || []).map(f => ({ id:f.id, who:f.subject_name || '—', why:f.title, ch:chans[String(f.id)] || 'Any channel', due:f.due_date, done:f.status === 'done', raw:f }));
+    const openF = (folsRaw || []).filter(f => f.status === 'open').sort((a, b) => (a.due_at || '').localeCompare(b.due_at || ''));
+
+    // deals = the projects (as on the Pipeline board), with their key contact and next follow-up
+    const keyContact = p => contacts.find(c => (c.project_ids || []).includes(p.id)) || (p.client_id ? contacts.find(c => c.client_id === p.client_id) : null);
+    const all = D.store.projects.filter(p => !p.is_general && !p.hidden && D.inArea(p)).map(p => { const st = s.stageNow[p.id] || stageOf(p.stage); const k = keyContact(p); const nf = openF.find(f => f.project_id === p.id); const lastIso = p.last_activity_at || p.updated_at || p.created_at;
+      return { pid:p.id, id:'D-' + p.id, name:p.name, who: k ? k.name : '—', co: p.client_name || (CL[p.client_id] || {}).name || 'No client', val:+p.contract_value || 0, cur:p.currency || 'USD', stage:st, prob:PROB[st], owner:p.owner || '—', next: nf ? nf.title : '—', last:lastIso || '', lastDay: lastIso ? D.ymd(D.parseT(lastIso)) : D.today(), raw:p }; });
+    const open = all.filter(d => !['won', 'lost'].includes(d.stage)); const won = all.filter(d => d.stage === 'won'), lost = all.filter(d => d.stage === 'lost');
+    const peopleL = labelled(contacts, c => c.name, c => (CL[c.client_id] || {}).name || '#' + c.id); const dealL = labelled(all, d => d.name, d => d.id);
+    const people = [NO_ONE, ...peopleL.map(x => x[0])];
+    const personOf = l => (peopleL.find(x => x[0] === l) || [])[1] || null; const dealOf = l => (dealL.find(x => x[0] === l) || [])[1] || null;
+    const firstWho = peopleL.length ? peopleL[0][0] : NO_ONE;
+    const af = { ...s.af, who: s.af.who ?? firstWho }, ff = { ...s.ff, who: s.ff.who ?? firstWho };
+
+    // activities, newest first, grouped by day
+    const dayLabel = d => { const r = relD(d); return r === 0 ? 'TODAY' : r === -1 ? 'YESTERDAY' : (DOW[dd(d).getDay()] + ' ' + fmtD(d)).toUpperCase(); };
+    const actsAll = (actsRaw || []).map(a => { const type = KIND_TYPE[a.kind] || a.kind_label || 'Note'; const at = D.parseT(a.occurred_at); const ppl = (a.people || []).map(x => x.name).join(', ');
+      return { id:a.id, type, who: a.kind === 'stage' ? a.subject_name || 'Deal' : ppl || a.subject_name || '—', deal: a.subject === 'project' && a.kind !== 'stage' ? a.subject_name : '', text:(a.summary || '') + (a.outcome ? ' → ' + a.outcome : ''), d: at ? D.ymd(at) : D.today(), t:D.clock(a.occurred_at), at:a.occurred_at || '' }; });
+    const acts = actsAll.filter(a => s.actF === 'all' || a.type === s.actF).sort((a, b) => b.at.localeCompare(a.at));
+    const groups = []; acts.forEach(a => { const l = dayLabel(a.d); let g = groups.find(x => x.label === l); if (!g) groups.push(g = { label:l, items:[] }); const [icon, c] = ICON[a.type] || AT.Note; g.items.push({ ...a, time:a.t, icon, c, tint:tn(c, 0.14) }); });
+    const logAct = () => { const f = af; const text = (f.text || '').trim(); if (!text) return this.say('Write what happened', '', G.amber);
+      const who = personOf(f.who), deal = dealOf(f.deal);
+      if (!who && !deal) return this.say('Pick a contact or a deal', 'An activity is logged on one of them', G.amber);
+      if (this.state.busy) return; this.setState({ busy:true });
+      const body = { kind:s.aType.toLowerCase(), occurred_at:new Date().toISOString(), summary:text, ...(deal ? { project_id:deal.pid, contact_ids: who ? [who.id] : [] } : { contact_id:who.id }) };
+      D.act(() => D.api('/activities', { method:'POST', body }), { ok:[s.aType + ' logged', who ? who.name : deal.name, AT[s.aType][1]], reload:['crmx:acts', 'clfeed'] })
+        .then(() => this.setState(st => ({ af:{ ...st.af, text:'' } })), () => {}).finally(() => this.setState({ busy:false })); };
+
+    // follow-ups
+    const bucketOf = f => { const r = relD(f.due); return r < 0 ? 'over' : r === 0 ? 'today' : r <= 6 ? 'week' : 'later'; };
+    const fuAct = (fn, ok) => D.act(fn, { ok, reload:['crmx:fol', 'crmx:ch', 'followups'], core:false }).catch(() => {});
+    const patchF = (f, body, ok) => fuAct(() => D.api('/followups/' + f.id, { method:'PATCH', body }), ok);
+    const emailOf = f => { const r = f.raw; const k = r.contact_id ? contactById(r.contact_id) : r.project_id ? keyContact({ id:r.project_id, client_id:(D.projectById(r.project_id) || {}).client_id }) : r.client_id ? contacts.find(c => c.client_id === r.client_id) : null; return k && k.email ? k.email : ''; };
+    const draft = f => { const how = { Email:'a short email', WhatsApp:'a short WhatsApp message', Call:'a few talking points for a call', Meeting:'a short agenda for a meeting' }[f.ch] || 'a short message'; const to = emailOf(f);
+      const text = 'Draft ' + how + ' to ' + f.who + (to ? ' <' + to + '>' : '') + ' from me, following up about: “' + f.why + '”' + (f.raw.notes ? ' (notes: ' + f.raw.notes + ')' : '') + '. Keep it as a draft for me to review — don’t send anything.';
+      D.act(() => D.api('/octopus', { method:'POST', body:{ text, source:'dashboard' } }), { ok:['Drafting ' + (f.ch === 'Any channel' ? 'a message' : f.ch.toLowerCase()), 'To ' + f.who + ' — “' + f.why + '”', G.violet] }).catch(() => {}); };
+    const delF = f => { if (s.delArm !== f.id) { clearTimeout(this.armT); this.setState({ delArm:f.id }); this.armT = setTimeout(() => this.setState({ delArm:null }), 4000); return this.say('Tap × again to delete', f.why, G.amber); }
+      this.setState({ delArm:null }); fuAct(() => D.api('/followups/' + f.id, { method:'DELETE' }), ['Follow-up deleted', f.why, G.err]); };
+    const BK = [['over', 'OVERDUE', G.err, '#FF8FA2'], ['today', 'TODAY', G.amber, '#FFB547'], ['week', 'THIS WEEK', G.blue, '#6B7A8A'], ['later', 'LATER', G.mute, '#6B7A8A']];
+
+    // table
+    const q = s.q.toLowerCase(); const [sk, sd] = s.sort;
+    const sortVal = (d, k) => (k === 'stage' ? ORDER.indexOf(d.stage) : d[k]);
+    let deals = all.filter(d => (s.stageF === 'all' || (s.stageF === 'open' ? !['won', 'lost'].includes(d.stage) : d.stage === s.stageF)) && (!q || (d.name + d.who + d.co + d.owner).toLowerCase().includes(q)));
+    deals = [...deals].sort((a, b) => { const x = sortVal(a, sk), y = sortVal(b, sk); return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * sd; });
+    const selIds = all.filter(d => s.sel[d.id]).map(d => d.id); const allOn = deals.length > 0 && deals.every(d => s.sel[d.id]);
+    const setStage = (d, v) => { if (!STG[v] || v === d.stage) return; this.setState(st => ({ stageNow:{ ...st.stageNow, [d.pid]:v } }));
+      D.act(() => D.api('/projects/' + d.pid, { method:'PATCH', body:{ stage:SAVE_AS[v] } }), { ok:[d.name, '→ ' + STG[v][0], STG[v][1]], reload:['projStates', 'crmx:won', 'crmx:acts'] }).catch(() => {})
+        .finally(() => setTimeout(() => this.setState(st => { const x = { ...st.stageNow }; delete x[d.pid]; return { stageNow:x }; }), 1500)); };
+
+    // reports: won revenue by the month each deal was won (den_crmx.won_dates), last 6 months
+    const wonDay = d => wonOn[String(d.pid)] || d.raw.completed_date || d.raw.start_date || (d.raw.created_at || '').slice(0, 10);
+    const now = new Date(); const months = [5, 4, 3, 2, 1, 0].map(i => { const m = new Date(now.getFullYear(), now.getMonth() - i, 1); const key = D.ymd(m).slice(0, 7); return [MON[m.getMonth()], won.filter(d => wonDay(d).startsWith(key)).reduce((a, d) => a + d.val, 0)]; });
+    const mx = Math.max(1, ...months.map(m => m[1]));
+    const wr = won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : 0;
+    const stageSum = k => all.filter(d => d.stage === k).reduce((a, d) => a + d.val, 0); const fmax = Math.max(1, ...ORDER.map(stageSum));
+    const weeklyOn = !!(weekly && weekly.on);
+    const EXP = [['deals', 'Deals', all.length + ' rows · all stages', 'M3 7h18v13H3zM8 7V4h8v3', G.amber, () => this.csv(all, 'den-deals.csv')], ['contacts', 'Contacts', contacts.length + ' rows · with linked projects', 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6', G.blue], ['activities', 'Activities', actsAll.length + ' rows · calls, emails, meetings, notes', 'M4 19h16M4 15l4-4 3 3 5-6 4 4', G.violet], ['followups', 'Follow-ups', fols.length + ' rows · open and done', 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16M12 9v4l2.5 2', G.green]];
+    const extra = Object.keys(AT_MORE).filter(k => actsAll.some(a => a.type === k));
+    return {
+      fixSel:this.fixSel, q:s.q, onQ:this.inp('q'),
+      kpis:[{ label:'OPEN PIPELINE', v:money(open.reduce((a, d) => a + d.val, 0)), c:'#E8EEF3', sub:open.length + ' deals' }, { label:'WEIGHTED', v:money(open.reduce((a, d) => a + d.val * d.prob / 100, 0)), c:G.teal, sub:'by probability' }, { label:'WIN RATE', v:wr + '%', c:G.green, sub:won.length + ' won · ' + lost.length + ' lost' }, { label:'FOLLOW-UPS DUE', v:String(fols.filter(f => !f.done && relD(f.due) <= 0).length), c:G.amber, sub:fols.filter(f => !f.done && relD(f.due) < 0).length + ' overdue' }],
+      tabs: tabsOf(s.tab, [['activities', 'Activities', actsAll.length], ['followups', 'Follow-ups', fols.filter(f => !f.done).length], ['table', 'Table', all.length], ['reports', 'Reports & exports']], id => this.setState({ tab:id })),
+      tAct: s.tab === 'activities', tFol: s.tab === 'followups', tTable: s.tab === 'table', tRep: s.tab === 'reports',
+      actTypes: Object.entries(AT).map(([label, [icon, c]]) => ({ label, icon, pick:() => this.setState({ aType:label }), bg: s.aType === label ? tn(c, 0.16) : 'rgba(255,255,255,0.03)', fg: s.aType === label ? '#FFFFFF' : '#A3B0BE', bd: s.aType === label ? tn(c, 0.5) : 'rgba(255,255,255,0.08)' })),
+      people, dealOpts:[NO_DEAL, ...dealL.map(x => x[0])], af, afSet:{ who:afS('who'), deal:afS('deal'), text:afS('text') }, afKey:e => { if (e.key === 'Enter') logAct(); }, logAct,
+      actFilters: chipsOf(s.actF, [['all', 'All', null, actsAll.length], ...[...Object.keys(AT), ...extra].map(k => [k, k + 's', ICON[k][1], actsAll.filter(a => a.type === k).length])], id => this.setState({ actF:id })), actGroups:groups,
+      actEmpty: !groups.length, actEmptyText: actsRaw === undefined ? 'Loading…' : actsRaw === null ? 'Couldn’t load the activity log' : s.actF !== 'all' ? 'No ' + (s.actF + 's').toLowerCase() + ' yet' : 'Nothing logged yet — log a call, email, meeting or note above',
+      ff, ffSet:{ who:ffS('who'), why:ffS('why'), ch:ffS('ch'), due:ffS('due') }, chans:CHANNELS,
+      addFol:() => { const f = ff; const why = (f.why || '').trim(); if (!why) return this.say('What is the follow-up about?', '', G.amber);
+        const who = personOf(f.who); if (!who) return this.say('Pick who to follow up with', contacts.length ? '' : 'Add a contact to a client first', G.amber);
+        fuAct(async () => { const r = await D.api('/followups', { method:'POST', body:{ title:why, due_date:f.due, contact_id:who.id } });
+          try { await D.api('/den/crmx/followups/' + r.id + '/channel', { method:'PUT', body:{ channel:f.ch } }); } catch (e) {}   // the channel is extra - the follow-up stands without it
+          this.setState(st => ({ ff:{ ...st.ff, why:'' } })); return r; }, ['Follow-up added', who.name + ' · ' + fmtD(f.due), G.amber]); },
+      folBuckets: BK.map(([id, label, c, lc]) => { const items = fols.filter(f => bucketOf(f) === id).sort((a, b) => a.done - b.done || a.due.localeCompare(b.due)); return { label, c, lc, n:String(items.filter(f => !f.done).length), empty:!items.length,
+        items: items.map(f => { const r = relD(f.due); return { ...f, open:!f.done, deco: f.done ? 'line-through' : 'none', op: f.done ? '0.5' : '1', ring: f.done ? G.green : 'rgba(255,255,255,0.3)', fill: f.done ? G.green : 'transparent', bd: s.delArm === f.id ? 'rgba(255,84,112,0.6)' : id === 'over' && !f.done ? 'rgba(255,84,112,0.3)' : 'rgba(255,255,255,0.06)',
+          dueTxt: r < 0 ? Math.abs(r) + 'd late' : r === 0 ? 'today' : r === 1 ? 'tomorrow' : fmtD(f.due), dueC: r < 0 ? '#FF8FA2' : r === 0 ? G.amber : '#93A1B0',
+          toggle:() => patchF(f, { status: f.done ? 'open' : 'done' }, f.done ? ['Reopened', f.why, G.amber] : ['Done', f.why, G.green]),
+          snooze:() => { const to = addD(f.due < D.today() ? D.today() : f.due, 1); patchF(f, { due_date:to }, ['Snoozed', f.why + ' · ' + fmtD(to), G.blue]); },
+          del:() => delF(f), draft:() => draft(f) }; }) }; }),
+      stageChips: chipsOf(s.stageF, [['open', 'Open', null, open.length], ...Object.entries(STG).map(([k, [l, c]]) => [k, l, c, all.filter(d => d.stage === k).length]), ['all', 'All']], id => this.setState({ stageF:id, sel:{} })),
+      heads: [['name', 'DEAL'], ['who', 'CONTACT'], ['stage', 'STAGE'], ['val', 'VALUE', 'right'], ['prob', 'PROB.', 'right'], ['owner', 'OWNER'], ['next', 'NEXT STEP'], ['last', 'LAST TOUCH', 'right']].map(([k, label, al]) => ({ label: label + (sk === k ? (sd > 0 ? ' ↑' : ' ↓') : ''), al: al || 'left', fg: sk === k ? '#FFA48C' : '#6B7A8A', sort:() => this.setState({ sort:[k, sk === k ? -sd : (k === 'val' || k === 'prob' || k === 'last' ? -1 : 1)] }) })),
+      stageOpts: Object.entries(STG).map(([id, [label]]) => ({ id, label })),
+      deals: deals.map((d, i) => { const [, c] = STG[d.stage]; const on = !!s.sel[d.id]; const r = relD(d.lastDay); return { ...d, on, val:D.money(d.val, d.cur).replace(/\.00$/, ''), prob:d.prob + '%', sc:c, sbg:tn(c, 0.12), sbd:tn(c, 0.35), rbg: on ? 'rgba(255,123,92,0.06)' : i % 2 ? 'rgba(255,255,255,0.012)' : 'transparent', sBd: on ? '#FF7B5C' : 'rgba(255,255,255,0.25)', sBg: on ? '#FF7B5C' : 'transparent',
+        last: r === 0 ? 'Today' : Math.abs(r) + 'd ago', lc: r < -7 ? '#FF8FA2' : '#93A1B0', sel:() => this.setState(st => ({ sel:{ ...st.sel, [d.id]:!st.sel[d.id] } })), setStage:e => setStage(d, e.target.value) }; }),
+      allOn, allBd: allOn ? '#FF7B5C' : 'rgba(255,255,255,0.25)', allBg: allOn ? '#FF7B5C' : 'transparent', selAll:() => this.setState({ sel: allOn ? {} : Object.fromEntries(deals.map(d => [d.id, true])) }),
+      hasSel: selIds.length > 0, selN:String(selIds.length), exportSel:() => this.csv(all.filter(d => s.sel[d.id]), 'den-deals-selected.csv'),
+      footLabel: deals.length + ' DEALS', footSum: money(deals.reduce((a, d) => a + d.val, 0)), footW: money(deals.reduce((a, d) => a + d.val * d.prob / 100, 0)),
+      wonTotal: money(months.reduce((a, m) => a + m[1], 0)) + ' total', bars: months.map(([m, v], i) => ({ m, v:D.cur() + (v / 1000).toFixed(1) + 'k', h: Math.max(6, Math.round(v / mx * 130)) + 'px', bg: i === months.length - 1 ? 'linear-gradient(180deg, #FF7B5C, rgba(255,123,92,0.4))' : 'rgba(255,255,255,0.12)', t:m + ' · ' + money(v) })),
+      funnel: Object.entries(STG).map(([k, [label, c]]) => ({ label, c, n:all.filter(d => d.stage === k).length + ' deals', v:money(stageSum(k)), w: Math.max(2, Math.round(stageSum(k) / fmax * 100)) + '%' })),
+      // Only the choice is stored (den_crmx.weekly): the Den has no scheduled report email yet, and the toast says so.
+      weekly: tg(weeklyOn, () => D.act(() => D.api('/den/crmx/weekly', { method:'PUT', body:{ on:!weeklyOn } }), { ok: r => r.on ? ['Weekly report on', 'Mondays 09:00 to ' + r.to + (r.scheduled ? '' : ' · saved — sending isn’t switched on in the Den yet'), G.blue] : ['Weekly report off', '', G.blue], reload:['crmx:weekly'], core:false }).catch(() => {})),
+      exports: EXP.map(([key, name, sub, icon, c, csv]) => ({ name, sub, icon, c, tint:tn(c, 0.14),
+        fmts: ['CSV', 'XLSX', 'PDF'].map(f => ({ label:f, run:() => this.download('/den/crmx/export/' + key + '?format=' + f.toLowerCase(), 'den-' + key + '-' + D.today() + '.' + f.toLowerCase(), f === 'CSV' ? csv : null) })) }))
+    };
+  }
+}
+
+;(function () { const P = Component.prototype; const rv = P.renderVals; const RE = /^t(Act|Fol|Table|Rep)$/; const KEYS = ["tab"];
+  P.renderVals = function () { const key = KEYS.map(k => String(this.state[k])).join('|'); if (key !== this.__skKey) { const had = this.__skKey !== undefined; this.__skKey = key; if (had) setTimeout(() => { this.setState({ __sk:true }); clearTimeout(this.__skt); this.__skt = setTimeout(() => this.setState({ __sk:false }), 380); }, 0); }
+    const o = rv.call(this); const on = !!this.state.__sk; o.skelOn = on; if (on) Object.keys(o).forEach(k => { if (RE.test(k) && typeof o[k] === 'boolean') o[k] = false; }); return o; };
+})();
+</script>
+</body>
+</html>

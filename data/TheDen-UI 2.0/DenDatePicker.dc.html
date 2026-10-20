@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div ref="{{ rootRef }}" style="position:relative; width:100%; min-width:0; font-family:'Bricolage Grotesque', system-ui, sans-serif;">
+  <button onClick="{{ toggle }}" style="width:100%; height:{{ h }}; display:flex; align-items:center; gap:9px; padding:0 10px 0 12px; border-radius:10px; border:1px solid {{ bd }}; background:rgba(6,9,13,0.5); cursor:pointer; text-align:left; color:{{ fg }}; font-family:inherit; font-size:13.5px; font-weight:{{ fw }}; transition:border-color .15s;" style-hover="border-color:rgba(255,255,255,0.2);">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ ic }}" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg>
+    <span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ label }}</span>
+    <sc-if value="{{ relTxt }}" hint-placeholder-val="{{ false }}"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ relC }};">{{ relTxt }}</span></sc-if>
+    <sc-if value="{{ hasVal }}" hint-placeholder-val="{{ false }}"><span onClick="{{ clear }}" title="Clear" style="flex:none; width:22px; height:22px; display:grid; place-items:center; border-radius:6px; color:#6B7A8A; font-size:14px;">×</span></sc-if>
+  </button>
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ false }}">
+    <div ref="{{ popRef }}" onPointerDown="{{ stopPd }}" style="position:fixed; top:{{ pTop }}; left:{{ pLeft }}; z-index:400; width:288px; max-height:{{ maxH }}; overflow-y:auto; padding:12px; border-radius:18px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 30px 70px -24px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.05); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+        <button onClick="{{ prev }}" title="Previous month" style="width:30px; height:30px; display:grid; place-items:center; border-radius:9px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); cursor:pointer; color:#C2CDD8;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button>
+        <button onClick="{{ toggleYear }}" style="flex:1; height:30px; border:0; border-radius:9px; background:transparent; cursor:pointer; font-family:inherit; font-size:14.5px; font-weight:750; color:#E8EEF3;" style-hover="background:rgba(255,255,255,0.05);">{{ monthLabel }}</button>
+        <button onClick="{{ next }}" title="Next month" style="width:30px; height:30px; display:grid; place-items:center; border-radius:9px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); cursor:pointer; color:#C2CDD8;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 6l6 6-6 6"></path></svg></button>
+      </div>
+      <sc-if value="{{ yearMode }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; padding:4px 0 8px;">
+          <sc-for list="{{ months }}" as="m" hint-placeholder-count="12"><button onClick="{{ m.pick }}" style="height:38px; border-radius:10px; border:1px solid {{ m.bd }}; background:{{ m.bg }}; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:{{ m.fg }};">{{ m.label }}</button></sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ dayMode }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); row-gap:3px; text-align:center;">
+          <sc-for list="{{ dow }}" as="d" hint-placeholder-count="7"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; padding:0 0 6px; color:{{ d.c }};">{{ d.l }}</span></sc-for>
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="42">
+            <button onClick="{{ d.pick }}" style="justify-self:center; width:32px; height:32px; border-radius:50%; border:0; box-shadow:{{ d.ring }}; background:{{ d.bg }}; cursor:pointer; font-family:inherit; font-size:13px; font-weight:{{ d.fw }}; color:{{ d.fg }}; transition:background .12s;" style-hover="background:{{ d.hov }};">{{ d.n }}</button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div style="display:flex; gap:4px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
+        <sc-for list="{{ quick }}" as="q" hint-placeholder-count="4"><button onClick="{{ q.pick }}" style="flex:none; height:26px; padding:0 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:#C2CDD8;" style-hover="border-color:rgba(255,123,92,0.45); color:#FFFFFF;">{{ q.label }}</button></sc-for>
+        <span style="flex:1;"></span>
+        <button onClick="{{ clear }}" style="height:28px; padding:0 8px; border:0; background:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#93A1B0;">Clear</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:340,&quot;height&quot;:460},&quot;value&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;2026-10-07&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;placeholder&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Set date&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(e:{target:{value:string}})=&gt;void&quot;}}">
+const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const pad = n => String(n).padStart(2, '0');
+const ds = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parse = v => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const TODAY = new Date(2026, 9, 6);
+class Component extends DCLogic {
+  state = { open:false, view:null, yearMode:false, up:false, right:false };
+  rootRef = el => { if (el === this.root) return; this.root = el; this.ro && this.ro.disconnect(); if (!el) return; const m = () => { const n = el.clientWidth < 210; if (n !== this.state.narrow) this.setState({ narrow:n }); }; this.ro = new ResizeObserver(m); this.ro.observe(el); m(); };
+  popRef = el => { this.pop = el; };
+  componentDidMount() { this.pd = e => { if (this.state.open && this.root && !this.root.contains(e.target)) this.close(); }; document.addEventListener('pointerdown', this.pd, true); }
+  componentWillUnmount() { this.ro && this.ro.disconnect(); document.removeEventListener('pointerdown', this.pd, true); window.removeEventListener('scroll', this.onScroll, true); }
+  lift(on) { const sec = this.root && this.root.closest('section'); if (!sec) return; if (on) { this._z = sec.style.zIndex; this._p = sec.style.position; sec.style.position = sec.style.position || 'relative'; sec.style.zIndex = '40'; } else if (this._z !== undefined) { sec.style.zIndex = this._z; this._z = undefined; } }
+  openIt() { const r = this.root.getBoundingClientRect(); const v = parse(this.props.value) || TODAY; const VH = window.innerHeight, VW = window.innerWidth; const W = 288, H = 380;
+    const below = VH - r.bottom - 8, above = r.top - 8; const up = below < H && above > below; const maxH = Math.max(200, Math.min(H, up ? above : below) - 6);
+    const top = up ? Math.max(8, r.top - 6 - maxH) : r.bottom + 6; const left = Math.max(8, Math.min(r.left, VW - W - 8));
+    let cb = this.root.parentElement, ox = 0, oy = 0; while (cb && cb !== document.body) { const cs = getComputedStyle(cb); if ((cs.transform && cs.transform !== 'none') || (cs.backdropFilter && cs.backdropFilter !== 'none') || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none') || (cs.filter && cs.filter !== 'none') || /paint|layout|strict|content/.test(cs.contain || '')) { const cr = cb.getBoundingClientRect(); ox = cr.left - cb.scrollLeft + cb.clientLeft; oy = cr.top - cb.scrollTop + cb.clientTop; break; } cb = cb.parentElement; }
+    this.setState({ open:true, view:new Date(v.getFullYear(), v.getMonth(), 1), yearMode:false, pTop:top - oy, pLeft:left - ox, maxH });
+    this.onScroll = e => { if (this.pop && e.target && this.pop.contains && this.pop.contains(e.target)) return; this.close(); }; window.addEventListener('scroll', this.onScroll, true); window.addEventListener('resize', this.onScroll); }
+  close() { this.setState({ open:false }); window.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); }
+  emit(v) { this.props.onChange && this.props.onChange({ target:{ value:v } }); }
+  renderVals() {
+    const s = this.state; const val = parse(this.props.value); const view = s.view || new Date((val || TODAY).getFullYear(), (val || TODAY).getMonth(), 1);
+    const Y = view.getFullYear(), M = view.getMonth(); const lead = (view.getDay() + 6) % 7; const start = new Date(Y, M, 1 - lead);
+    const days = Array.from({ length:42 }, (_, i) => { const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i); const inM = d.getMonth() === M; const sel = val && ds(d) === ds(val); const t = ds(d) === ds(TODAY); const wk = (d.getDay() + 6) % 7 > 4;
+      return { n:String(d.getDate()), bg: sel ? '#FF7B5C' : 'transparent', hov: sel ? '#FF7B5C' : 'rgba(255,255,255,0.08)', fg: sel ? '#1A0A05' : !inM ? '#3E4A57' : wk ? '#A3B0BE' : '#E8EEF3', fw: sel || t ? 750 : 500, ring: t && !sel ? 'inset 0 0 0 1.5px #FF7B5C' : 'none',
+        pick:() => { this.emit(ds(d)); this.close(); } }; });
+    const rel = val ? Math.round((val - TODAY) / 864e5) : null;
+    const add = (n, unit) => { const d = new Date(TODAY); if (unit === 'm') d.setMonth(d.getMonth() + n); else d.setDate(d.getDate() + n); return d; };
+    return {
+      rootRef:this.rootRef, stopPd:() => {}, popRef:this.popRef, pTop:(s.pTop || 0) + 'px', pLeft:(s.pLeft || 0) + 'px', h: this.props.height || '36px', open:s.open, hasVal: !!val,
+      label: val ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][val.getDay()] + ', ' + val.getDate() + ' ' + MON[val.getMonth()].slice(0, 3) + ' ' + val.getFullYear() : (this.props.placeholder || 'Set date'),
+      fg: val ? '#E8EEF3' : '#6B7A8A', fw: val ? 600 : 500, ic: val ? '#FF7B5C' : '#6B7A8A', bd: s.open ? 'rgba(255,123,92,0.5)' : 'rgba(255,255,255,0.1)',
+      maxH: (s.maxH || 420) + 'px', relTxt: rel === null || this.props.noRel || s.narrow ? '' : rel === 0 ? 'today' : rel === 1 ? 'tomorrow' : rel === -1 ? 'yesterday' : rel > 0 ? 'in ' + rel + 'd' : Math.abs(rel) + 'd ago', relC: rel !== null && rel < 0 ? '#6B7A8A' : '#FFA48C',
+      toggle:() => s.open ? this.close() : this.openIt(), clear:e => { e.stopPropagation(); this.emit(''); this.close(); },
+      vpos: s.up ? 'bottom:calc(100% + 6px)' : 'top:calc(100% + 6px)', hpos: s.right ? 'right:0' : 'left:0',
+      monthLabel: s.yearMode ? String(Y) : MON[M] + ' ' + Y, toggleYear:() => this.setState(st => ({ yearMode:!st.yearMode })), yearMode:s.yearMode, dayMode:!s.yearMode,
+      prev:() => this.setState({ view: s.yearMode ? new Date(Y - 1, M, 1) : new Date(Y, M - 1, 1) }), next:() => this.setState({ view: s.yearMode ? new Date(Y + 1, M, 1) : new Date(Y, M + 1, 1) }),
+      months: MON.map((m, i) => ({ label:m.slice(0, 3), pick:() => this.setState({ view:new Date(Y, i, 1), yearMode:false }), bg: i === M ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', bd: i === M ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.06)', fg: i === M ? '#FFFFFF' : '#C2CDD8' })),
+      dow: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l, i) => ({ l, c: i > 4 ? '#5B6A7A' : '#93A1B0' })),
+      days,
+      quick: [['Today', 0, 'd'], ['Tomorrow', 1, 'd'], ['Next week', 7, 'd'], ['+1 month', 1, 'm']].map(([label, n, u]) => ({ label, pick:() => { this.emit(ds(add(n, u))); this.close(); } }))
+    };
+  }
+}
+</script>
+</body>
+</html>

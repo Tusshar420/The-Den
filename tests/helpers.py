@@ -46,6 +46,10 @@ class TestBase(unittest.TestCase):
         db._conn = None
         self.addCleanup(self._restore_db)
         self.project = db.add_project("General", self._tmp.name)
+        import mailer
+        self._old_mail = mailer.RESTART_MARK
+        mailer.RESTART_MARK = Path(self._tmp.name) / "restart_requested.json"
+        self.addCleanup(lambda: setattr(mailer, "RESTART_MARK", self._old_mail))
         import api
         api._failures.clear()          # tests send wrong keys on purpose; don't let one lock out the next
         import providers as llm
@@ -173,10 +177,12 @@ class FakeCalendar(CalendarProvider):
         return out
 
     def create_event(self, title, start, end, attendees=None, description=None, location=None, all_day=False,
-                     add_video_call=False):
+                     add_video_call=False, repeat_days=None, repeat_until=None):
         eid = f"new{len(self.created) + 1}"
-        self.created.append({"title": title, "start": start, "end": end, "attendees": attendees or []})
+        self.created.append({"title": title, "start": start, "end": end, "attendees": attendees or [],
+                             "repeat_days": repeat_days, "repeat_until": repeat_until})
         ev = event(eid, title, start, end, attendees)
+        ev["recurring"] = bool(repeat_days)
         self.events[eid] = ev
         return copy.deepcopy(ev)
 

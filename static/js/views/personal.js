@@ -85,7 +85,8 @@ function connectionStrip(c, info, service) {
   const conn = info && info.connection;
   if (conn) {
     const [color, word] = STATUS[conn.status];
-    return `<div class="pa-strip"><span class="dot" style="--c:${color}"></span><span><b>${esc(conn.label)}</b> · ${esc(conn.account || 'account')}</span>
+    const more = (conn.accounts || []).length - 1;
+    return `<div class="pa-strip"><span class="dot" style="--c:${color}"></span><span><b>${esc(conn.label)}</b> · ${esc(conn.account || 'account')}${more > 0 ? ` <span class="meta">(default · +${more} more)</span>` : ''}</span>
       <span class="pa-strip__state">${esc(word)}</span>${conn.status === 'reauth_required' ? `<button class="btn btn--sm btn--primary" data-action="goPersonal" data-tab="connections">Reconnect</button>` : ''}</div>`;
   }
   const what = service === 'email' ? 'email account' : 'calendar';
@@ -101,7 +102,7 @@ function emailTab(c) {
   if (!e) return loading();
   return `${connectionStrip(c, e, 'email')}
     ${approvalsSection(c, 'email')}
-    <div class="section">${sectionHead('Drafts Octopus created', e.drafts.length ? `<a class="btn--text" href="https://mail.google.com/mail/u/0/#drafts" target="_blank" rel="noopener">Open drafts in Gmail</a>` : '', e.drafts.length || '')}
+    <div class="section">${sectionHead('Drafts Octopus created', e.drafts.length ? `<a class="btn--text" href="https://mail.google.com/mail/u/${e.connection && e.connection.account ? '?authuser=' + encodeURIComponent(e.connection.account) : '0/'}#drafts" target="_blank" rel="noopener">Open drafts in Gmail</a>` : '', e.drafts.length || '')}
       ${e.drafts.length ? `<div class="list">${e.drafts.map(d => `<div class="pa-act" data-key="dr${d.id}"><span class="pa-act__t">${esc(clock(d.created_at))}</span>
         <div class="pa-act__b"><span class="pa-act__line">${esc(d.target || 'Draft')}</span><span class="meta">${esc(agoShort(d.created_at))} ago · not sent</span></div></div>`).join('')}</div>`
         : `<div class="empty"><span>No drafts yet. Nothing Octopus writes is sent without you.</span></div>`}
@@ -119,8 +120,10 @@ function calendarTab(c) {
     const g = groups.find(x => x.key === key) || groups[groups.push({ key, head: dayHead(ev.start), rows: [] }) - 1];
     g.rows.push(ev);
   }
+  // With several calendars connected, say which one each event is on.
+  const many = k.connection && (k.connection.accounts || []).length > 1;
   const evRow = ev => `<div class="pa-ev" data-key="ev${esc(ev.id)}"><span class="pa-ev__t">${esc(span(ev))}</span>
-    <div class="pa-ev__b"><span class="pa-ev__title truncate">${esc(ev.title)}</span>${ev.attendees.length ? `<span class="meta truncate">with ${esc(ev.attendees.slice(0, 3).join(', '))}${ev.attendees.length > 3 ? ' +' + (ev.attendees.length - 3) : ''}</span>` : ''}</div></div>`;
+    <div class="pa-ev__b"><span class="pa-ev__title truncate">${ev.recurring ? '<span aria-label="Repeats" title="Repeats">↻</span> ' : ''}${esc(ev.title)}</span>${ev.attendees.length ? `<span class="meta truncate">with ${esc(ev.attendees.slice(0, 3).join(', '))}${ev.attendees.length > 3 ? ' +' + (ev.attendees.length - 3) : ''}</span>` : ''}${many && ev.account ? `<span class="meta truncate">${esc(ev.account)}</span>` : ''}</div></div>`;
   return `${connectionStrip(c, k, 'calendar')}
     ${k.error ? `<div class="pa-warn pa-warn--block"><span>!</span>${esc(k.error)}</div>` : ''}
     ${approvalsSection(c, 'calendar')}
@@ -150,14 +153,31 @@ function remindersTab(c) {
     ${askHint('Remind me tomorrow morning to call Rahul')}`;
 }
 
+const svcChips = (services, granted) => services.map(s => `<span class="pa-svc${granted.includes(s) ? ' is-on' : ''}">${SERVICE_NAMES[s] || s}</span>`).join('');
+
+// One connected account of a provider. With more than one, each says what it's the default for
+// (what Octopus uses when you don't name an account) and can be made the default.
+function accountRow(c, p, a, many) {
+  const [color, word] = STATUS[a.status] || STATUS.disconnected;
+  const dis = c.ui.busy['conn-' + a.id] ? ' disabled' : '';
+  const defaults = many ? a.default_for.map(s => `<span class="pa-tag" style="--c:var(--ok)">DEFAULT FOR ${(SERVICE_NAMES[s] || s).toUpperCase()}</span>`).join('') : '';
+  const makeDefault = many ? a.services_granted.filter(s => !a.default_for.includes(s)).map(s =>
+    `<button class="btn btn--sm btn--ghost" data-action="assistDefault" data-id="${esc(a.id)}" data-service="${s}"${dis}>Default for ${SERVICE_NAMES[s] || s}</button>`).join('') : '';
+  return `<div class="pa-acct" data-key="pacct-${esc(a.id)}">
+    <div class="pa-acct__top"><span class="dot" style="--c:${color}"></span><b class="truncate">${esc(a.account || 'Account')}</b>${a.status !== 'connected' ? `<span class="meta">${esc(word)}</span>` : ''}${defaults}</div>
+    <span class="pa-svcs">${svcChips(p.services, a.services_granted)}</span>
+    ${a.last_error && a.status !== 'connected' ? `<span class="pa-act__err">${esc(a.last_error)}</span>` : ''}
+    <div class="pa-conn__acts">${a.status === 'reauth_required' ? `<button class="btn btn--sm btn--primary" data-action="assistConnect" data-id="${p.id}" data-account="${esc(a.id)}"${dis}>Reconnect</button>` : ''}${makeDefault}
+      <button class="btn btn--sm btn--ghost" data-action="assistDisconnect" data-id="${esc(a.id)}" data-name="${esc(a.account || p.label)}"${dis}>Disconnect</button></div>
+  </div>`;
+}
+
 function connectionCard(c, p) {
   const [color, word] = STATUS[p.status] || STATUS.disconnected;
   const busy = c.ui.busy['conn-' + p.id];
-  const services = p.services.map(s => `<span class="pa-svc${p.services_granted.includes(s) ? ' is-on' : ''}">${SERVICE_NAMES[s] || s}</span>`).join('');
+  const accounts = p.accounts || [];
   let actions = '';
-  if (p.status === 'connected') actions = `<button class="btn btn--ghost btn--44" data-action="assistDisconnect" data-id="${p.id}"${busy ? ' disabled' : ''}>Disconnect</button>`;
-  else if (p.status === 'reauth_required') actions = `<button class="btn btn--primary btn--44" data-action="assistConnect" data-id="${p.id}"${busy ? ' disabled' : ''}>Reconnect</button>
-    <button class="btn btn--ghost btn--44" data-action="assistDisconnect" data-id="${p.id}">Disconnect</button>`;
+  if (accounts.length && p.can_add) actions = `<button class="btn btn--ghost btn--44" data-action="assistConnect" data-id="${p.id}"${busy ? ' disabled' : ''}>+ Add another ${esc(p.label)} account</button>`;
   else if (p.status === 'disconnected') actions = `<button class="btn btn--primary btn--44" data-action="assistConnect" data-id="${p.id}"${busy ? ' disabled' : ''}>Connect ${esc(p.label)}</button>`;
   const setup = p.status === 'not_configured'
     ? `<div class="pa-setup"><span class="eyebrow">TO SET UP (FREE)</span><ol>${p.setup_steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
@@ -168,11 +188,10 @@ function connectionCard(c, p) {
     ? `<span class="meta">Sign-in returns to ${esc(p.redirect_uri.replace(/\/assistant.*/, ''))}, so finish it in a browser on the Mac itself.</span>` : '';
   return `<div class="pa-conn" data-key="conn-${p.id}">
     <div class="pa-conn__head"><b>${esc(p.label)}</b><span class="pa-tag pa-tag--${p.cost}" title="${esc(p.cost_note)}">${p.cost === 'paid' ? 'PAID' : 'FREE'}</span>${TAG[p.status] ? `<span class="pa-tag" style="--c:${color}">${TAG[p.status]}</span>` : ''}</div>
-    <div class="pa-kv"><span>Provider</span><span>${esc(p.label)}</span></div>
-    <div class="pa-kv"><span>Account</span><span>${esc(p.account || '-')}</span></div>
+    ${accounts.length ? accounts.map(a => accountRow(c, p, a, accounts.length > 1)).join('') : `
+    <div class="pa-kv"><span>Account</span><span>-</span></div>
     <div class="pa-kv"><span>Status</span><span><span class="dot" style="--c:${color}"></span> ${esc(word)}</span></div>
-    <div class="pa-kv"><span>Access</span><span class="pa-svcs">${services}</span></div>
-    ${p.last_error && p.status !== 'connected' ? `<span class="pa-act__err">${esc(p.last_error)}</span>` : ''}
+    <div class="pa-kv"><span>Access</span><span class="pa-svcs">${svcChips(p.services, [])}</span></div>`}
     ${setup}${note}${localNote}
     ${actions ? `<div class="pa-conn__acts">${actions}</div>` : ''}
   </div>`;
@@ -193,7 +212,8 @@ function connectionsTab(c) {
   if (!st) return loading();
   const pl = st.planner || {};
   return `<div class="section">${sectionHead('Accounts')}
-      <span class="pa-note">Octopus signs in with OAuth in your own browser - it never sees or stores a password. Gmail and Google Calendar are separate from any ChatGPT, Claude or Gemini subscription.</span>
+      <span class="pa-note">Octopus signs in with OAuth in your own browser - it never sees or stores a password. Gmail and Google Calendar are separate from any ChatGPT, Claude or Gemini subscription.
+        Connect as many Google accounts as you like: Octopus reads all of them, replies from the account that got the message, and uses the default for anything new - or say which, e.g. <i>"email Rahul from my work account"</i>.</span>
       <div class="pa-conns">${st.connections.map(p => connectionCard(c, p)).join('')}</div>
     </div>
     <div class="section">${sectionHead('Understanding requests')}

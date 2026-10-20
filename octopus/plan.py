@@ -324,6 +324,11 @@ def build_plan(text: str, *, project_id: Optional[int] = None, force_model: Opti
         candidate_ids = [db.get_thread_model(thread_root["id"]) or thread_root["model_id"]]
     elif force_agent:
         candidate_ids = agent.get("preferred_models")
+    else:
+        ruled = router.rule_model(text, project["name"] if project else None, category, bool(images))
+        if ruled:                                  # a routing rule / default model from the AI Providers page
+            candidate_ids = [ruled[0]]
+            overrides["rule"] = ruled[1]
     choice = choose_model(category, text, agent, candidate_ids, vision=bool(images))
     model = choice["model"]
     if not model and thread_root and thread_root.get("model_id"):       # the chat's model is unavailable: use the category's
@@ -454,7 +459,7 @@ def with_project(plan: dict[str, Any], project_id: int) -> dict[str, Any]:
     permissions, review decision and Claude Code mode all follow."""
     return build_plan(plan["request"], project_id=project_id, force_model=plan["overrides"].get("model"),
                       force_agent=plan["overrides"].get("agent"), source=plan.get("source", "api"),
-                      images=plan.get("images"))
+                      images=plan.get("images")) | ({"account": plan["account"]} if plan.get("account") else {})
 
 
 def decision_of(plan: dict[str, Any]) -> dict[str, Any]:
@@ -481,7 +486,8 @@ def queue_plan(plan: dict[str, Any], priority: int = 0, routing_id: Optional[int
                        model_id=plan["model"]["id"], category=plan["category"], route_reason=plan["route_reason"],
                        routed_by=plan["classified_by"], permission_mode=mode if plan["lane"] == "agent" else None,
                        agent_id=plan["agent"]["id"], tools=[t["id"] for t in plan["tools"]], routing_id=routing_id,
-                       source=plan.get("source"), risk=plan["risk"], images=plan.get("images") or None)
+                       source=plan.get("source"), risk=plan["risk"], images=plan.get("images") or None,
+                       claude_account=plan.get("account") if plan["lane"] == "agent" else None)
 
 
 def log_events(task: dict[str, Any], plan: dict[str, Any], decided_by: str = "auto") -> None:

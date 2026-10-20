@@ -1,7 +1,7 @@
 # Handoff: Tushar's Workspace (dashboard redesign + Octopus routing)
 
 ## Overview
-A full redesign of the `claude-queue` dashboard (`dashboard.html`, served by FastAPI at `/dashboard`). It is a single-user ops cockpit where you:
+A full redesign of the `TheDen` dashboard (`dashboard.html`, served by FastAPI at `/dashboard`). It is a single-user ops cockpit where you:
 - queue natural-language tasks against coding projects;
 - ask **Octopus**, which routes each request to **Claude Code** (acts inside a project) or an **answer-only OpenAI model** (GPT-6 Sol / Luna);
 - watch several tasks run at once;
@@ -24,7 +24,7 @@ It is **mobile-first**: 375px phone with a bottom tab bar, full-screen panes and
 ## About the design files
 Everything in `reference/` is a **design reference built in HTML**. It is a working prototype that shows the intended look and behaviour, **not production code to paste in**. It runs on a small custom runtime (`support.js`) and fakes all data with a local simulation.
 
-**Your task:** recreate this design inside the existing `claude-queue` app.
+**Your task:** recreate this design inside the existing `TheDen` app.
 - **Backend:** FastAPI plus SQLite (`api.py`, `db.py`, `worker.py`).
 - **Frontend:** today, one vanilla-JS `dashboard.html` with no build step.
 
@@ -52,7 +52,7 @@ Open `reference/Workspace Prototype.dc.html` in a browser; keep `support.js` nex
 
 ## Target file structure (recommended)
 ```
-claude-queue/
+TheDen/
   api.py                  + app.mount("/static", StaticFiles(directory="static"))  + new /octopus routes
   dashboard.html          shell only: <div id="app"> + <link> tokens/components + <script type="module" src="/static/js/app.js">
   static/

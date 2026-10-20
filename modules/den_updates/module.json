@@ -1,0 +1,18 @@
+{
+  "name": "den_updates",
+  "version": "1.0.0",
+  "description": "Den versions: publish a version from the owner's Den, and update a given-away Den when its person presses Update.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "serve": {"type": "boolean", "default": true},
+    "serve_host": {"type": "string", "default": "0.0.0.0"},
+    "serve_port": {"type": "integer", "default": 8790},
+    "check_hours": {"type": "number", "default": 6}
+  },
+  "secrets": ["API_KEY"],
+  "capabilities": [],
+  "hot_reload": true
+}

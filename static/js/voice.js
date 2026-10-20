@@ -39,13 +39,80 @@ export const ttsMode = () => (settings().voice_tts || 'browser') === 'macos' ? '
 export const browserVoiceName = () => { try { return localStorage.getItem(VOICE_KEY) || ''; } catch { return ''; } };
 export const setBrowserVoiceName = name => { try { name ? localStorage.setItem(VOICE_KEY, name) : localStorage.removeItem(VOICE_KEY); } catch {} };
 
-// [{ name, language, on }] for the provider in use - the device's own voices, or the Mac's.
-export function voiceChoices() {
+// The voice picked by hand in the Ask box. While it is set it reads every language; "" = automatic, where each
+// language uses its own default voice (below).
+const MANUAL_KEY = 'octopus-voice-manual';
+export const manualVoiceName = () => {
+  if (ttsMode() === 'macos') return settings().voice_manual || '';
+  try { return localStorage.getItem(MANUAL_KEY) || ''; } catch { return ''; }
+};
+export const setBrowserManualVoice = name => { try { name ? localStorage.setItem(MANUAL_KEY, name) : localStorage.removeItem(MANUAL_KEY); } catch {} };
+
+// ---------------------------------------------------------------- languages
+// Which language a reply is in decides which voice reads it. The rules come from the server (GET /voice ->
+// octopus/voice/languages.py) so the browser and the Mac detect identically. Until they load: English.
+const languages = () => (store.data.octo.voice || {}).languages || [];
+const LANG_KEY = 'octopus-voice-languages';
+const shortCode = tag => (tag || '').slice(0, 2).toLowerCase();
+
+export function detectLanguage(text) {
+  const t = (text || '').replace(/```[\s\S]*?```|`[^`]*`|https?:\/\/\S+/g, ' ');
+  const letters = (t.match(/\p{L}/gu) || []).length;
+  if (!letters) return 'en';
+  for (const l of languages()) {
+    if (l.script && (t.match(new RegExp(l.script, 'gu')) || []).length / letters >= 0.3) return l.code;
+  }
+  const words = t.toLowerCase().match(/\p{L}+/gu) || [];
+  const scores = languages().filter(l => l.words.length).map(l => [words.filter(w => l.words.includes(w)).length, l.code]).sort((a, b) => b[0] - a[0]);
+  return scores.length > 1 && scores[0][0] >= 2 && scores[0][0] > scores[1][0] ? scores[0][1] : 'en';
+}
+
+// Voice chosen for each language: the Mac's are a server setting; a browser's are this device's own.
+export function languageVoices() {
+  if (ttsMode() === 'macos') return settings().voice_language_voices || {};
+  try { return JSON.parse(localStorage.getItem(LANG_KEY) || '{}'); } catch { return {}; }
+}
+export function setBrowserLanguageVoice(code, name) {
+  const all = { ...languageVoices() };
+  name ? all[code] = name : delete all[code];
+  try { localStorage.setItem(LANG_KEY, JSON.stringify(all)); } catch {}
+}
+export const allVoices = () => ttsMode() === 'macos'
+  ? ((store.data.octo.voice || {}).voices || []).map(x => ({ name: x.name, language: x.language }))
+  : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []).map(x => ({ name: x.name, language: x.lang }));
+// The voices that can read `code`, e.g. "hi" -> Lekha (hi_IN), Kalpana (hi-IN).
+export const voicesForLanguage = code => allVoices().filter(x => shortCode(x.language) === code);
+export const speechRate = () => Number(settings().voice_rate) || 1;
+
+// The language the mic listens for. Browser recognition hears one language per turn and can't guess it, so it
+// follows the conversation (a Hindi answer means Hindi next) and the voice pane lets you switch by hand.
+// '' = this device's own language.
+export const listenLanguage = () => v().lang || shortCode(navigator.language) || 'en';
+export const setListenLanguage = code => setVoice({ lang: code });
+// "en" plus every language you have picked a voice for on the Voice page.
+export function listenChoices() {
+  const codes = ['en', ...Object.keys(languageVoices()).filter(c => c !== 'en')];
+  return codes.map(code => ({ code, label: (languages().find(l => l.code === code) || {}).label || code, on: code === listenLanguage() }));
+}
+// Follow a language you or Octopus just used, if it is one you have a voice for.
+export function followLanguage(...texts) {
+  for (const t of texts) {
+    const code = detectLanguage(t);
+    if (code !== 'en' && code in languageVoices()) return setListenLanguage(code);
+  }
+}
+const listenTag = code => {
+  if (code === shortCode(navigator.language)) return navigator.language;
+  const voice = voicesForLanguage(code)[0];
+  return voice ? voice.language.replace('_', '-') : code === 'en' ? 'en-US' : code;
+};
+
+// [{ name, language, on }] for the provider in use - the device's own voices, or the Mac's. `on` marks the
+// default voice, or with { manual: true } the one picked by hand in the Ask box.
+export function voiceChoices({ manual = false } = {}) {
   const mac = ttsMode() === 'macos';
-  const all = mac
-    ? ((store.data.octo.voice || {}).voices || []).map(x => ({ name: x.name, language: x.language }))
-    : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []).map(x => ({ name: x.name, language: x.lang }));
-  const current = mac ? (settings().voice_tts_voice || '') : browserVoiceName();
+  const all = allVoices();
+  const current = manual ? manualVoiceName() : mac ? (settings().voice_tts_voice || '') : browserVoiceName();
   const lang = (navigator.language || 'en').slice(0, 2).toLowerCase();
   const mine = x => x.language.toLowerCase().replace('_', '-').startsWith(lang);
   return all.filter(mine).concat(all.filter(x => !mine(x))).map(x => ({ ...x, on: x.name === current }));
@@ -78,8 +145,13 @@ export async function speak(text) {
       await new Promise(resolve => {
         const clipped = text.length > 600 ? text.slice(0, 600) : text;
         const u = new SpeechSynthesisUtterance(clipped);
-        const name = browserVoiceName(), voice = name && window.speechSynthesis.getVoices().find(x => x.name === name);
-        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        const all = window.speechSynthesis.getVoices(), lang = detectLanguage(text);
+        const named = n => n && all.find(x => x.name === n);
+        // A voice picked by hand wins; else the voice chosen for this language, else the default voice if it speaks it,
+        // else let the device pick one that does.
+        const voice = named(manualVoiceName()) || named(languageVoices()[lang]) || (named(browserVoiceName()) && shortCode(named(browserVoiceName()).lang) === lang ? named(browserVoiceName()) : null);
+        if (voice) { u.voice = voice; u.lang = voice.lang; } else if (lang !== shortCode(navigator.language)) u.lang = lang;
+        u.rate = speechRate();
         // Some browsers never fire "end" for long or interrupted speech, which would freeze the conversation.
         const guard = setTimeout(resolve, 6000 + clipped.length * 90);
         u.onend = u.onerror = () => { clearTimeout(guard); resolve(); };
@@ -118,7 +190,7 @@ export function listen(onText, onAudio, onEmpty = () => {}) {
 
 function listenBrowser(onText, onEmpty) {
   const rec = recognition = new SR();
-  rec.lang = navigator.language || 'en-US';
+  rec.lang = listenTag(listenLanguage());
   rec.interimResults = true;
   rec.maxAlternatives = 1;
   let finalText = '', failed = false;
@@ -194,3 +266,17 @@ export async function sendAudio(blob) {
 }
 
 export const sendText = (text, extra = {}) => octoApi.voiceCommand({ text, ...extra });
+
+// Dictation: speech becomes text for a text box (the New task sheet) instead of a request. Calls done(text) with
+// what was said ('' if nothing / failed). Tapping again while listening ends it.
+export function dictate(done) {
+  if (v().state === 'listening') return stopListening();
+  listen(done, async blob => {
+    try {
+      const res = await fetch('/voice/transcribe', { method: 'POST', headers: { 'X-API-Key': apiKey(), 'Content-Type': blob.type || 'audio/webm' }, body: blob });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || res.statusText);
+      done((body.text || '').trim());
+    } catch (e) { setVoice({ state: 'idle', error: e.message }); done(''); }
+  }, () => done(''));
+}

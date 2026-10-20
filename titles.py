@@ -30,7 +30,11 @@ NAMER_BACKOFF_SECONDS = 300  # no model, bad key, rate limit...
 TITLE_INSTRUCTIONS = (
     "You name chats for Octopus, a personal AI assistant. Given the user's first message, reply with a short title "
     "of 2 to 6 words that says what the task is about, like a chat title in a messaging app - e.g. "
-    "\"Personal assistant layer for Octopus\", \"Fix flaky login test\", \"Email Rahul about proposal\". "
+    "\"Email Rahul about proposal\", \"Login test fails sometimes\", \"Add a button to hide the sidebar\". "
+    "Use plain everyday words a non-programmer would understand - say what the user will see or get, not how "
+    "it's built. Avoid technical words: say \"remember the open tab after refresh\" not \"persist tab in URL\", "
+    "\"works well on phones\" not \"responsive\", \"can be hidden\" not \"collapsible\", \"run at the same time\" "
+    "not \"run in parallel\", \"go back to the same screen\" not \"preserve originating screen\". "
     "Sentence case, no quotes, no emoji, no trailing punctuation. Keep names of people, products and files as "
     "written. Reply with the title only."
 )
@@ -65,6 +69,8 @@ def _clean_title(text: str) -> Optional[str]:
 def name_one(task: dict[str, Any], model: dict[str, Any]) -> None:
     """Name one chat. Raises providers.ProviderError if the model call fails."""
     out = providers.complete(model, [{"role": "user", "content": task["prompt"][:4000]}], TITLE_INSTRUCTIONS, 20)
+    db.log_usage("title", model["id"], out.input_tokens, out.output_tokens,
+                 providers.estimate_cost(model, out.input_tokens, out.output_tokens), task_id=task["id"])
     title = _clean_title(out.text)
     if title:
         db.set_thread_title(task["id"], title, "ai", only_if_by="text")
@@ -142,6 +148,8 @@ def summarize_thread(task_id: int, refresh: bool = False) -> dict[str, Any]:
     if not model:
         raise RuntimeError("No answer-only model is available to summarise with")
     out = providers.complete(model, [{"role": "user", "content": _transcript(msgs)}], SUMMARY_INSTRUCTIONS, 60)
+    db.log_usage("summary", model["id"], out.input_tokens, out.output_tokens,
+                 providers.estimate_cost(model, out.input_tokens, out.output_tokens), task_id=root["id"])
     summary = out.text.strip()
     if not summary:
         raise providers.ProviderError("The model returned an empty summary")

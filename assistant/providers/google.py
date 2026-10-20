@@ -9,10 +9,12 @@ layer can be faked in tests.
 
 import base64
 import html
+import json
 import re
 import secrets
-from datetime import datetime
+from datetime import date, datetime, time, timezone
 from typing import Any, Optional
+from urllib.parse import quote
 
 import db
 from assistant import connections, mailutil, net, oauth, timeutil
@@ -25,8 +27,8 @@ CAL = "https://www.googleapis.com/calendar/v3"
 def _friendly(e: net.ApiError) -> ProviderError:
     code = (e.code or "").lower()
     if e.status == 403 and code in ("accessnotconfigured", "service_disabled"):
-        return ProviderError("That Google API isn't switched on for your Google Cloud project. Enable the Gmail API "
-                             "and Google Calendar API in the Cloud Console (free), then try again.")
+        return ProviderError("That Google API isn't switched on for your Google Cloud project. Enable the Gmail, "
+                             "Google Calendar and Google Drive APIs in the Cloud Console (free), then try again.")
     if e.status == 403 and ("scope" in code or "insufficient" in code or "permission" in code):
         return ProviderError("Google didn't grant that permission. Disconnect and connect again, and tick every "
                              "box on Google's consent screen.")
@@ -37,12 +39,14 @@ def _friendly(e: net.ApiError) -> ProviderError:
     return ProviderError(f"Google API error: {e}")
 
 
-def call(method: str, url: str, params: Optional[dict[str, Any]] = None, json_body: Any = None) -> Any:
-    """One authenticated Google call. A 401 means the access token was
-    revoked or expired early: refresh once and retry."""
+def call(method: str, url: str, params: Optional[dict[str, Any]] = None, json_body: Any = None,
+         conn: str = "google") -> Any:
+    """One authenticated Google call, as the connected account `conn` (a
+    connections id). A 401 means the access token was revoked or expired
+    early: refresh once and retry."""
     for attempt in (1, 2):
         try:
-            token = connections.access_token("google")
+            token = connections.access_token(conn)
         except (connections.NotConnected, oauth.ReauthRequired) as e:
             raise ProviderError(str(e))
         try:
@@ -50,17 +54,80 @@ def call(method: str, url: str, params: Optional[dict[str, Any]] = None, json_bo
                                params=params, json_body=json_body)
         except net.ApiError as e:
             if e.status == 401 and attempt == 1:
-                connections.expire_access_token("google")
+                connections.expire_access_token(conn)
                 continue
             if e.status == 401:
                 raise ProviderError("Google rejected the stored sign-in. Connect the account again.")
-            raise _friendly(e)
+            err = _friendly(e)
+            err.status = e.status        # so a caller can tell "gone" (404 / 410) from other failures
+            raise err
     raise ProviderError("Google request failed")
 
 
-def _account() -> str:
-    row = db.get_connection("google")
+DRIVE = "https://www.googleapis.com/drive/v3"
+DRIVE_UP = "https://www.googleapis.com/upload/drive/v3"
+
+
+def drive_folder(name: str, conn: str = "google", known_id: Optional[str] = None) -> str:
+    """The id of the Drive folder `name` (made if missing). With drive.file the Den only ever sees
+    folders it created itself, so a same-named folder of yours is never touched."""
+    if known_id:
+        try:
+            f = call("GET", f"{DRIVE}/files/{known_id}", {"fields": "id,trashed"}, conn=conn)
+            if not f.get("trashed"):
+                return f["id"]
+        except ProviderError as e:
+            if getattr(e, "status", 0) != 404:
+                raise
+    q = f"mimeType='application/vnd.google-apps.folder' and name='{name}' and trashed=false"
+    found = call("GET", f"{DRIVE}/files", {"q": q, "fields": "files(id)", "pageSize": 1}, conn=conn).get("files") or []
+    if found:
+        return found[0]["id"]
+    made = call("POST", f"{DRIVE}/files", {"fields": "id"},
+                {"name": name, "mimeType": "application/vnd.google-apps.folder"}, conn=conn)
+    return made["id"]
+
+
+def drive_upload(name: str, data: bytes, folder_id: str, conn: str = "google") -> str:
+    """Upload `data` as a file called `name` into the folder. Returns the Drive file id."""
+    boundary = secrets.token_hex(16)
+    meta = json.dumps({"name": name, "parents": [folder_id]})
+    body = (f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{meta}\r\n"
+            f"--{boundary}\r\nContent-Type: application/octet-stream\r\n\r\n").encode() + data + f"\r\n--{boundary}--".encode()
+    for attempt in (1, 2):
+        try:
+            token = connections.access_token(conn)
+        except (connections.NotConnected, oauth.ReauthRequired) as e:
+            raise ProviderError(str(e))
+        try:
+            out = net.request("POST", f"{DRIVE_UP}/files", headers={"Authorization": f"Bearer {token}"},
+                              params={"uploadType": "multipart", "fields": "id"}, raw_body=body,
+                              content_type=f"multipart/related; boundary={boundary}", timeout=180)
+            return out["id"]
+        except net.ApiError as e:
+            if e.status == 401 and attempt == 1:
+                connections.expire_access_token(conn)
+                continue
+            raise _friendly(e)
+    raise ProviderError("Google Drive upload failed")
+
+
+def _account(conn: str) -> str:
+    row = db.get_connection(conn)
     return ((row or {}).get("account") or "").lower()
+
+
+class _GoogleAccount:
+    """One connected Google account (a connections id; "google" is the first one connected)."""
+
+    def __init__(self, conn: str = "google"):
+        self.conn = conn
+
+    def account(self) -> str:
+        return _account(self.conn)
+
+    def _call(self, method: str, url: str, params: Optional[dict[str, Any]] = None, json_body: Any = None) -> Any:
+        return call(method, url, params, json_body, conn=self.conn)
 
 
 # -------------------------------------------------------------------- Gmail
@@ -123,56 +190,53 @@ def _parse_message(m: dict[str, Any], full: bool = False) -> dict[str, Any]:
 _META = ["From", "To", "Cc", "Subject", "Date", "Reply-To", "Message-ID", "References"]
 
 
-class GmailProvider(EmailProvider):
+class GmailProvider(_GoogleAccount, EmailProvider):
     id = "google"
 
-    def account(self) -> str:
-        return _account()
-
     def search(self, query: str, max_results: int = 10) -> list[dict[str, Any]]:
-        listing = call("GET", f"{GMAIL}/messages", params={"q": query, "maxResults": max(1, min(max_results, 20))})
+        listing = self._call("GET", f"{GMAIL}/messages", params={"q": query, "maxResults": max(1, min(max_results, 20))})
         out = []
         for stub in listing.get("messages", []) or []:
-            m = call("GET", f"{GMAIL}/messages/{stub['id']}", params={"format": "metadata", "metadataHeaders": _META})
+            m = self._call("GET", f"{GMAIL}/messages/{stub['id']}", params={"format": "metadata", "metadataHeaders": _META})
             out.append(_parse_message(m))
         return out
 
     def get(self, message_id: str) -> dict[str, Any]:
-        return _parse_message(call("GET", f"{GMAIL}/messages/{message_id}", params={"format": "full"}), full=True)
+        return _parse_message(self._call("GET", f"{GMAIL}/messages/{message_id}", params={"format": "full"}), full=True)
 
-    def _raw(self, to, subject, body, cc, reply_to_message_id) -> tuple[str, Optional[str]]:
+    def _raw(self, to, subject, body, cc, reply_to_message_id, html=None) -> tuple[str, Optional[str]]:
         in_reply_to = references = thread_id = None
         if reply_to_message_id:
-            orig = _parse_message(call("GET", f"{GMAIL}/messages/{reply_to_message_id}",
+            orig = _parse_message(self._call("GET", f"{GMAIL}/messages/{reply_to_message_id}",
                                        params={"format": "metadata", "metadataHeaders": _META}))
             in_reply_to, references, thread_id = orig["message_id_header"], orig["references"], orig["thread_id"]
-        return mailutil.build_mime(to, subject, body, cc, in_reply_to, references), thread_id
+        return mailutil.build_mime(to, subject, body, cc, in_reply_to, references, html), thread_id
 
     def create_draft(self, to, subject, body, cc=None, reply_to_message_id=None) -> dict[str, Any]:
         raw, thread_id = self._raw(to, subject, body, cc, reply_to_message_id)
         message: dict[str, Any] = {"raw": raw}
         if thread_id:
             message["threadId"] = thread_id
-        d = call("POST", f"{GMAIL}/drafts", json_body={"message": message})
+        d = self._call("POST", f"{GMAIL}/drafts", json_body={"message": message})
         mid = (d.get("message") or {}).get("id")
         return {"draft_id": d.get("id"), "message_id": mid, "thread_id": (d.get("message") or {}).get("threadId"),
-                "url": f"https://mail.google.com/mail/u/0/#drafts?compose={mid}" if mid else None}
+                "url": f"https://mail.google.com/mail/u/?authuser={quote(self.account())}#drafts?compose={mid}" if mid else None}
 
     def get_draft(self, draft_id: str) -> dict[str, Any]:
-        d = call("GET", f"{GMAIL}/drafts/{draft_id}", params={"format": "full"})
+        d = self._call("GET", f"{GMAIL}/drafts/{draft_id}", params={"format": "full"})
         m = _parse_message(d.get("message") or {}, full=True)
         return {"draft_id": draft_id, "to": m["to"], "cc": m["cc"], "subject": m["subject"], "body": m.get("body", "")}
 
-    def send(self, to, subject, body, cc=None, reply_to_message_id=None) -> dict[str, Any]:
-        raw, thread_id = self._raw(to, subject, body, cc, reply_to_message_id)
+    def send(self, to, subject, body, cc=None, reply_to_message_id=None, html=None) -> dict[str, Any]:
+        raw, thread_id = self._raw(to, subject, body, cc, reply_to_message_id, html)
         payload: dict[str, Any] = {"raw": raw}
         if thread_id:
             payload["threadId"] = thread_id
-        sent = call("POST", f"{GMAIL}/messages/send", json_body=payload)
+        sent = self._call("POST", f"{GMAIL}/messages/send", json_body=payload)
         return {"message_id": sent.get("id"), "thread_id": sent.get("threadId")}
 
     def send_draft(self, draft_id: str) -> dict[str, Any]:
-        sent = call("POST", f"{GMAIL}/drafts/send", json_body={"id": draft_id})
+        sent = self._call("POST", f"{GMAIL}/drafts/send", json_body={"id": draft_id})
         return {"message_id": sent.get("id"), "thread_id": sent.get("threadId")}
 
 
@@ -197,6 +261,8 @@ def _parse_event(item: dict[str, Any]) -> dict[str, Any]:
         "attendees": attendees, "organizer": (item.get("organizer") or {}).get("email"),
         "link": item.get("htmlLink"), "meet_link": item.get("hangoutLink"),
         "status": item.get("status"),
+        # A series, or one day of one (list_events expands series into their days).
+        "recurring": bool(item.get("recurrence") or item.get("recurringEventId")),
         # Doesn't block time: marked "free", or one the owner declined.
         "free": item.get("transparency") == "transparent",
         "declined": any(a["self"] and a["status"] == "declined" for a in attendees),
@@ -209,26 +275,36 @@ def _when(dt: datetime, all_day: bool = False) -> dict[str, str]:
     return {"dateTime": dt.isoformat(), "timeZone": timeutil.tz_name()}
 
 
-class GoogleCalendarProvider(CalendarProvider):
+def rrule(every_days: int, until: Optional[date] = None, all_day: bool = False) -> str:
+    """RRULE for "every N days", up to the end of the local day `until`. Google
+    wants UNTIL as a UTC date-time for timed events and a date for all-day ones."""
+    rule = f"RRULE:FREQ=DAILY;INTERVAL={int(every_days)}"
+    if until:
+        if all_day:
+            rule += f";UNTIL={until.strftime('%Y%m%d')}"
+        else:
+            last = timeutil.at(until, time(23, 59, 59)).astimezone(timezone.utc)
+            rule += f";UNTIL={last.strftime('%Y%m%dT%H%M%SZ')}"
+    return rule
+
+
+class GoogleCalendarProvider(_GoogleAccount, CalendarProvider):
     id = "google"
 
-    def account(self) -> str:
-        return _account()
-
     def list_events(self, start, end, query=None, max_results=50) -> list[dict[str, Any]]:
-        data = call("GET", f"{CAL}/calendars/primary/events", params={
+        data = self._call("GET", f"{CAL}/calendars/primary/events", params={
             "timeMin": start.isoformat(), "timeMax": end.isoformat(), "singleEvents": "true",
             "orderBy": "startTime", "maxResults": max(1, min(max_results, 100)), "q": query,
             "timeZone": timeutil.tz_name()})
         return [_parse_event(i) for i in data.get("items", []) or [] if i.get("status") != "cancelled"]
 
     def get_event(self, event_id: str) -> dict[str, Any]:
-        return _parse_event(call("GET", f"{CAL}/calendars/primary/events/{event_id}"))
+        return _parse_event(self._call("GET", f"{CAL}/calendars/primary/events/{event_id}"))
 
     def freebusy(self, emails, start, end) -> dict[str, dict[str, Any]]:
         me = self.account() or "primary"
         items = [{"id": "primary"}] + [{"id": e} for e in emails if e.lower() != me]
-        data = call("POST", f"{CAL}/freeBusy", json_body={
+        data = self._call("POST", f"{CAL}/freeBusy", json_body={
             "timeMin": start.isoformat(), "timeMax": end.isoformat(), "timeZone": timeutil.tz_name(), "items": items})
         out: dict[str, dict[str, Any]] = {}
         for key, cal in (data.get("calendars") or {}).items():
@@ -240,8 +316,11 @@ class GoogleCalendarProvider(CalendarProvider):
         return out
 
     def create_event(self, title, start, end, attendees=None, description=None, location=None,
-                     all_day=False, add_video_call=False) -> dict[str, Any]:
+                     all_day=False, add_video_call=False, repeat_days=None, repeat_until=None) -> dict[str, Any]:
         body: dict[str, Any] = {"summary": title, "start": _when(start, all_day), "end": _when(end, all_day)}
+        if repeat_days:
+            # Needs start / end timeZone (which _when gives) so the series stays at the same local time.
+            body["recurrence"] = [rrule(repeat_days, repeat_until, all_day)]
         if description:
             body["description"] = description
         if location:
@@ -253,7 +332,7 @@ class GoogleCalendarProvider(CalendarProvider):
             body["conferenceData"] = {"createRequest": {"requestId": secrets.token_hex(8),
                                                         "conferenceSolutionKey": {"type": "hangoutsMeet"}}}
             params["conferenceDataVersion"] = 1
-        return _parse_event(call("POST", f"{CAL}/calendars/primary/events", params=params, json_body=body))
+        return _parse_event(self._call("POST", f"{CAL}/calendars/primary/events", params=params, json_body=body))
 
     def update_event(self, event_id, changes, notify) -> dict[str, Any]:
         body: dict[str, Any] = {}
@@ -273,9 +352,9 @@ class GoogleCalendarProvider(CalendarProvider):
             have = {a["email"] for a in current}
             body["attendees"] = [{"email": a["email"]} for a in current] + \
                                 [{"email": e} for e in changes["add_attendees"] if e not in have]
-        return _parse_event(call("PATCH", f"{CAL}/calendars/primary/events/{event_id}",
+        return _parse_event(self._call("PATCH", f"{CAL}/calendars/primary/events/{event_id}",
                                  params={"sendUpdates": "all" if notify else "none"}, json_body=body))
 
     def delete_event(self, event_id, notify) -> None:
-        call("DELETE", f"{CAL}/calendars/primary/events/{event_id}",
+        self._call("DELETE", f"{CAL}/calendars/primary/events/{event_id}",
              params={"sendUpdates": "all" if notify else "none"})

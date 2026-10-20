@@ -25,13 +25,13 @@ page are the next phases, built once this is working and tested.
 
 ## 1. Copy this folder onto your Mac
 
-Get this whole `claude-queue` folder (The Den) onto your Mac (e.g. via Termius/`scp`,
-AirDrop, or just re-create the files) at `~/claude-queue`.
+Get this whole `TheDen` folder onto your Mac (e.g. via Termius/`scp`,
+AirDrop, or just re-create the files) at `~/TheDen`.
 
 ## 2. Set up a virtual environment and install dependencies
 
 ```bash
-cd ~/claude-queue
+cd ~/TheDen
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -97,7 +97,7 @@ with your actual macOS username, put a real random value in for `API_KEY`
 `/opt/homebrew/bin`.
 
 ```bash
-mkdir -p ~/Library/Logs/claude-queue
+mkdir -p ~/Library/Logs/TheDen
 cp setup/com.tushar.claudequeue.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tushar.claudequeue.plist
 launchctl enable gui/$(id -u)/com.tushar.claudequeue
@@ -107,7 +107,7 @@ Check it's alive:
 
 ```bash
 curl http://127.0.0.1:8787/health
-tail -f ~/Library/Logs/claude-queue/stdout.log
+tail -f ~/Library/Logs/TheDen/stdout.log
 ```
 
 To stop/uninstall later: `launchctl bootout gui/$(id -u)/com.tushar.claudequeue`
@@ -171,14 +171,16 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | POST | `/octopus/plan` | `{"text", "project_id"?, "model"?, "agent"?}` | dry run: the plan Octopus would make (nothing is queued or logged) |
 | POST | `/octopus/plans/{routing_id}/run`, `/cancel` | `{"project_id"?, "model"?, "agent"?, "priority"?}` | [Run] / [Cancel] on a plan card; Run may change project, model or agent first, and only ever queues once |
 | GET | `/routing`, `/routing/{id}` | `?status=&category=&limit=` | every routed request: classification, project, agent, model, tools, reason, outcome, duration, cost |
-| GET | `/octopus/overview` | - | everything the Command Center shows in one call |
+| GET | `/octopus/overview` | - | everything the Den Home shows in one call |
 | GET | `/octopus/agents`, `/octopus/tools`, `/octopus/providers` | - | the agent and tool registries; models grouped by provider with availability, limits and usage |
 | PATCH | `/octopus/models/{id}` | `{"enabled"}` | switch a model on or off (stored in settings, `models.json` is not rewritten) |
+| POST | `/octopus/models` | `{"label", "provider", "model", "modality", "use_for", ...}` | add a model from the AI Providers page (openai / gemini / claude_code; kept in settings and joins the `use_for` categories - see `octopus/models.py`) |
+| PUT / DELETE | `/octopus/models/{id}` | same as POST | change or remove a model added there (`models.json` ones: 409) |
 | GET | `/tasks/{id}/detail`, `/tasks/{id}/diff` | - | the task page: plan steps, files changed, git branch / commits, tests, approvals, activity, result; the full diff |
 | GET | `/octopus/images/{name}` | - | a picture the Creative Agent made |
 | POST | `/uploads` | the raw image file (`Content-Type: image/png` etc.) | store a picture to attach to a prompt (PNG / JPEG / GIF / WebP, up to 10 MB, checked by content); returns `{"id","mime","size"}` |
 | GET | `/uploads/{id}` | - | a picture that was attached (needs the API key like everything else) |
-| GET | `/voice` | - | speech providers and their availability, chosen settings, macOS voices |
+| GET | `/voice` | - | speech providers and their availability, chosen settings (`voice_rate`, `voice_language_voices`), macOS voices, the language table |
 | POST | `/voice/transcribe`, `/voice/speak`, `/voice/command` | raw audio / `{"text"}` | server-side speech to text; text to speech (`"on": "mac"` speaks on the Mac); a spoken request end to end, returning `spoken` |
 | GET | `/octopus/models` | - | models from `models.json` plus live availability (key set? rate-limited?) |
 | GET | `/octopus/usage` | - | per-model / per-category counts, success, duration, tokens, est. cost (`?days=30`) |
@@ -191,13 +193,18 @@ All endpoints except `/health` require header: `X-API-Key: <your key>`
 | POST | `/tasks/{id}/play` | - | release a paused task |
 | POST | `/tasks/{id}/reviewed` | - | mark a `needs_review` task done |
 | GET | `/tasks/{id}/thread` | - | every message in that task's chat plus each turn's step log |
-| GET | `/messages` | - | chats, newest message first: `?q=` (every word, any message), `?status=needs\|active\|done\|error\|cancelled`, `?project_ids=1,2`, `?lane=agent\|api\|assistant`, `?limit=`, `?offset=` |
+| GET | `/messages` | - | chats, newest message first: `?q=` (every word, any message), `?status=needs\|active\|done\|error\|cancelled`, `?project_ids=1,2`, `?lane=agent\|api\|assistant`, `?kind=task\|message`, `?unread=true` (chats with an unread answer), `?limit=`, `?offset=` |
+| POST | `/tasks/{id}/read` | `?read=false` to undo | a message's answer was read (400 on a task) |
+| POST | `/messages/{id}/read` | - | every answered message in that chat counts as read; returns the new unread total |
 | GET | `/approvals/{id}/context` | - | risk read, steps so far and the project's uncommitted diff |
 | GET / PATCH | `/projects/{id}/settings` | see below | default priority, notifications, quiet hours, allowed commands, monthly budget |
 | GET / PATCH | `/settings` | `{"notify_on_resume"?, "hold_low_when_busy"?, "monthly_budget_usd"?}` | global toggles, plus the last Claude usage snapshot |
 | POST / DELETE | `/sleep` | `{"hours"?}` (default 8, max 24) | "I'm going to sleep" (the Going to sleep button on Home): the queue keeps going and uses the limits fully - Low tasks are no longer held back, a rate limit with no reset time is retried every 15 minutes, and approvals don't ping your phone and auto-deny after 5 minutes (the task is told to carry on without it). Ends by itself after `hours`; DELETE ends it now. State is `sleep_mode` in `/settings` |
-| POST | `/notify/test` | - | send a test ActivitySmith push |
+| POST | `/notify/test` | - | send a test push (ActivitySmith and every Web Push browser) |
+| GET | `/push/key` | - | the VAPID public key a browser subscribes with |
+| POST / DELETE | `/push/subscribe` | the browser's `PushSubscription.toJSON()` | start / stop Web Push to that browser (the dashboard does this itself) |
 | GET | `/usage/summary` | - | real API spend (today, month, last 7 days, by project) and Claude's 5-hour / weekly usage |
+| GET | `/usage/tokens` | - | the Token usage page: tokens and cost over a local date range (`?start=&end=` YYYY-MM-DD, default last 30 days; optional `project_id`, `model_id`, `lane` = agent / api / assistant / background) - totals, vs the period before, per day, per project / model / lane / category, and every run behind them. Background = side calls (chat titles, summaries, the classifier, prompt polish), logged in `usage_log` |
 | GET / POST | `/recipes` | `{"name", "prompt", "target"}` | saved prompts (`target`: `any`, `all`, or a project id) |
 | DELETE | `/recipes/{id}` | - | remove a recipe |
 | POST | `/recipes/{id}/run` | `{"project_id"?, "priority"?}` | queue a recipe in one project, or in every active one for an `all` recipe |
@@ -269,6 +276,33 @@ for risky commands (`rm`, `sudo`, `curl`, force-pushes, anything mentioning
 production...), which are only ever allowed exactly as approved. A command
 that chains, pipes, redirects or substitutes (`;`, `&&`, `|`, `>`, `$(...)`)
 never matches an allow-list entry.
+
+### Mac notifications (the Dock app)
+
+The dashboard added to the Dock (Safari › File › Add to Dock) or to an iPhone
+Home Screen gets real system notifications through Web Push (`webpush.py`,
+`static/sw.js`). They come in under the app's name and octopus icon even while the
+app is closed, alongside the ActivitySmith pushes and with the same filters
+(quiet hours, sleep mode, per-project toggles). Approvals stay on screen until you
+act on them, and the Dock icon shows a red count of the approvals waiting.
+
+1. Open the dashboard over **https**, i.e. Tailscale Serve:
+   `https://<mac>.<tailnet>.ts.net/dashboard` (`tailscale serve status` shows it).
+   Plain `http://100.x:8787` won't work, because browsers only allow
+   notifications on a secure origin. Enter the API key once, since it's saved per
+   address.
+2. In Safari, choose File › Add to Dock and name it "The Den".
+3. In the new app, click the bell, then **Allow desktop alerts**, then **Allow**.
+   Send a test with `POST /notify/test`.
+
+No setup or new dependencies are needed. The VAPID key pair is created on first
+use and kept in the `settings` table. Set `VAPID_SUBJECT` (an `https:` or
+`mailto:` URL) to override the contact sent to the push service, which defaults
+to the dashboard's https origin.
+
+A web app can't bounce its Dock icon (only native apps can), so the badge and
+the notification that stays on screen are the closest equivalent. Safari may not
+show Approve / Deny buttons on the notification. Clicking it opens the approval.
 
 ## Dashboard
 
@@ -351,6 +385,32 @@ the lane:
   including earlier pictures in the same chat.
 - Scheduled prompts can't carry pictures yet.
 
+## Tasks vs messages
+
+Every queue item has a `kind` (a column on `tasks`, also returned by every task endpoint):
+
+| | **task** (default) | **message** |
+|---|---|---|
+| What it is | Work that runs to completion: a bug fix, a feature, a deploy | A question to an AI model (Claude, ChatGPT, Gemini...) whose answer you read |
+| Where it runs | Claude Code in the project folder (or the assistant / control lanes) | An answering model: the api lane, or Claude Code in read-only `plan` mode |
+| Changes files | Yes (per its permission mode) | Never |
+| "Finished" means | `done` / `needs_review` / `error` - judged by outcome, reviewed via `/tasks/{id}/reviewed` | `done` *and read* - `unread` is true until `/tasks/{id}/read` |
+| Notification | "done" | "answer" |
+
+- **Creating one** - `POST /projects/{id}/tasks` with `"kind": "message"` (omit it for a task). A message is routed
+  to an answering model like any Octopus request; send `"model": "<models.json id>"` to choose who answers.
+  Image models can't take a message. Octopus requests (Ask box, voice, Alexa) pick the kind from where
+  they land: anything routed to the api lane is a message, everything else is a task.
+- **Replies** keep their chat's kind (a chat never turns from a question into a task midway), so `kind` is
+  ignored on a reply.
+- **Result display** - `GET /messages?kind=message&unread=true` is the inbox of answers waiting to be read;
+  `GET /queue/status` carries `unread_messages` for a badge. The dashboard's message-centre filter has a
+  Type section (Tasks / Messages).
+- **Migration** - existing rows are untouched apart from the new column. The first start after upgrading
+  marks items that already ran on the api lane as `message` (already-answered ones count as read), and
+  everything else stays `task`. Lane, model, status and queue position are not changed, so nothing is rerouted.
+  Callers that don't know about `kind` keep working: `db.add_task` defaults it from the lane the same way.
+
 ## Queue order, schedules, usage
 
 - **Order** - the agent lane runs tasks by `queue_pos`: a new task goes after
@@ -386,7 +446,7 @@ request (text · voice · API)
   -> report       text on the dashboard, and `spoken` for voice
 ```
 
-- **Command Center** (Home): the Ask box (agent override, plan preview, microphone), what Octopus is doing now with
+- **Den Home** (Home): the Ask box (agent override, plan preview, microphone), what Octopus is doing now with
   project / agent / model / progress, plans waiting on you, provider availability and the autonomy switch.
 - **Model choice is scored, not just ordered.** Among the enabled candidates of a category `octopus/plan.py` weighs
   strength, cost, speed, track record (`db.model_category_stats`) and your configured order, with a penalty for spending
@@ -412,6 +472,14 @@ request (text · voice · API)
   Add a cloud provider by subclassing `voice.STT` / `voice.TTS` and calling `register_stt` / `register_tts`. Follow-ups
   ("fix the second one", "run the tests afterward") attach to the last chat, a spoken plan is answered with "yes" / "no",
   and `POST /voice/command` returns the `spoken` line.
+  The **Voice page** (sidebar › Octopus › Voice) holds the audio options: which providers listen and speak, the
+  default voice, speaking speed (`voice_rate`, 0.5-2), and a voice per language (`voice_language_voices`, e.g.
+  `{"hi": "Lekha"}`). Each answer's language is detected (`octopus/voice/languages.py`: writing system, plus common
+  words for Latin-script languages - the same table is sent to the browser in `GET /voice` so both detect alike) and
+  read in the voice chosen for it; a language with no choice uses the default voice, or lets the browser pick a voice
+  that speaks it. macOS voices are a server setting; browser voices differ per device, so those choices stay in that
+  browser's localStorage. A voice picked by hand from the speaker button in the Ask box (`voice_manual`) overrides all
+  of that for every language until "Automatic" is picked there again. Add a language by adding a `Language(...)` row to `languages.py`.
 
 ### Octopus V1 details: routing requests to the right model
 
@@ -454,6 +522,29 @@ a ChatGPT subscription) to the plist's `EnvironmentVariables` as
 `OPENAI_API_KEY`, then restart the service. Without it, OpenAI models show
 as unavailable and general/simple requests fall back to Claude Code.
 
+**More than one key** - like the Claude accounts, OpenAI and Gemini can each have several
+keys (a personal and a work account). AI Providers -> the provider's *API keys* card -> *Add a
+key*: it's checked with one free request and saved in `api_keys.json` (owner-only, gitignored),
+never shown again - the page only shows its last four characters. The plist's key is listed
+first and can't be removed there. Octopus uses the provider's **default** key first; when that
+key is rate-limited, out of credit or rejected, the same request goes to the next key, and a
+rejected key is marked on the page. A key you add works without a restart, even with no key in
+the plist. API: `POST /octopus/api-keys {provider, label, key}`, `DELETE /octopus/api-keys/{id}`,
+`POST /octopus/api-keys/{id}/default`.
+
+## Project phases and autopilot
+
+Split a project into ordered **phases** (project page → **Phases** tab), put the to-dos in each one, and let Octopus work through them. Rules live in `phases.py`; the scheduler runs `worker.run_phase_autopilot` every 30 seconds.
+
+- A phase is planned → in progress → done (or paused), with an optional goal and start / end dates. Only one phase per project is in progress. Create one with its to-do items in one go, or move loose backlog items into a phase.
+- **One item at a time.** The next to-do is queued only when the last finished. If one fails or needs review, the phase stops and you get a push instead of more work piling on.
+- **What starts a phase** is the project's autopilot mode: *On my command* (only when you press Start, or say "start the next phase of KodeAura7"), *By the timeline* (a phase starts on its start date, in order), or *When the limit allows* (phases run back to back whenever Claude usage has room).
+- **The usage ceiling** (default 85% of the weekly limit, and 90% of the 5-hour window) holds automatic work until there's room again; a phase you Start yourself ignores it for its first item.
+- Every task for the project also sees the phase plan and the current phase's goal.
+- Say it to Octopus: "start phase 2 of shop", "start the Build phase", "pause the phase of shop", "how are the phases going on shop".
+
+API: `GET/POST /projects/{id}/phases`, `PATCH/DELETE /phases/{id}`, `POST /phases/{id}/start|pause|complete|reopen`, `POST /projects/{id}/phases/reorder`, `PUT /todos/{id}/phase`, `GET /phases` (overview). Autopilot is `autopilot` (`manual|timeline|capacity`) and `autopilot_ceiling` on `PATCH /projects/{id}/settings`.
+
 ## Personal assistant (email, calendar, reminders, queue, AI models)
 
 Octopus can also act as a secretary: talk to it in plain language and it reads
@@ -495,6 +586,16 @@ these steps until then.
 6. Open `http://127.0.0.1:8787/dashboard` **in a browser on the Mac** -> Personal
    -> Connections -> Connect Google. (The sign-in redirects to `127.0.0.1`, so it
    completes on the Mac itself; after that everything works from your phone.)
+
+**More than one Google account** - Personal -> Connections -> *+ Add another Google account*
+(Google always shows its account chooser). Every account keeps its own sign-in in the Keychain.
+With several connected, Octopus reads **all** of them (searches, today's calendar, free/busy),
+replies and changes events **from the account that has the message or event**, and sends new
+mail / creates new events from the **default** account - one default for email and one for
+calendar, set on each account's row. Say which to use and it uses only that one: *"email Rahul
+from my lawaccounting account"* (any recognisable part of the address works). Approval cards
+show which account an action will use. The Den's own emails and meeting invites go out from the
+default account; an invite is always changed or cancelled from the account that sent it.
 
 If Google rejects the redirect URI, register
 `http://127.0.0.1:8787/assistant/oauth/google/callback` on the client, or use a
@@ -627,6 +728,99 @@ is one file in `assistant/providers/` implementing `EmailProvider` / `CalendarPr
 `.venv/bin/python -m unittest discover -s tests -t .` - no network, no Google account,
 no model calls: fake Gmail/Calendar, a scripted stand-in model, a real local OAuth
 token server, and the real HTTP API + assistant worker end to end.
+
+## Modules
+
+Optional features can be dropped into `modules/<name>/` (a `module.json` plus a `module.py`) and
+switched on, off or reloaded from the API without editing source. They can register assistant tools,
+commands and `TASK_COMPLETED` / `TASK_ADDED` listeners, and everything is removed again on disable or
+reload. `GET /modules` shows status. Full guide: [docs/MODULES.md](docs/MODULES.md); example: `modules/hello/`.
+
+## Alexa
+
+Alexa is another way in and out of Octopus (code in `alexa/`, settings on the dashboard's
+Voice page). Say **"Alexa, open my octopus"**, then talk normally:
+
+| Say | What happens |
+|---|---|
+| "what's currently in the queue?" | running task, next three up, paused, approvals waiting |
+| "what is Octopus working on?" | each running task, its model, how long, current step, steps done |
+| "what approvals are waiting for me?" | reads each one (Bash commands in plain words, with the risk), then "approve" / "deny" / "skip" |
+| "add a new task" | which project? what should it do? reads it back, "yes" queues it for Claude Code |
+| "push the current code to GitHub" | picks the project you're working in (or asks), reads it back, "yes" queues a commit + push task (never a force-push) |
+| "let's discuss a task for KodeAura7" | a real back-and-forth with the Voice Partner agent: ask follow-ups, change your mind, add details. "queue it" hands the whole conversation to Claude Code |
+| "stop the current task" | asks first, then stops it |
+| "go on" | an answer that took longer than Alexa waits is read out now |
+| anything else | goes to Octopus like a message typed on the dashboard; work that would start Claude Code is read back and needs a yes |
+
+One-shots work too: "Alexa, ask my octopus what's in the queue". A conversation survives
+Alexa's session timing out: open the skill again within 15 minutes and it picks up where you
+were. The discussion is saved in The Den as one chat.
+
+**When you're away:** if an approval is waiting (or a task you started from Alexa finishes) and
+you haven't used the dashboard for 90 seconds, your Echo lights up yellow and says you have a
+message from Octopus. Say "Alexa, open my octopus" to hear it and answer. Only a count goes
+through Amazon's notification service; the details are read out by the skill. Nothing is sent
+while you're on the dashboard, mid-conversation with the skill, or during sleep mode. To
+require a spoken code before a voice approval goes through (say "approve", then "code 4321"
+when asked), set one on the Voice page.
+
+### Set it up (once, about 20 minutes)
+
+1. **Create the skill** at <https://developer.amazon.com/alexa/console/ask>, using the same Amazon
+   account as your Echo: *Create Skill*, name "Octopus", the language your Echo uses (English
+   (India) / (US)), type **Other**, then **Custom** model, **Provision your own** hosting, *Start
+   from scratch*. Copy the **Skill ID** (`amzn1.ask.skill....`).
+2. **Teach it what to listen for:** *Build > Interaction Model > JSON Editor*, paste
+   `setup/alexa/interaction-model.json`, then *Save* and *Build skill*. Regenerate the file after
+   registering a new project so Alexa hears its name well:
+   `.venv/bin/python -m alexa.model > setup/alexa/interaction-model.json`
+3. **Restart The Den first** if it was started before `alexa/` existed (the Voice page's Alexa
+   section says "Loading…" until you do). The restart also loads the check that keeps
+   everything except `POST /alexa` off the internet.
+4. **Make `/alexa` reachable by Amazon** with Tailscale Funnel (public HTTPS, real certificate,
+   only this one path):
+   ```bash
+   tailscale up
+   tailscale funnel --bg --set-path /alexa http://127.0.0.1:8787/alexa
+   tailscale funnel status        # shows https://your-mac.your-tailnet.ts.net/alexa
+   ```
+   The first time, Tailscale gives you a link to switch on HTTPS and Funnel for your tailnet.
+   Everything else stays private: Tailscale only forwards `/alexa`, and The Den answers 404
+   to any Funnel request that isn't `POST /alexa`. That endpoint has no API key (Amazon can't
+   send one), so every request is checked against Amazon's signature, timestamp and your skill
+   ID instead (`alexa/verify.py`). `tailscale funnel reset` turns it off.
+5. **Point the skill at it:** *Build > Endpoint > HTTPS*, Default Region =
+   the Funnel URL from step 4, certificate = "My development endpoint has a certificate from a
+   trusted certificate authority". Save.
+6. **Notifications (optional, for "tell me when an approval waits"):** *Build > Permissions*,
+   switch on **Alexa Notifications**, and copy the **Client Id / Client Secret** under *Alexa Skill
+   Messaging*. Notification events need the skill manifest too: put your Funnel URL into
+   `setup/alexa/skill.json` (both `uri`s) and upload it with the ASK CLI:
+   ```bash
+   npx ask-cli configure                        # log in to the developer account, once
+   npx ask-cli smapi update-skill-manifest --skill-id amzn1.ask.skill.... --stage development \
+     --manifest "file:setup/alexa/skill.json"
+   ```
+7. **Tell The Den:** add to the plist's `EnvironmentVariables`
+   (`~/Library/LaunchAgents/com.tushar.claudequeue.plist`):
+   - `ALEXA_SKILL_ID`: from step 1 (required; `/alexa` answers 503 without it)
+   - `ALEXA_CLIENT_ID`, `ALEXA_CLIENT_SECRET`: from step 6 (only for notifications)
+   - `ALEXA_PUBLIC_URL`: the Funnel URL (only shown on the Voice page)
+   - `ALEXA_USER_ID`: optional. Without it, the first Amazon account to use the skill is paired
+     and every other account is refused.
+   - `ALEXA_STAGE=live`: only if the skill is ever certified and published
+
+   Then reload it, but only when no task is running (`bootout` / `bootstrap`, as in step 7 of
+   the install, so the new variables are read).
+8. **Pair and allow notifications:** on the Echo, "Alexa, open my octopus". The skill is under
+   *Dev* in the Alexa app (*More > Skills & Games > Your Skills*). Allow its notifications there
+   (the skill also leaves a card asking for this). Then use *Send a test notification* on the
+   Voice page.
+
+If something doesn't work: the Voice page's Alexa section shows whether the skill ID is set,
+whether it's paired, whether notifications are allowed and the last error. "Request could not
+be verified" in the log means a request that wasn't from Amazon for this skill.
 
 ## Not built yet (next phases)
 

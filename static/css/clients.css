@@ -1,0 +1,95 @@
+/* CRM clients and contacts: the Clients page and a client's page (views/clients.js), the contact list and
+   forms shared with a project's Overview tab (views/contacts.js), and the Overview's client chip. */
+
+/* Logo / colour tile */
+.cl-av { color: var(--bg); }
+.cl-av--sm { width: 22px; height: 22px; border-radius: 7px; font-size: 11px; }
+.cl-av--lg { width: 56px; height: 56px; border-radius: 17px; font-size: 26px; }
+
+.cl-status { flex: none; display: inline-flex; align-items: center; gap: 5px; font: 600 12px/1.5 var(--font-ui); color: var(--c); }
+.cl-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+
+/* The list */
+.cl-tools { display: flex; align-items: center; gap: 10px; }
+.cl-search { flex: 1; min-width: 0; }
+.cl-new { display: flex; flex-direction: column; gap: 10px; }
+.cl-list { display: flex; flex-direction: column; }
+.cl-none { padding: 14px 4px; }
+.cl-row { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 10px; border: 0; border-bottom: 1px solid var(--line-soft); background: none; color: var(--text);
+  text-align: left; cursor: pointer; animation: rise .35s var(--ease-out) both; }
+.cl-row:hover { background: var(--inset); }
+.cl-row__text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.cl-row__name { font: 600 15px var(--font-ui); }
+.cl-row__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font: 500 12.5px var(--font-ui); color: var(--text-meta); min-width: 0; }
+.cl-row__value { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: none; font: 600 13.5px var(--font-ui); text-align: right; }
+.cl-row__value .meta { font-size: 11.5px; font-weight: 500; }
+
+/* One client */
+.cl-head { display: flex; align-items: center; gap: 14px; }
+.cl-head__text { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.cl-head__name { font: 700 22px/1.2 var(--font-ui); color: var(--text); overflow-wrap: anywhere; }
+.cl-head__back { flex: none; }
+.crm-hl.cl-hl { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cl-addr { white-space: pre-line; }
+.cl-site { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); }
+.cl-site > .crm-f { flex: 1; min-width: 0; border-top: 0; }
+.cl-open { flex: none; text-decoration: none; }
+
+.cl-projs { display: flex; flex-direction: column; }
+.cl-proj { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto minmax(70px, auto); align-items: center; gap: 10px; min-height: 46px; padding: 6px 8px; margin: 0 -8px;
+  border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; cursor: pointer; }
+.cl-proj + .cl-proj { border-top: 1px solid var(--line-soft); border-radius: 0; }
+.cl-proj:hover { background: var(--inset); }
+.cl-proj__name { font: 600 14px var(--font-ui); }
+.cl-stage { padding: 1px 8px; border-radius: 99px; font: 600 11.5px/1.6 var(--font-ui); color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); white-space: nowrap; }
+.cl-proj__due { display: flex; gap: 6px; justify-content: flex-end; font-size: 12px; white-space: nowrap; }
+.cl-proj__value { font: 600 13px var(--font-ui); text-align: right; white-space: nowrap; }
+.cn-pick { margin-top: 4px; }
+
+/* Contacts */
+.cn-list { display: flex; flex-direction: column; }
+.cn-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.cn-row:first-child { border-top: 0; }
+.cn-row.is-editing { display: block; }
+.cn-av { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--inset); border: 1px solid var(--line); color: var(--text-2); font: 700 12.5px var(--font-ui); }
+.cn-row.is-key .cn-av { border-color: var(--run); color: var(--run); }
+.cn-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.cn-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font: 500 14px var(--font-ui); color: var(--text); }
+.cn-key { padding: 0 7px; border-radius: 99px; font: 600 10.5px/1.6 var(--font-ui); color: var(--run); background: color-mix(in srgb, var(--run) 14%, transparent); }
+.cn-role { font: 400 12.5px var(--font-ui); color: var(--text-meta); overflow-wrap: anywhere; }
+.cn-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; font: 400 12.5px var(--font-ui); color: var(--text-meta); }
+.cn-link { color: var(--text-2); text-decoration: none; overflow-wrap: anywhere; }
+.cn-link:hover { color: var(--run); text-decoration: underline; }
+.cn-sep { color: var(--text-faint, var(--text-meta)); }
+.cn-pref { padding: 0 6px; border-radius: 99px; background: var(--inset); font-size: 11px; }
+.cn-notes { font: 400 12.5px/1.45 var(--font-ui); color: var(--text-2); white-space: pre-line; overflow-wrap: anywhere; }
+.cn-acts { display: flex; align-items: center; gap: 2px; flex: none; }
+.cn-acts .btn--sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.cn-acts .icon-btn { width: 30px; height: 30px; }
+.cn-form { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--inset); }
+.cn-form__title { font: 600 13px var(--font-ui); color: var(--text-2); }
+.cn-form__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cn-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cn-f__l { font: 600 12px var(--font-ui); color: var(--text-meta); }
+.cn-f__notes { resize: vertical; min-height: 54px; font: 400 14px/1.45 var(--font-ui); }
+
+/* A project's client (Overview › Project) */
+.ov-client { gap: 8px; }
+.ov-client__chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 99px;
+  background: var(--surface); color: var(--text); font: 500 14px var(--font-ui); cursor: pointer; }
+.ov-client__chip:hover { border-color: var(--text-meta); }
+
+/* Search: a contact's initial in place of a swatch */
+.srow__init { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--inset); color: var(--text-meta); font: 700 9.5px var(--font-ui); }
+
+@media (max-width: 900px) {
+  .crm-hl.cl-hl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crm-hl.cl-hl .crm-hl__t:last-child { grid-column: auto; }
+}
+@media (max-width: 520px) {
+  .cn-form__grid { grid-template-columns: minmax(0, 1fr); }
+  .cl-proj { grid-template-columns: 8px minmax(0, 1fr) auto; }
+  .cl-proj__due, .cl-proj__value { grid-column: 2 / -1; justify-content: flex-start; text-align: left; }
+  .cl-head__back { display: none; }
+  .cl-row__value { display: none; }
+}

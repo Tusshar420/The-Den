@@ -36,10 +36,18 @@ class Storing(UploadCase):
         self.assertEqual(uploads.path_of(got["id"]).read_bytes(), PNG)
         self.assertTrue(uploads.save(JPEG)["id"].endswith(".jpg"))
 
-    def test_rejects_things_that_are_not_pictures(self):
-        for bad in (b"", b"<svg onload=alert(1)>", b"#!/bin/sh\nrm -rf ~", b"GIF"):
+    def test_rejects_files_it_cannot_tell(self):
+        for bad in (b"", b"\x00\x01\x02 not a known kind of file", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 old office file with no name"):
             with self.assertRaises(ValueError):
                 uploads.save(bad)
+
+    def test_text_is_kept_as_text_and_never_shown_as_a_page(self):
+        # Markup or a script is stored as plain text and only ever downloaded (see api.get_upload).
+        for text, name in ((b"<svg onload=alert(1)>", "x.svg"), (b"#!/bin/sh\nrm -rf ~", "run.sh"), (b"a,b\n1,2", "data.csv")):
+            got = uploads.save(text, name)
+            self.assertFalse(uploads.is_image(got["id"]))
+            self.assertEqual(got["mime"], "text/plain")
+        self.assertTrue(uploads.save(b"a,b\n1,2", "data.csv")["id"].endswith(".csv"))
 
     def test_rejects_oversize(self):
         with self.assertRaises(ValueError):
@@ -72,7 +80,7 @@ class Storing(UploadCase):
         got = asyncio.run(api.upload_image(self.request(PNG)))
         self.assertEqual(uploads.path_of(got["id"]).read_bytes(), PNG)
         with self.assertRaises(HTTPException) as cm:
-            asyncio.run(api.upload_image(self.request(b"not a picture")))
+            asyncio.run(api.upload_image(self.request(b"\x00\x01 not a known kind of file")))
         self.assertEqual(cm.exception.status_code, 400)
         with self.assertRaises(HTTPException) as cm:                 # refused before the body is read
             asyncio.run(api.upload_image(self.request(PNG, declared_length=uploads.MAX_BYTES + 1)))

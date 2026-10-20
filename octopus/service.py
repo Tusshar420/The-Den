@@ -17,6 +17,7 @@ status; api.py turns that into a response.
 import re
 from typing import Any, Optional
 
+import accounts
 import db
 import uploads
 from octopus import control, plan as planner
@@ -25,6 +26,10 @@ FOLLOWUP_RE = re.compile(
     r"\b(it|that|this|those|them|these|afterwards?|again|too|also|next|instead|the (first|second|third|fourth|fifth|last|previous|other|same)"
     r"( one| issue| bug| problem| item| thing| file)?|number \d+|#\d+)\b|^\s*(and|then|also|now|ok|okay|but|so|after)\b", re.IGNORECASE)
 FOLLOWUP_MAX_WORDS = 14
+# "@octopus ..." in a chat: Octopus itself takes the message, not the model the chat is on (see handoff).
+MENTION_RE = re.compile(r"(?<![\w@])@octopus\b[ \t,:;.!-]*", re.IGNORECASE)
+# How a hand-off note in the chat starts - the dashboard reads these to offer "Open #N" / "Review plan".
+HANDOFF_QUEUED, HANDOFF_PLAN = "Octopus is on it in #", "Octopus has a plan for this"
 # Short spoken or typed replies to a plan that is waiting: matched on normalised words, so
 # "Yes, go ahead!" and "yeah do it" both count. "cancel" / "stop" are left to the control commands.
 YES_WORDS = {"yes", "yeah", "yep", "yup", "ok", "okay", "sure", "go", "ahead", "do", "it", "run", "proceed", "approve", "approved",
@@ -149,8 +154,9 @@ def _answer_pending(text: str, source: str, priority: int, mode: Optional[str]) 
 def submit(text: str, *, project_id: Optional[int] = None, model: str = "auto", agent: Optional[str] = None,
            priority: int = 0, permission_mode: Optional[str] = None, thread_id: Optional[int] = None,
            continue_recent: bool = False, source: str = "api", review: str = "auto",
-           images: Optional[list[str]] = None) -> dict[str, Any]:
-    """review: "auto" (Octopus decides whether to show the plan first) | "skip"
+           images: Optional[list[str]] = None, account: Optional[str] = None) -> dict[str, Any]:
+    """account: a Claude account id to run this on instead of its project's (accounts.py).
+    review: "auto" (Octopus decides whether to show the plan first) | "skip"
     (the caller has already seen it - run it) | "force" (always show it).
     images: upload ids (uploads.py) - the model chosen is one that can read them."""
     text = (text or "").strip()
@@ -164,6 +170,13 @@ def submit(text: str, *, project_id: Optional[int] = None, model: str = "auto", 
         raise ServiceError(400, f"permission_mode must be one of {', '.join(db.PERMISSION_MODES)}")
     if review not in ("auto", "skip", "force"):
         raise ServiceError(400, "review must be auto, skip or force")
+    if account and not accounts.exists(account):
+        raise ServiceError(400, "That Claude account isn't set up (any more)")
+    account = account or None
+    if project_id is not None:
+        target = db.get_project(project_id)
+        if target and not db.has_folder(target):   # a CRM-only project: nothing runs in it
+            raise ServiceError(400, db.NO_FOLDER_HINT)
     db.expire_old_plans()
 
     if thread_id is None and project_id is None and model == "auto" and not agent and not images:
@@ -183,9 +196,13 @@ def submit(text: str, *, project_id: Optional[int] = None, model: str = "auto", 
         root = db.get_task(recent) if recent else None
     if root:
         root = db.get_task(root["thread_id"] or root["id"])
+        if thread_id is not None and mentions_octopus(text):
+            return handoff(text, root, priority=priority, permission_mode=permission_mode, source=source,
+                           images=images, account=account)
         plan = planner.build_plan(text, thread_root=root, force_model=model, force_agent=agent, source=source, images=images)
         if plan["blocked"] or not plan["model"]:
             raise ServiceError(409, plan["unavailable"] or "Blocked by your permission settings: " + ", ".join(plan["blocked"]))
+        plan["account"] = account
         routing = db.add_routing(text, plan, "queued", source, "auto")
         return _queue(plan, routing, priority, permission_mode or _thread_mode(root["id"]), "auto")
 
@@ -194,6 +211,7 @@ def submit(text: str, *, project_id: Optional[int] = None, model: str = "auto", 
         plan = planner.build_plan(text, project_id=project_id, force_model=model, force_agent=agent, source=source, images=images)
     except ValueError as e:
         raise ServiceError(404 if "Project not found" in str(e) else 409 if "No agent" in str(e) else 400, str(e))
+    plan["account"] = account
     decided_by = "user" if plan["overrides"] or project_id is not None else "auto"
 
     if plan["control"]:
@@ -218,6 +236,50 @@ def submit(text: str, *, project_id: Optional[int] = None, model: str = "auto", 
 
     routing = db.add_routing(text, plan, "queued", source, decided_by)
     return _queue(plan, routing, priority, permission_mode, decided_by)
+
+
+# ------------------------------------------------------------------ mention
+
+def mentions_octopus(text: str) -> bool:
+    return bool(MENTION_RE.search(text or ""))
+
+
+def strip_mention(text: str) -> str:
+    """ "@octopus, run the tests" -> "run the tests"; "can @Octopus check it" -> "can check it"."""
+    return re.sub(r"[ \t]{2,}", " ", MENTION_RE.sub(" ", text or "")).strip()
+
+
+def handoff(text: str, root: dict[str, Any], *, priority: int = 0, permission_mode: Optional[str] = None,
+            source: str = "dashboard", images: Optional[list[str]] = None,
+            account: Optional[str] = None) -> dict[str, Any]:
+    """A chat message that mentions @octopus. Octopus handles it as a request of
+    its own - its own pick of agent, model and tools, in the chat's project unless
+    the request names another - and the model the chat is on never gets it. The
+    chat keeps a finished note (control lane, so no worker ever runs it) pointing
+    at Octopus's task or plan. Returns submit()'s outcome plus `note`, that record."""
+    request = strip_mention(text)
+    if not request:
+        raise ServiceError(400, "Tell Octopus what to do after @octopus")
+    root = db.get_task(root["thread_id"] or root["id"])
+    project = db.get_project(root["project_id"])
+    here = (project if project and db.has_folder(project) and not db.is_general_project(project)
+            and not planner.find_project(request) else None)
+    out = submit(request, project_id=here["id"] if here else None, priority=priority, permission_mode=permission_mode,
+                 source=source, images=images, account=account)
+    plan, task, status = out["plan"], out.get("task"), out["status"]
+    if status == "queued":
+        m = plan.get("model") or {}
+        summary = f"{HANDOFF_QUEUED}{task['id']} · the {plan['agent']['label']} on {m.get('label', m.get('id', 'a model'))}"
+    elif status in ("proposed", "needs_input"):
+        summary = f"{HANDOFF_PLAN} - " + ((plan.get("needs_input") or {}).get("question") or "it needs your OK first")
+    else:                                     # an instant answer, or "no" to a waiting plan
+        summary = (out.get("result") or {}).get("text") or "Done"
+    note = db.add_task(root["project_id"], text, priority, root["id"], lane="control", model_id=None,
+                       category=root.get("category"), routed_by="mention", routing_id=out.get("routing_id"),
+                       route_reason="You mentioned @octopus, so Octopus took this instead of the chat's model",
+                       source=source, images=images)
+    db.mark_done(note["id"], summary)
+    return {**out, "note": db.get_task(note["id"])}
 
 
 # ---------------------------------------------------------------- run/cancel

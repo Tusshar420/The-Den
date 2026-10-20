@@ -1,0 +1,21 @@
+/* Notes pad: list, editor and save-as-file panel. Built on tokens.css - no new colours. */
+.page--notes { display: flex; flex-direction: column; gap: 12px; }
+.pad-top { display: flex; gap: 10px; }
+.pad-search { flex: 1; min-width: 0; }
+.pad-row { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; padding: 13px 16px; border: none; border-bottom: 1px solid var(--line-soft); background: none; color: inherit; }
+.pad-row:last-child { border-bottom: none; }
+.pad-row:active { background: var(--surface-2); }
+.pad-row__title { font: 700 15px var(--font-ui); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pad-row__prev { font: 400 13px/1.4 var(--font-ui); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pad-row__meta { font: 500 11.5px var(--font-mono); color: var(--text-faint); }
+.pad-tag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); font: 600 10.5px var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-meta); vertical-align: 1px; }
+.pad-bar { display: flex; align-items: center; gap: 8px; }
+.pad-status { flex: 1; text-align: right; }
+.pad__title { border: none; outline: none; background: none; color: var(--text); font: 700 24px var(--font-ui); padding: 6px 2px; width: 100%; }
+.pad__body { width: 100%; min-height: 55vh; resize: vertical; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); color: var(--text-2);
+  font: 400 17px/1.6 var(--font-ui); padding: 16px; outline: none; box-sizing: border-box; }
+.pad__body:focus { border-color: var(--line-focus); }
+.pad-lbl { display: flex; flex-direction: column; gap: 5px; font: 600 11px var(--font-mono); letter-spacing: .06em; color: var(--text-faint); }
+.pad-proj { max-width: 320px; }
+.pad-save__head { display: flex; justify-content: space-between; align-items: center; }
+.pad-err { padding: 9px 12px; border-radius: var(--r-md); background: var(--err-card); border: 1px solid var(--err-line); color: var(--err-soft); font: 500 13px var(--font-ui); }

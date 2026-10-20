@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; gap:14px; align-items:stretch; max-width:1600px; margin:0 auto; height:calc(100vh - 200px); min-height:480px; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:{{ listFlex }}; min-width:0; display:flex; flex-direction:column; gap:10px; min-height:0;">
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1; min-width:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+          <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search all chats" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+        </div>
+        <button onClick="{{ collapse }}" title="Back to sidebar view" style="flex:none; width:40px; height:40px; display:grid; place-items:center; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"></path></svg></button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <sc-for list="{{ filters }}" as="t" hint-placeholder-count="5"><button onClick="{{ t.pick }}" style="height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ t.bg }}; color:{{ t.fg }}; border:1px solid {{ t.bd }};">{{ t.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ t.count }}</span></button></sc-for>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <sc-for list="{{ list }}" as="m" hint-placeholder-count="5">
+          <button onClick="{{ m.pick }}" style="display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border:0; border-bottom:1px solid rgba(255,255,255,0.04); border-left:3px solid {{ m.edge }}; cursor:pointer; text-align:left; background:{{ m.bg }}; color:#E8EEF3;">
+            <span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:{{ m.dot }};"></span>
+            <span style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+              <span style="display:flex; align-items:baseline; gap:8px;"><span style="flex:1; min-width:0; font-size:13.5px; font-weight:{{ m.fw }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ m.when }}</span></span>
+              <span style="font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.preview }}</span>
+              <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ m.project }} · {{ m.model }}</span>
+            </span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}"><div style="padding:36px 16px; text-align:center; font-size:13px; color:#93A1B0;">No chats match.</div></sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showThread }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; min-height:0; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}"><button onClick="{{ back }}" style="width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;">‹</button></sc-if>
+        <span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ cur.dot }};"></span>
+        <div style="flex:1 1 200px; min-width:0;"><div style="font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ cur.title }}</div><div style="font-size:12px; color:#93A1B0;">{{ cur.id }} · {{ cur.project }} · {{ cur.model }} · <span style="color:{{ cur.dot }};">{{ cur.status }}</span></div></div>
+        <button onClick="{{ toggleNote }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid {{ noteBtnBd }}; background:{{ noteBtnBg }}; cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M12 10v6"></path></svg>Note</button>
+        <button onClick="{{ openProject }}" style="height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Open in project</button>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:12px;">
+        <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="4">
+          <sc-if value="{{ m.you }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end; max-width:78%; padding:10px 14px; border-radius:16px 16px 4px 16px; background:rgba(255,123,92,0.14); border:1px solid rgba(255,123,92,0.25); font-size:14px; line-height:1.55;">{{ m.text }}</div></sc-if>
+          <sc-if value="{{ m.step }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px; padding-left:4px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;"><span style="width:6px; height:6px; border-radius:50%; background:{{ m.dot }};"></span>{{ m.text }}</div></sc-if>
+          <sc-if value="{{ m.bot }}" hint-placeholder-val="{{ false }}"><div style="max-width:82%; display:flex; flex-direction:column; gap:6px;"><div style="padding:10px 14px; border-radius:4px 16px 16px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); font-size:14px; line-height:1.55;">{{ m.text }}</div><button onClick="{{ m.save }}" style="align-self:flex-start; height:24px; padding:0 8px; border-radius:7px; border:0; background:transparent; cursor:pointer; font-size:11.5px; font-weight:600; color:#93A1B0;" style-hover="color:#E8EEF3; background:rgba(255,255,255,0.05);">+ Save as note</button></div></sc-if>
+        </sc-for>
+        <sc-if value="{{ cur.isApproval }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px; border-radius:14px; background:rgba(255,181,71,0.07); border:1px solid rgba(255,181,71,0.28);"><span style="flex:1 1 200px; font-family:'JetBrains Mono', monospace; font-size:12px; color:#DCE4EB;">{{ cur.code }}</span><button onClick="{{ deny }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12.5px; font-weight:650; color:#FF8FA2;">Deny</button><button onClick="{{ approve }}" style="height:34px; padding:0 14px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;">Approve</button></div>
+        </sc-if>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin:12px; padding:4px 4px 4px 14px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+        <input value="{{ text }}" onChange="{{ onText }}" onKeyDown="{{ textKey }}" placeholder="Reply to Octopus…" style="flex:1; min-width:0; height:38px; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:15px;">
+        <button onClick="{{ send }}" title="Send" style="flex:none; width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:0 0 300px; min-width:0; display:flex; flex-direction:column; gap:10px; min-height:0; padding:14px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center;"><span style="flex:1; font-size:14.5px; font-weight:700;">Notes for this chat</span><sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}"><button onClick="{{ toggleNote }}" style="border:0; background:none; cursor:pointer; color:#93A1B0;">×</button></sc-if></div>
+      <input value="{{ nTitle }}" onChange="{{ onNTitle }}" placeholder="Title" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:14px; font-weight:600; outline:none;">
+      <textarea value="{{ nBody }}" onChange="{{ onNBody }}" rows="5" placeholder="Write a note — decisions, follow-ups, anything to remember…" style="resize:vertical; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.55; outline:none;"></textarea>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ nKinds }}" as="k" hint-placeholder-count="3"><button onClick="{{ k.pick }}" style="height:28px; padding:0 10px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ k.bg }}; color:{{ k.fg }}; border:1px solid {{ k.bd }};">{{ k.label }}</button></sc-for></div>
+      <button onClick="{{ addNote }}" style="height:36px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:13px; font-weight:700; color:#1A0A05;">Save note</button>
+      <div style="flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.06);">
+        <sc-for list="{{ notes }}" as="n" hint-placeholder-count="2">
+          <div style="padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; align-items:center; gap:6px;"><span style="flex:1; min-width:0; font-size:13px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ n.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:9.5px; padding:2px 6px; border-radius:5px; background:{{ n.kbg }}; color:{{ n.kc }};">{{ n.kind }}</span><button onClick="{{ n.del }}" style="border:0; background:none; cursor:pointer; color:#6B7A8A;">×</button></div>
+            <div style="font-size:12.5px; line-height:1.5; color:#A3B0BE; white-space:pre-wrap;">{{ n.body }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noNotes }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#6B7A8A;">No notes yet for this chat.</div></sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const CHATS = [
+  { id:'#829', title:'Push the CRM board branch?', preview:'Waiting on your approval for git push…', project:'KodeAura7', model:'Claude Code', when:'2m', dot:C.amber, status:'Needs you', unread:1, kind:'needs', code:'git push origin feature/crm-board',
+    msgs:[['you', 'Board view: let users drag cards between stages. Use dnd-kit.'], ['step', 'Installed dnd-kit · 3 files changed', C.green], ['step', 'Tests passed · 42', C.green], ['bot', 'Board drag works on desktop and iPad. Ready to push feature/crm-board — approve to continue.']] },
+  { id:'#824', title:'Paper set B is ready', preview:'4 files changed, tests passed. Review when free.', project:'Sanskrit exam paper', model:'Claude Code', when:'18m', dot:C.blue, status:'Needs review', unread:1, kind:'needs',
+    msgs:[['you', 'Generate paper set B with an answer key.'], ['step', '40 questions · 4 sections', C.green], ['bot', 'Paper set B is ready on branch paper-set-b. Section C is 2 questions shorter than set A — want me to add two?']] },
+  { id:'#825', title:'Abhishek call summary', preview:'Three decisions, two follow-ups added to CRM.', project:'General', model:'Gemini 2.5', when:'1h', dot:C.green, status:'Done', unread:0, kind:'done',
+    msgs:[['you', 'Summarize my call notes with Abhishek.'], ['bot', 'Decisions: 1) demo Thursday 16:30, 2) add stage history, 3) invoice before Friday. Follow-ups added to CRM.']] },
+  { id:'#826', title:'Invoice rounding fix', preview:'Done. Retainer totals now round per line.', project:'Law Accounting site', model:'Claude Code', when:'3h', dot:C.green, status:'Done', unread:0, kind:'done',
+    msgs:[['you', 'Fix invoice rounding on retainer projects.'], ['step', 'Edited 2 files · tests passed', C.green], ['bot', 'Done. Retainer totals now round per line instead of per invoice.']] },
+  { id:'#823', title:'Phase 3 to-dos', preview:'Failed: model returned an empty list.', project:'The Den', model:'GPT-5', when:'5h', dot:C.err, status:'Failed', unread:0, kind:'failed',
+    msgs:[['you', 'Generate phase 3 to-dos for the Den.'], ['step', 'Model returned an empty list (×2)', C.err], ['bot', 'I couldn\'t produce the list. Retry on Claude Code instead?']] }
+];
+class Component extends DCLogic {
+  state = { q:'', f:'All', sel:null, phoneOpen:false, text:'', extra:{}, read:{}, noteOpen:null, notes:{}, nTitle:'', nBody:'', nKind:'Note', decided:{} };
+  componentDidMount() { this.props.onReady && this.props.onReady(); if (this.props.initial) this.setState({ sel:this.props.initial, phoneOpen:true }); this.setState({ noteOpen: !this.props.isPhone && (this.props.width || 1400) >= 1280 }); }
+  say(t, s, c) { this.props.say && this.props.say(t, s, c); }
+  renderVals() {
+    const s = this.state; const isPhone = !!this.props.isPhone; const ql = s.q.trim().toLowerCase();
+    const match = f => c => f === 'All' || (f === 'Needs you' && c.kind === 'needs' && !s.decided[c.id]) || (f === 'Unread' && c.unread && !s.read[c.id]) || (f === 'Failed' && c.kind === 'failed') || (f === 'Done' && c.kind === 'done');
+    const list = CHATS.filter(match(s.f)).filter(c => !ql || (c.title + c.preview + c.project).toLowerCase().includes(ql));
+    const cur = CHATS.find(c => c.id === s.sel) || CHATS[0];
+    const notes = s.notes[cur.id] || [];
+    const KC = { Note:'#93A1B0', 'Follow-up':C.amber, Decision:C.teal };
+    const addN = (title, body, kind) => this.setState(st => ({ notes:{ ...st.notes, [cur.id]:[{ id:Date.now(), title, body, kind }, ...(st.notes[cur.id] || [])] } }));
+    const narrow = isPhone || (this.props.width || 1400) < 1280;
+    return {
+      isPhone, isNarrow: narrow, showList: !isPhone || !s.phoneOpen, showThread: !isPhone || s.phoneOpen, listFlex:'0 0 340px', back:() => this.setState({ phoneOpen:false }),
+      showNotes: !!s.noteOpen && (!isPhone || s.phoneOpen), toggleNote:() => this.setState(st => ({ noteOpen:!st.noteOpen })),
+      noteBtnBg: s.noteOpen ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', noteBtnBd: s.noteOpen ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)',
+      collapse:() => this.props.onCollapse && this.props.onCollapse(cur.id),
+      q:s.q, onQ:e => this.setState({ q:e.target.value }),
+      filters:['All', 'Needs you', 'Unread', 'Failed', 'Done'].map(f => ({ label:f, count:String(CHATS.filter(match(f)).length), pick:() => this.setState({ f }), bg: s.f === f ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: s.f === f ? '#FFA48C' : '#A3B0BE', bd: s.f === f ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.07)' })),
+      list: list.map(c => { const on = c.id === cur.id; const un = c.unread && !s.read[c.id]; return { ...c, fw: un ? 700 : 550, bg: on ? 'rgba(255,123,92,0.08)' : 'transparent', edge: on ? '#FF7B5C' : 'transparent', pick:() => this.setState(st => ({ sel:c.id, phoneOpen:true, read:{ ...st.read, [c.id]:1 } })) }; }),
+      empty: !list.length,
+      cur:{ ...cur, isApproval: cur.kind === 'needs' && !!cur.code && !s.decided[cur.id] },
+      msgs: [...cur.msgs, ...(s.extra[cur.id] || [])].map(([k, text, dot]) => ({ you: k === 'you', bot: k === 'bot', step: k === 'step', text, dot: dot || '#93A1B0', save:() => { addN(cur.title, text, 'Note'); this.setState({ noteOpen:true }); this.say('Saved as note', cur.title, C.green); } })),
+      approve:() => { this.setState(st => ({ decided:{ ...st.decided, [cur.id]:'ok' }, extra:{ ...st.extra, [cur.id]:[...(st.extra[cur.id] || []), ['step', 'Approved — pushing', C.green]] } })); this.say('Approved ✓', cur.code, C.green); },
+      deny:() => { this.setState(st => ({ decided:{ ...st.decided, [cur.id]:'no' }, extra:{ ...st.extra, [cur.id]:[...(st.extra[cur.id] || []), ['step', 'Denied — Octopus will work around it', C.err]] } })); },
+      openProject:() => this.say('Opening ' + cur.project, cur.id, C.blue),
+      text:s.text, onText:e => this.setState({ text:e.target.value }), textKey:e => { if (e.key === 'Enter') this.send(cur.id); }, send:() => this.send(cur.id),
+      nTitle:s.nTitle, onNTitle:e => this.setState({ nTitle:e.target.value }), nBody:s.nBody, onNBody:e => this.setState({ nBody:e.target.value }),
+      nKinds: Object.keys(KC).map(k => ({ label:k, pick:() => this.setState({ nKind:k }), bg: s.nKind === k ? tint(KC[k], 0.16) : 'rgba(255,255,255,0.03)', fg: s.nKind === k ? '#FFFFFF' : '#A3B0BE', bd: s.nKind === k ? tint(KC[k], 0.45) : 'rgba(255,255,255,0.08)' })),
+      addNote:() => { const b = s.nBody.trim(); if (!b && !s.nTitle.trim()) return this.say('Write something first', '', C.amber); addN(s.nTitle.trim() || 'Untitled', b, s.nKind); this.setState({ nTitle:'', nBody:'' }); this.say('Note saved', 'Also in Notes · ' + cur.project, C.green); },
+      notes: notes.map(n => ({ ...n, kc:KC[n.kind], kbg:tint(KC[n.kind], 0.14), del:() => this.setState(st => ({ notes:{ ...st.notes, [cur.id]:(st.notes[cur.id] || []).filter(x => x.id !== n.id) } })) })), noNotes: !notes.length
+    };
+  }
+  send(id) { const t = this.state.text.trim(); if (!t) return; this.setState(st => ({ text:'', extra:{ ...st.extra, [id]:[...(st.extra[id] || []), ['you', t], ['step', 'Octopus is thinking…', C.blue]] } })); }
+}
+</script>
+</body>
+</html>

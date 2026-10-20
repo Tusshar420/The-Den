@@ -5,6 +5,7 @@
 import { statusOf, secs, mmss, fmtCost } from '../format.js';
 import { esc, clock, spinner } from '../ui.js';
 import { riskPill } from './plan-card.js';
+import { kindOf } from '../preview.js';
 
 const STEP = { completed: ['✓', 'var(--ok)'], in_progress: ['→', 'var(--run)'], pending: ['○', 'var(--text-ghost)'] };
 const FILE = { M: ['M', 'var(--wait)'], A: ['A', 'var(--ok)'], D: ['D', 'var(--err)'], R: ['R', 'var(--review)'] };
@@ -42,7 +43,8 @@ export function taskDetail(c, id) {
 
   const files = d.files.length ? `<div class="td-files">${d.files.map(f => {
     const [g, color] = FILE[f.status] || FILE.M;
-    return `<div class="td-file"><span class="td-file__s" style="color:${color}">${g}</span><span class="td-file__p truncate">${esc(f.path)}</span><span class="td-file__n"><i class="td-add">+${f.additions}</i> <i class="td-del">−${f.deletions}</i></span></div>`;
+    const canView = f.status !== 'D' && kindOf(f.path);
+    return `<div class="td-file"><span class="td-file__s" style="color:${color}">${g}</span><span class="td-file__p truncate">${esc(f.path)}</span>${canView ? `<button class="btn btn--sm td-file__view" data-action="taskFile" data-id="${id}" data-path="${esc(f.path)}">Preview</button>` : ''}<span class="td-file__n"><i class="td-add">+${f.additions}</i> <i class="td-del">−${f.deletions}</i></span></div>`;
   }).join('')}</div>` : '<span class="meta">No files changed.</span>';
 
   const git = d.git ? `${kv('BRANCH', `${esc(d.git.branch || '?')}${d.git.base_branch && d.git.base_branch !== d.git.branch ? ` <span class="meta">(started on ${esc(d.git.base_branch)})</span>` : ''}`)}
@@ -73,6 +75,8 @@ export function taskDetail(c, id) {
       ${kv('PROJECT', d.project && !d.project.is_general ? esc(d.project.name) : '<span class="meta">none</span>')}
       ${kv('AGENT', d.agent ? esc(d.agent.label) : '<span class="meta">not recorded</span>')}
       ${kv('MODEL', esc(d.model.label || d.model.id || '?'))}
+      ${kv('AI TOOL', esc((d.ai_tool && d.ai_tool.label) || d.model.label || '?'))}
+      ${kv('ACCOUNT', d.ai_tool && d.ai_tool.account ? esc(d.ai_tool.account.label) : '<span class="meta">n/a (API key)</span>')}
       ${kv('TOOLS', d.tools.length ? d.tools.map(x => `<span class="risk-chip">${esc(x.label)}</span>`).join(' ') : '<span class="meta">none</span>')}
     </div>
     ${plan ? sec('WHY', `<span class="td-why">${esc(d.routing.plan.reason || '')}</span><span class="meta">${esc(t.route_reason || '')}</span>`) : (t.route_reason ? sec('WHY', `<span class="meta">${esc(t.route_reason)}</span>`) : '')}
@@ -84,14 +88,5 @@ export function taskDetail(c, id) {
     ${sec(`APPROVALS${d.approvals.length ? ` <i>${d.approvals.length}</i>` : ''}`, approvals)}
     ${sec('ACTIVITY', timeline)}
     ${sec('FINAL RESULT', result)}
-  </div>`;
-}
-
-// Chat | Details, under the pane header.
-export function detailSwitch(c) {
-  const on = c.ui.octo.detailOpen;
-  return `<div class="pane__mode" data-noswipe role="tablist" data-key="pane-mode">
-    <button class="pane__mode-opt${on ? '' : ' is-on'}" role="tab" aria-selected="${!on}" data-action="taskTab" data-v="chat">Chat</button>
-    <button class="pane__mode-opt${on ? ' is-on' : ''}" role="tab" aria-selected="${on}" data-action="taskTab" data-v="details">Details</button>
   </div>`;
 }

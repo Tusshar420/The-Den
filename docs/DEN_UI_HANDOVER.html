@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>The Den (Tushar's Workspace) - UI Handover for Claude Design</title>
+<style>
+@page { size: A4; margin: 16mm 14mm; }
+body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1f26; }
+h1 { font-size: 26pt; margin: 0 0 4pt; color: #d9553a; }
+h2 { font-size: 16pt; margin: 22pt 0 6pt; padding-bottom: 3pt; border-bottom: 2px solid #ff7b5c; page-break-after: avoid; }
+h3 { font-size: 12pt; margin: 14pt 0 4pt; color: #28323f; page-break-after: avoid; }
+h4 { font-size: 10.5pt; margin: 10pt 0 3pt; color: #45525f; page-break-after: avoid; }
+p { margin: 4pt 0; }
+ul, ol { margin: 3pt 0 5pt 0; padding-left: 18pt; }
+li { margin: 1.5pt 0; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 9pt; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #cfd6de; padding: 3pt 5pt; vertical-align: top; text-align: left; }
+th { background: #eef1f5; }
+code { font: 9pt "SF Mono", Menlo, monospace; background: #f1f3f6; padding: 0 2pt; border-radius: 2pt; }
+.sub { color: #5b6a7a; margin-bottom: 10pt; }
+.note { background: #fff4ef; border-left: 3px solid #ff7b5c; padding: 5pt 8pt; margin: 8pt 0; }
+.sw { display:inline-block; width:9pt; height:9pt; border:1px solid #888; vertical-align:middle; margin-right:3pt; }
+.toc li { margin: 1pt 0; }
+</style></head><body>
+
+<h1>The Den &mdash; Tushar's Workspace</h1>
+<div class="sub">Complete functional and process description, handed over to Claude Design to create the whole Den UI.<br>Generated 2026-10-06 from the codebase at /Users/work/TheDen.</div>
+
+<div class="note"><b>How to read this.</b> Sections 1&ndash;3 describe what The Den is and the things it manages. Section 4 is the processes (the main part). Section 5 describes the current UI as it exists today. Section 6 is the visual system. Section 7 lists the full screen inventory, section 8 the open items and the design brief. Section 9 is the reference (API endpoints, settings, files). Anything marked <b>not built</b> does not exist yet.</div>
+
+<h3>Contents</h3>
+<ol class="toc">
+<li>What The Den is</li>
+<li>Entities (the nouns the UI shows) and all statuses</li>
+<li>Access, auth and global behavior</li>
+<li>Processes (detailed workflows)</li>
+<li>The current UI (navigation, screens, sheets, keys, gestures, notifications, responsive)</li>
+<li>Visual system (tokens, style, motion, states)</li>
+<li>Screen inventory checklist</li>
+<li>Open items, gaps and design brief</li>
+<li>Reference (endpoints, settings, files)</li>
+</ol>
+
+<h2>1. What The Den is</h2>
+<ul>
+<li><b>The Den</b> is a single-owner, always-on service that runs on the user's Mac (formerly called claude-queue). Its product name is <b>"Tushar's Workspace"</b>. The API runs at http://127.0.0.1:8787 and the dashboard at /dashboard.</li>
+<li><b>Octopus</b> is the nickname for the worker and the whole AI system: one brain (the router that decides which model handles a request) with many arms (Claude Code in any registered project, plus API models such as OpenAI and Gemini). The mascot is an octopus drawn in code with six moods.</li>
+<li><b>Core loop:</b> the user queues tasks per project. The Den runs them through Claude Code one at a time, moves to the next when one finishes, and resumes by itself after a usage limit.</li>
+<li><b>Layers on top of the queue:</b> Octopus request routing and planning; a personal assistant (email, calendar, reminders); voice and Alexa; a lightweight CRM and project-management layer (clients, contacts, activities, follow-ups, timeline, phases and autopilot); email and push notifications; documents, notes and a pad.</li>
+<li><b>It lets the user</b> trigger work from other devices (phone dashboard, SwiftBar, iOS Shortcuts, Alexa) instead of only from an editor.</li>
+<li><b>Project plan:</b> CRM [done]; Email notifications [done]; <b>UI Setup [planned]</b> &mdash; this document is the input for UI Setup.</li>
+<li><b>Platform:</b> phone first (bottom tab bar, swipe between pages, full-screen chat) with a sidebar layout from 900px up. The front end is plain ES modules with no build step. The older single-file dashboard still exists at <code>/dashboard/legacy</code>.</li>
+</ul>
+
+<h2>2. Entities and statuses</h2>
+<table>
+<tr><th style="width:17%">Entity</th><th>Fields and notes</th></tr>
+<tr><td>Project</td><td>Name; folder path (can be none = "CRM only"); category (work/personal); status; pipeline stage; priority; health; start, due and completed dates; contract value and currency; billing type (fixed, hourly, retainer); owner (free text); tags (up to 30); links (up to 20, label + URL); color and logo background (#rrggbb); picture; client; hidden; active (paused); monthly API budget (default $20); pinned Claude account; autopilot mode and ceiling; default priority; notification toggles; allowed commands; deploy targets; auto-in-progress flag. A built-in project named <b>General</b> (workspace/general) receives requests with no project; it has no CRM record and cannot be hidden.</td></tr>
+<tr><td>Task</td><td>Prompt, project, status, model, category, routing reason, priority, permission mode, kind (task or message), thread, queue position, step log, duration, tokens, cost estimate, unread flag, git branch/commits/files changed, tests seen, result.</td></tr>
+<tr><td>Backlog to-do</td><td>Text, order, checked, important (star), priority, model, permission mode, images, phase. Not run until checked and "Run selected" is pressed.</td></tr>
+<tr><td>Phase</td><td>Name (&le;120), goal (&le;2,000), description (&le;4,000), position, status, start/end dates, blocked note, started/finished times.</td></tr>
+<tr><td>Project note</td><td>Kind: guideline / requirement / note; text; images. Every task run for the project is given them. The first note is the "pinned note" on the Work tab.</td></tr>
+<tr><td>Document</td><td>File up to 100 MB; sanitized name (&le;120); mime; size; created time. Text files are given to models as context (up to 40,000 characters, 50 documents).</td></tr>
+<tr><td>Client</td><td>Name (required, unique, &le;120), industry, website, address (&le;500), notes (&le;20,000), status (prospect default / active / past), color, logo. Computed: project count, active projects, contact count, value per currency (total of all non-lost projects; active = active + on_hold stages).</td></tr>
+<tr><td>Contact</td><td>Optional client, name (required), role, email, phone (&ge;3 digits), notes, preferred method (email, phone, text, whatsapp, none). On a project a contact is the <b>key</b> contact (at most one) or a <b>stakeholder</b>.</td></tr>
+<tr><td>Activity</td><td>Kind (call, meeting, email, note, decision, stage), occurred-at (not more than a year in the future), summary (&le;4,000), outcome (&le;2,000, optional), people involved (&le;30), exactly one subject (project, client or contact). Stage activities are written by the Den, can be deleted but not edited, and carry from/to/by.</td></tr>
+<tr><td>Follow-up</td><td>Title (&le;200), notes, due date, optional due time (HH:MM), status (open/done), done-at, exactly one subject. Computed: due-at, days left, overdue, subject name.</td></tr>
+<tr><td>Timeline item</td><td>Kind (deadline, milestone, task, presentation, demo, meeting, event), title (&le;200), notes (&le;4,000), date, optional time, custom alert days (&le;60), status (open/done/cancelled), source (dashboard/octopus/api). Meetings add: contacts, guests (&le;50 emails), duration (default 60, max 1,440), repeat rule, Google event id, invite link, Meet link, invite error.</td></tr>
+<tr><td>Approval</td><td>Tool name, tool input (the command), status, risk read, steps so far, project's uncommitted diff, decision note.</td></tr>
+<tr><td>Recipe</td><td>Name, prompt, target (any, all, or a project id).</td></tr>
+<tr><td>Schedule</td><td>Prompt, label, project (null = every active project), cadence (once, daily, weekdays, weekly), time, weekday, date, model, priority, enabled.</td></tr>
+<tr><td>Pad note</td><td>Title, body, optional project, optional meeting, saved file path, timestamps. Can be saved as a real Markdown file.</td></tr>
+<tr><td>Reminder</td><td>Created by the assistant; pushed through ActivitySmith; listed and cancellable.</td></tr>
+<tr><td>Claude account</td><td>Kind (mac login or token account), label, email, alias, color (8-color auto palette or chosen), org/plan, logged-in, active (default), usage windows (5-hour, weekly), limited-until, last hit, auth error, added-at, projects using it. The token is a secret and never shown.</td></tr>
+<tr><td>API key</td><td>Provider (OpenAI/Gemini), label, last four characters, default flag, status/error. A built-in environment key is always listed first and cannot be removed there.</td></tr>
+<tr><td>Model / Agent / Tool</td><td>Registries (models.json, agents.json, tools.json): provider, capabilities, ratings, context size, price, enabled, availability and limits.</td></tr>
+<tr><td>Module</td><td>Optional feature in modules/&lt;name&gt;/ with a manifest; status running, disabled, blocked, failed, invalid.</td></tr>
+</table>
+
+<h3>All statuses and enumerations</h3>
+<table>
+<tr><th style="width:24%">Thing</th><th>Values</th></tr>
+<tr><td>Task status</td><td>queued, running, rate_limited, paused, done, needs_review, error, cancelled</td></tr>
+<tr><td>Task kind</td><td>task (runs to completion, changes files) / message (a question to a model; never changes files; "finished" = done and read; unread until read)</td></tr>
+<tr><td>Lanes</td><td>agent (Claude Code in the project), api (plain OpenAI/Gemini call), assistant (email/calendar), control (instant commands)</td></tr>
+<tr><td>Priority (tasks)</td><td>Urgent (1), Normal (0), Low (-1)</td></tr>
+<tr><td>Backlog to-do status</td><td>pending, queued, running, rate_limited, done, error, needs_review, cancelled (queued/running/rate_limited = "in flight"; error and needs_review = "failed")</td></tr>
+<tr><td>Project status</td><td>not_started, in_progress, need_info, on_hold, completed, archived</td></tr>
+<tr><td>Pipeline stage (Board)</td><td>lead, proposal, active, on_hold, done, lost</td></tr>
+<tr><td>Stage &rarr; status</td><td>lead, proposal &rarr; not_started; active &rarr; in_progress; on_hold &rarr; on_hold; done &rarr; completed; lost &rarr; archived</td></tr>
+<tr><td>Status &rarr; stage</td><td>not_started &rarr; lead; in_progress, need_info &rarr; active; on_hold &rarr; on_hold; completed, archived &rarr; done. A project with no stage picked shows the stage derived from its status. Picking a stage moves the status; changing status moves the stage only if it no longer fits. Every stage change is logged as a "stage" activity ("Lead &rarr; Proposal").</td></tr>
+<tr><td>Project priority</td><td>low, medium, high, critical</td></tr>
+<tr><td>Project health</td><td>on_track, at_risk, off_track</td></tr>
+<tr><td>Due state</td><td>none, done, overdue, due_soon (within 7 days), upcoming. "done" applies when completed or archived or a completed date exists.</td></tr>
+<tr><td>Timeline health</td><td>none, on_track, at_risk, overdue, done (each with label, reason and next item)</td></tr>
+<tr><td>Client status</td><td>prospect, active, past</td></tr>
+<tr><td>Phase status</td><td>planned, active, paused, done (only one active per project)</td></tr>
+<tr><td>Autopilot</td><td>manual, timeline, capacity</td></tr>
+<tr><td>Approval status</td><td>pending, approved, denied, timed_out</td></tr>
+<tr><td>Hero states (Home)</td><td>waiting, rate-limited, working, held, idle, no projects</td></tr>
+<tr><td>Octopus autonomy</td><td>Assist, Execute, Autonomous</td></tr>
+<tr><td>Plan preview</td><td>standard, every request, risky only</td></tr>
+<tr><td>Capability policy</td><td>allow, ask, deny</td></tr>
+<tr><td>Project permission modes</td><td>Accept edits (default unattended), plan (read-only) and others chosen per task</td></tr>
+<tr><td>Meeting repeat</td><td>days (every N), weekdays, weeks (every N on chosen days), months (same date or nth weekday: 1&ndash;4 or -1 = last), optional end date</td></tr>
+<tr><td>Billing types</td><td>fixed, hourly, retainer, none</td></tr>
+<tr><td>Recipe target</td><td>any, all, a project</td></tr>
+<tr><td>Schedule cadence</td><td>once, daily, weekdays, weekly</td></tr>
+<tr><td>Contact preferred method</td><td>email, phone, text, whatsapp, none</td></tr>
+<tr><td>Document filter types</td><td>All, PDF, Images, Text, Other</td></tr>
+<tr><td>Module status</td><td>running, disabled, blocked, failed, invalid</td></tr>
+</table>
+
+<h2>3. Access, auth and global behavior</h2>
+<ul>
+<li><b>One shared secret.</b> Every API call sends <code>X-API-Key</code>. The page itself loads without auth but asks for the key on first visit and stores it in the browser's localStorage (<code>cq_api_key</code>). A wrong key shows "That key didn't work&hellip;" and clears it. Ten wrong keys from one address in a minute lock that address out (HTTP 429). The service refuses to start if HOST is not 127.0.0.1 and the key is empty.</li>
+<li><b>No users and no roles.</b> The only "roles" are a contact's key/stakeholder link on a project. There is <b>no client portal</b>: clients and contacts are records. The only thing a client ever receives is a Google Calendar invite.</li>
+<li><b>Network:</b> reachable over Tailscale; Web Push needs https (Tailscale Serve). Alexa needs a public path (Tailscale Funnel, only <code>POST /alexa</code>, verified by Amazon's signature).</li>
+<li><b>Global scope switch:</b> Work / Personal / All, which filters by project category. On phones it appears on the Projects page; on desktop at the top of the sidebar.</li>
+<li><b>Polling:</b> the dashboard refreshes every 5 seconds (skipped while the tab is hidden); a 1-second tick runs while anything is running, rate-limited or awaiting approval; a 30-second tick refreshes "2m ago" labels. Views patch the page in place so polling never interrupts typing.</li>
+<li><b>Presence:</b> while the tab is visible and was touched in the last few minutes, the page sends a heartbeat about every 20 seconds. After 90 seconds without one the owner counts as away, so Alexa can announce an approval instead. Held in memory only.</li>
+<li><b>Credentials are never displayed:</b> Claude tokens, OAuth tokens and API keys (only the last four characters of an API key) must never appear in the UI.</li>
+</ul>
+
+<h2>4. Processes (detailed workflows)</h2>
+
+<h3>4.1 Task lifecycle (the heart of the app)</h3>
+<ol>
+<li><b>Entry points:</b> the Ask box on Home; the New task sheet (&#8984;K, N or the + button); a recipe; a schedule; a backlog item; voice; Alexa; the personal assistant; a phase autopilot tick; SwiftBar / iOS Shortcuts through the API.</li>
+<li><b>Queue.</b> A new task goes after everything queued with the same or higher priority. The user can reorder by drag, move a task to the top, cancel it (with Undo), pause it (a queued task is skipped and keeps its place; a running Claude Code task is frozen and paused time does not count toward the timeout), play it, or stop it (kills the task and everything it launched).</li>
+<li><b>Run.</b> One task at a time per Claude account, so projects on different accounts run side by side. Each tool call becomes a live step in the task's log (for example "Running npm test"). The same stream reports real 5-hour and weekly usage.</li>
+<li><b>Rate limit.</b> The task shows "rate-limited" with a live countdown and resumes by itself at the reset time. "Retry now" is available. "Ping me when back" sends one push when a pause ends. "Save the session for urgent work" holds Low tasks while the 5-hour window is over 85%. A project pinned to a Claude account waits for that account and never moves to another.</li>
+<li><b>Sleep mode</b> ("Going to sleep" on Home): the queue keeps going and uses limits fully; Low tasks are no longer held back; a limit with no reset time is retried every 15 minutes; approvals don't ping the phone and auto-deny after 5 minutes (the task is told to carry on without it). It ends after N hours (default 8, max 24) or when the user presses "I'm awake".</li>
+<li><b>Approvals</b> (see 4.3) can pause a task mid-run.</li>
+<li><b>Finish:</b> <i>done</i> (with an answer); <i>needs_review</i> (the user presses "Looks good" to mark it done); <i>error</i> (Retry, Open chat or Dismiss); <i>cancelled</i>.</li>
+<li><b>Chat.</b> Every task is a conversation: all messages, Claude Code's step log, reply footers (status, model, time, cost) and a reply box. A reply resumes the same Claude session (<code>thread_id</code>). A reply can switch model (API models get the earlier messages, oldest dropped to fit the context window; Claude Code resumes its session plus a catch-up transcript). The choice sticks for later replies. A chat never changes kind midway.</li>
+<li><b>Other task actions:</b> edit, retry-with-edit, run options (model, mode, priority, when), summarise (what was asked, what got done, where it stands; cached until the thread changes), transfer chat, move to another project, bulk move/priority/re-run/cancel/delete, delete to the recycle bin and restore, mark read/unread, requeue (front or back), "Retry now".</li>
+<li><b>Task detail page:</b> plan steps, files changed, git branch and commits, tests seen, approvals, activity, result and the full diff.</li>
+<li><b>Titles:</b> a quick name cut from the prompt shows at once, then the cheapest answer-only model replaces it with a 2&ndash;6 word title.</li>
+<li><b>Spend rules:</b> "API spend" and budgets count real money only (OpenAI, Gemini). Claude Code cost is an estimate (a subscription does not bill it) and is shown on each task but not counted as spend. A project that reaches its monthly budget is paused and the owner gets a push.</li>
+</ol>
+
+<h3>4.2 Octopus: understand, plan, route, execute, validate, report</h3>
+<ol>
+<li><b>Understand.</b> Instant commands first (no model): "what's happening?", "stop the current task", "cancel that" (a waiting plan first), "continue the previous task", "list my projects", "add X to the backlog of Y". Then personal assistant, image, then a cheap classifier labels the request coding / general / simple (keyword rules are the backup).</li>
+<li><b>Plan</b> (<code>octopus/plan.py</code>): project, agent (agents.json), model (scored), tools (tools.json), permissions, risk. Model choice weighs strength, cost, speed, track record and the user's configured order; scarce Claude Code usage is penalised for work that doesn't need it, more so when the 5-hour window is nearly used. Coding is non-transferable (it waits for Claude Code rather than hopping to a model with no project access). Every decision is stored with each candidate's score and shown on the Routing page.</li>
+<li><b>Review (optional).</b> A plan card (the OCTOPUS PLAN) shows <b>[Cancel] [Run]</b>. Run may change project, model or agent first and only ever queues once. A plan is shown when it is risky, blocked, needs an answer, or the user chose "every request". "Don't change anything yet" in a request runs Claude Code in plan (read-only) mode.</li>
+<li><b>Execute</b> in the lane: agent, api (text or image), assistant, or an instant command.</li>
+<li><b>Validate:</b> tests seen in the run, files changed, git branch and diff.</li>
+<li><b>Report:</b> text on the dashboard and a <code>spoken</code> line for voice.</li>
+</ol>
+<h4>Settings that shape it</h4>
+<ul>
+<li><b>Autonomy:</b> <i>Assist</i> investigates and proposes (coding runs read-only); <i>Execute</i> runs normal actions and asks for risky ones; <i>Autonomous</i> also runs what would ask &mdash; but protected capabilities (deploy, force-push, delete, production, send email, admin) always ask unless the user sets them to Allow.</li>
+<li><b>Plan preview:</b> standard, every request, or only risky ones.</li>
+<li><b>Agents</b> (agents.json): instructions, preferred models, allowed tools and capabilities, context needs, execution policy (lane, when to show the plan, Claude Code mode per autonomy level, cost limit). Agents named in the product include the Creative Agent (images), Research (web-grounded), the Personal Assistant and the Voice Partner. <b>Tools</b> (tools.json): what a request needs; only those are given to a task (the rest are switched off for Claude Code); MCP servers can be added as "mcp" entries. Both are edited in Settings &rarr; Agents &amp; tools and re-read on change with no restart.</li>
+<li><b>Models</b> (models.json): provider, capabilities, ratings, context, price, optimize mode per category (cost / balanced / quality), ordered candidates per category, <code>vision</code> flag, <code>scarce</code> flag. Models can be switched on/off and added/edited/removed from the AI Providers page (openai, gemini, claude_code).</li>
+<li><b>Pictures:</b> up to 6 per message (PNG/JPEG/GIF/WebP, 10 MB each). Routing picks only vision-capable models; Claude Code is told where the files are; API models receive real image parts.</li>
+<li><b>Prompt polish:</b> a "Polish" button rewrites a prompt using the cheapest answer-only model.</li>
+<li><b>Image generation</b> (gpt-image-1, gemini-image) saves pictures under workspace/images; <b>Research</b> uses web-search grounding.</li>
+</ul>
+
+<h3>4.3 Approval flow (Bash commands needing a human)</h3>
+<ol>
+<li>Claude wants to run a command that unattended mode does not cover. A permission-prompt server writes a pending approval and the task waits.</li>
+<li><b>Where the user is told:</b> a card in "Needs you" on Home; a toast and the notification panel; a phone push with <b>Approve / Deny / Open dashboard</b> buttons; the Dock/app badge count; and Alexa if the user has been away 90 seconds or more (not during sleep mode).</li>
+<li><b>The card shows:</b> the command, a heuristic risk read with chips, the steps the task took before asking, and the project's uncommitted git diff.</li>
+<li><b>Decisions:</b> <i>Approve once</i>; <i>Always allow</i> (adds the command to the project's allow list &mdash; an entry covers program plus subcommand, e.g. <code>npm test</code>; risky commands such as rm, sudo, curl, force-pushes and anything mentioning production are only allowed exactly as approved; commands that chain, pipe, redirect or substitute never match); <i>Deny</i> with an optional note that is passed back to Claude.</li>
+<li><b>Shortcuts:</b> swipe right to approve and left to deny (110px threshold); <code>A</code> and <code>D</code>; <code>Esc</code> closes. The approval pane has a sticky "Approve once" (52px), "Always allow" and "Deny with a note".</li>
+<li><b>Link approval (from a push).</b> The buttons are signed one-time links <code>/approvals/{id}/quick/{approve|deny}?t=&lt;token&gt;</code> (HMAC of the approval and the decision), because Safari cannot send the API key header. Tapping one opens a small standalone page with a title, a text line and the command in a code block, supporting dark mode and an "Open dashboard" link:
+<ul>
+<li><b>Approved &#10003;</b> (green accent): "Octopus is carrying on."</li>
+<li><b>Denied</b> (red accent): "Octopus won't run this and will work around it."</li>
+<li><b>Link not valid</b> (403): "This approval link is broken or was changed."</li>
+<li><b>Not found</b> (404): "That approval doesn't exist any more."</li>
+<li><b>Already decided:</b> says approved, denied, or closed (timed out or the task stopped).</li>
+</ul></li>
+<li>The service worker's Approve/Deny notification buttons call the same URLs and then show an "Approved &#10003;" or "Denied" notification.</li>
+<li><b>Timeout:</b> unanswered approvals are denied after 1 hour (5 minutes in sleep mode) so the queue never stalls.</li>
+<li>Assistant approvals (email, calendar) are separate cards that run exactly what was shown, once; approvals unanswered for 24 hours expire; message content is dropped from the database after the decision. The assistant itself can never answer approvals, only count them.</li>
+</ol>
+
+<h3>4.4 Phases and autopilot</h3>
+<ol>
+<li>The user splits a project into ordered phases (Phases tab) and puts to-dos in each; they can also move loose backlog items into a phase. AI task generation creates up to 15 to-dos for a phase using a chosen model.</li>
+<li><b>Start</b> makes a phase active and queues its first open to-do immediately. <b>Pause</b> stops feeding the phase while queued/running work carries on. <b>Complete</b> closes it whatever is left. <b>Reopen</b> sets it back to planned. Reorder phases by drag.</li>
+<li><b>One to-do at a time:</b> the next is queued only when the last finished. If one fails or needs review the phase stops and the owner gets a push &mdash; no more work piles on.</li>
+<li><b>What starts a phase</b> (project autopilot mode): <i>On my command</i> (only on Start, or by saying "start the next phase of KodeAura7"); <i>By the timeline</i> (a phase starts on its start date, in order); <i>When the limit allows</i> (phases run back to back while Claude usage has room).</li>
+<li><b>Usage ceiling:</b> default 85% of weekly usage (adjustable 10&ndash;100%) plus a fixed 90% cap on the 5-hour window. It holds automatic work until there is room; a phase the user starts by hand ignores it for its first item. The UI shows capacity/utilization.</li>
+<li>Every task for the project also sees the phase plan and the current phase's goal.</li>
+<li>The scheduler ticks every 30 seconds and returns pushes: started, done, blocked, late.</li>
+<li><b>Errors to design for:</b> "That phase is already done."; "There's nothing to do in this phase yet - add some todos to it first."; a CRM-only project (no folder) can only plan phases, so Start/autopilot show a "no folder" hint.</li>
+<li><b>Voice:</b> "start phase 2 of shop", "start the Build phase", "pause the phase of shop", "how are the phases going on shop".</li>
+<li><b>Progress report:</b> a Markdown report for the whole project or chosen phases, with an optional model-written overview (<code>POST /projects/{id}/report</code>).</li>
+</ol>
+
+<h3>4.5 Backlog (to-dos) flow</h3>
+<ol>
+<li>The Backlog is a per-project list separate from the queue. Add items by text (the composer says "Saving to backlog &middot; won't run yet"), attach pictures, Polish text.</li>
+<li>Drag to order; star important items; expand a row to set model, approval mode, priority (Low/Normal/Urgent) or edit text.</li>
+<li>Tick items, then <b>Run selected</b>: they join the queue in the user's order (not selection order), each with its own model/mode/priority. The bar shows "N selected &middot; joins after N tasks".</li>
+<li>A <b>"Queue backlog in order"</b> button also lives on the Work tab's Octopus card. The Suggest button queues a read-only review of the project and proposes tasks. Dragging a ticked row moves all ticked rows; drag is disabled while a row is expanded.</li>
+</ol>
+
+<h3>4.6 CRM</h3>
+<ul>
+<li><b>Project record:</b> fields in section 2. Errors are written to be shown to the user as-is (for example due and completed dates cannot be before the start date). Computed <b>schedule</b> (days left, due state) and <b>progress</b> (to-dos done and total, phases done and total, percent; each to-do counts as one unit, cancelled excluded; a phase with no to-dos counts as one; a done phase counts all its to-dos as done; percent is null when there is nothing to measure).</li>
+<li><b>Views of projects:</b> Cards, Table (sortable, includes a "Last activity" column) and Board (by stage; dragging/picking a stage moves the status).</li>
+<li><b>CRM dashboard</b> (scope all/work/personal, optional client filter; excludes General and hidden projects; "open" = stage lead/proposal/active/on_hold and not completed/archived):
+<ul>
+<li><b>Counts:</b> projects, open, overdue, due this week, due this month, at risk, follow-ups overdue, follow-ups today, follow-ups due, stale. Home's compact "CRM card" shows these.</li>
+<li><b>Lists of project rows:</b> overdue; due this week (0&ndash;7 days); due this month (8&ndash;30 days); at risk (health at_risk or off_track, off_track first). Each row: id, name, category, status, stage, priority, health, dates, contract value and currency, client name, color, image, owner, days left, due state, progress percent, last activity time.</li>
+<li><b>Follow-ups:</b> overdue and today.</li>
+<li><b>Pipeline:</b> one entry per stage with label, count and value per currency.</li>
+<li><b>By client:</b> active value per client ranked in the main currency (active projects, open projects, value per currency); projects with no client appear as "no client".</li>
+<li><b>Stale:</b> open projects with no activity for 14 or more days, with idle days.</li>
+<li><b>Workload:</b> an overdue bucket plus 8 weeks (week start/end, projects due, follow-up count, value).</li>
+<li><b>Currency:</b> a main currency is used for ranking and bar charts; amounts in different currencies are never added together.</li>
+</ul></li>
+<li><b>Clients</b> have their own page: details, projects (stage, schedule, value, billing type, priority, health), contacts and activity feed. The sidebar lists clients with project counts, a "N past clients" link and "+ New client". The project record shows a client chip (id, name, status, color, logo) and its linked contacts with the key contact first.</li>
+<li><b>Contacts</b> have their own page and feed. Contacts without an email cannot be invited to meetings (the UI must say which).</li>
+<li><b>Activity feed</b> (<code>/crm/feed</code> for exactly one of project, client or contact): <b>open</b> follow-ups pinned on top (overdue first, then soonest), then <b>items</b> newest first mixing activities, done follow-ups and (for a project) finished tasks. A contact's feed includes every activity they took part in; a client's feed includes its projects' and contacts' activity. Limit 150. Forms to log a call, meeting, email, note or decision with summary, outcome and people involved.</li>
+<li><b>Reports:</b> project report and client report, as JSON, CSV or Markdown (named like <code>slug-client-report-YYYY-MM-DD.md</code>). They include details, schedule or value, progress, contacts, stage history, activities and follow-ups; the client report also lists its projects with stage, due date, value and progress. Capped at 1,000 activities.</li>
+<li><b>Pictures:</b> project and client pictures (up to 2 MB, type checked from file contents, shrunk to a small square by the dashboard before upload) replace the colored letter tile everywhere; a separate tile color sits behind it.</li>
+<li><b>Hidden projects</b> appear under "Hidden"; deleting a project deletes its data but leaves the folder on disk untouched.</li>
+</ul>
+
+<h3>4.7 Follow-ups and reminders</h3>
+<ol>
+<li>Add a follow-up to a project, client or contact with a date and optional time.</li>
+<li>At the due time (or 09:00 local if no time) a push goes out titled "Follow-up &middot; &lt;subject name&gt;" with the message "&lt;title&gt; - due at 14:30 / due today / was due &lt;day&gt;". Tapping it opens that project overview, client or contact.</li>
+<li>A follow-up added or re-dated into the past is marked as already reminded (no instant push). Re-dating or reopening restarts its reminder.</li>
+<li>Follow-up reminders are held through quiet hours (23:00&ndash;08:00).</li>
+<li>Marking done stamps the time; reopening clears it. Done follow-ups appear struck through in the Calendar for 30 days.</li>
+</ol>
+
+<h3>4.8 Timeline, calendar and meetings</h3>
+<table>
+<tr><th>Kind</th><th>Can go overdue?</th><th>Default alerts (days ahead)</th></tr>
+<tr><td>deadline</td><td>yes</td><td>7, 3, 1, 0</td></tr>
+<tr><td>milestone</td><td>yes</td><td>3, 1, 0</td></tr>
+<tr><td>task</td><td>yes</td><td>1, 0</td></tr>
+<tr><td>presentation</td><td>no (simply over)</td><td>3, 1, 0</td></tr>
+<tr><td>demo</td><td>no</td><td>3, 1, 0</td></tr>
+<tr><td>meeting</td><td>no</td><td>1, 0</td></tr>
+<tr><td>event</td><td>no</td><td>1, 0</td></tr>
+</table>
+<ol>
+<li><b>Alerts:</b> at each alert day a push such as "Deadline tomorrow &middot; &lt;project&gt;" with "'Title' with &lt;people&gt; - &lt;when&gt;." For due kinds, presentations and demos it also lists the outstanding open work. A timed item that isn't a due kind also gets a push <b>60 minutes before</b> ("&lt;Kind&gt; in 60 min &middot; &lt;project&gt;"). When an item goes overdue, one push "Overdue &middot; &lt;project&gt;". Alerts already inside the window at creation are marked sent; a missed earlier alert is never sent late. Tapping opens the project timeline.</li>
+<li><b>Timeline health</b> per project: on track, at risk (a due item, presentation or demo within 3 days while work is still open), overdue, done.</li>
+<li><b>Meetings</b> add contacts, extra guest emails (&le;50), duration, repeat rules, and a <b>meeting notes page</b> that saves as you type (notes are never sent in invites). A repeating meeting stays one row; its date shows the next occurrence; alerts are tracked per day.</li>
+<li><b>Calendar screen:</b> month and schedule view of project dates, follow-ups, timeline items and personal Google Calendar events. The same Calendar is a tab in the desktop right rail and the phone right drawer.</li>
+</ol>
+
+<h3>4.9 Google Calendar invites (the only feature that emails outside people)</h3>
+<ol>
+<li><b>Requires</b> a connected Google account with Calendar (Personal &rarr; Connections). Without it the API returns 422: "Connect your Google account (with Calendar)&hellip;".</li>
+<li>In the meeting form the owner turns on <b>Send invite</b> and optionally <b>Meet link</b>. Only meetings can send invites.</li>
+<li>The Den saves the meeting, then creates the Google event on the primary calendar with all guests notified. Guests = contacts' CRM emails + extra guests. The meeting keeps the event id, invite link, Meet link and the Google account used.</li>
+<li>Google emails each guest the usual invitation with Accept and Decline. The repeat rule is translated to a Google recurrence rule.</li>
+<li><b>Editing</b> (title, date, time, duration, guests, contacts, repeat) patches the event; guests get Google's update email; replies are preserved for guests who stay.</li>
+<li><b>Cancelling:</b> the invite is cancelled (guests told) when "Send invite" is turned off, the meeting is cancelled, its kind changes away from meeting, or it is deleted. <code>DELETE</code> returns invite_cancelled, or a warning if Google cancel failed; the meeting is deleted anyway.</li>
+<li><b>Failures never lose the meeting.</b> It is saved with an <b>invite error</b> (&le;500 characters) shown under it; saving again retries. If the event was deleted in Google the error reads: 'The invite was deleted in Google Calendar. Turn on "Send invite" and save to send a new one.'</li>
+<li><b>UI states:</b> none; sent; sent with a Meet link; error; contacts with no email.</li>
+</ol>
+
+<h3>4.10 Morning briefing</h3>
+<ul>
+<li>A "Good morning" page: greeting, date, today, overdue, upcoming (7 days), today's meetings (Google Calendar, if connected), approvals waiting, attention (failed or needs-review tasks from the last 7 days), reminders, queue counts, at-risk projects, plus a headline and text/spoken renderings.</li>
+<li>Buttons: <b>Read it to me</b>, <b>Refresh</b>, <b>Calendar</b>. Shortcut <code>G</code>.</li>
+<li>Pushed once a day at <code>briefing_time</code> (default 08:30) when <code>briefing_push</code> is on; tapping opens the briefing.</li>
+<li>A built-in <b>"Good morning"</b> Quick button on Home runs it.</li>
+</ul>
+
+<h3>4.11 Notifications</h3>
+<h4>Three channels</h4>
+<ol>
+<li><b>ActivitySmith</b> phone push. Levels vary by kind; urgent kinds (approval, failure, reminder) get high urgency and a 1-hour lifetime, others 24 hours. A push has a title, body (&le;600 characters), kind, deep-link and optional approval id. Approvals and failures are time-sensitive (break through Focus); completions are a normal banner.</li>
+<li><b>Web Push</b> to the dashboard installed as an app (Safari &rsaquo; Add to Dock, or iPhone Home Screen). Needs https. The VAPID key pair is created on first use. Subscriptions are per browser; a gone subscription is removed automatically. Approvals stay on screen until acted on; the Dock icon shows a red count of approvals waiting. A web app cannot bounce its Dock icon.</li>
+<li><b>Alexa:</b> if an approval is waiting (or a task started from Alexa finishes) and the user has not used the dashboard for 90 seconds, the Echo lights up yellow. Only a count goes through Amazon's service; details are read by the skill. Nothing is sent while the user is on the dashboard, mid-conversation with the skill, or in sleep mode.</li>
+</ol>
+<h4>Push events</h4>
+<ul>
+<li>Approval needed; task failed; task done; message answered; rate-limit ended ("Ping me when back"); budget reached (project paused); follow-up due; timeline alerts (ahead, 60 minutes before, overdue); morning briefing; phase started, done, blocked or late; assistant reminders.</li>
+<li><b>Per-project toggles:</b> approvals, failures, completions, quiet hours. <b>Quiet hours</b> 23:00&ndash;08:00 hold everything except approvals. A "Send test" push is available.</li>
+</ul>
+<h4>In-app notification center</h4>
+<ul>
+<li>A bell in the topbar with an unread badge (capped "9+"), toasts, and a panel dialog.</li>
+<li><b>Kinds:</b> done, answer, approval, approved, stop, deleted, restored, queue, error, review, limit, weekly, add; polish and info are toast-only. Approval, error and review count as "needs you" and their rows carry the CTAs "Review request", "See what broke" and "Review changes".</li>
+<li><b>Toasts:</b> top-right, stacked newest at the bottom, with kicker, title, sub-line, optional action (e.g. Undo), a &#10005; and a timer bar. Tapping a toast carrying a task opens that task. Pending approvals show Deny and Approve buttons right in the toast and the panel row. No toast appears if the related chat is already open.</li>
+<li><b>Panel:</b> header "N new", "Mark all read" (desktop) / "Read all" (phone), &#10005;; tabs <b>All</b> and <b>Needs you</b>; grouped rows with an unread dot; footer with count, "Allow desktop alerts" and "Clear read". Closing marks everything read. Empty: "All caught up" / "Nothing waiting on you". First load backfills the last 24 hours plus anything still waiting; a weekly-limit early warning is computed server-side.</li>
+<li><b>System notifications</b> need a secure context; over plain http (Tailscale) the app relies on ActivitySmith. Over https, allowing them also subscribes to Web Push and no duplicates show.</li>
+<li><b>Status banners</b> (sticky strip under the topbar): "This device is offline"; "Can't reach Octopus" (after 2 failed polls); "Octopus is restarting" (with "Retry now"); "Rate-limited" (how many tasks are paused and the auto-resume time); "Sleep mode on" (with "I'm awake").</li>
+</ul>
+<h4>Email notifications (to the owner only)</h4>
+<ul>
+<li>Sent through the connected Google account's Gmail (needs the gmail.compose scope) with subject prefix "[The Den]". No SMTP. Sending never raises, runs on a background thread, and does nothing silently if Google is not connected. Recipient: setting <code>email_to</code>. Per-event switches: <code>email_events_off</code>.</li>
+<li>Every email uses a fixed template (no model call): a colored header bar, a body of paragraphs or bullets, and a footer "The Den". Header colors: info = blue, good = green, warn = amber, bad = red.</li>
+</ul>
+<table>
+<tr><th>Event key</th><th>Kind</th><th>Trigger and content</th></tr>
+<tr><td>restart_needed</td><td>warn</td><td>Source code changed after start; sent once per batch after 10 minutes of quiet; lists changed files; says to restart from Settings &rarr; Restart</td></tr>
+<tr><td>restart_requested</td><td>info</td><td>The owner asks for a restart; mode (normal or hard) and detail, e.g. "Waiting for N running task(s)&hellip;"</td></tr>
+<tr><td>restart_completed</td><td>good</td><td>Next start after a requested restart; when asked, start time, how many held tasks were released</td></tr>
+<tr><td>unexpected_restart</td><td>bad</td><td>A start with no restart requested (crash or reboot); running tasks marked interrupted; Retry continues them</td></tr>
+<tr><td>project_created</td><td>good</td><td>Name, category, folder (or "none (CRM-only)")</td></tr>
+<tr><td>project_deleted</td><td>bad</td><td>Data deleted; folder on disk untouched</td></tr>
+<tr><td>project_archived</td><td>warn</td><td>Can be moved back any time</td></tr>
+<tr><td>project_completed</td><td>good</td><td>"&lt;name&gt; was marked Completed."</td></tr>
+<tr><td>test</td><td>info</td><td>"Email is working" (Send test button; 409 if Google is not connected, 502 if Google refuses)</td></tr>
+</table>
+<p><b>Settings screen needs:</b> a connected / not-connected indicator, the recipient, 9 toggles (unknown keys are rejected with 400), and a Send test button.</p>
+
+<h3>4.12 Personal assistant (Email, Calendar, Reminders, Connections)</h3>
+<ul>
+<li>Talk to Octopus in plain language: read the calendar, search and draft email, schedule and move meetings, set reminders, look at the queue and projects, hand work to the app's AI models.</li>
+<li><b>Flow:</b> intent rules (no model) &rarr; assistant lane &rarr; plain tool calls when the words are enough ("what's on my calendar tomorrow", "latest email from X", "block 3 PM tomorrow") with no model, otherwise a planner model that only proposes tool calls as JSON (falls back to the local claude CLI with every tool off) &rarr; the single gate (capability policy allow/ask/deny, approval, audit log) &rarr; scope check (agents.json + tools.json bind per call) &rarr; tools &rarr; providers (Gmail, Google Calendar; Outlook not built).</li>
+<li><b>Tools:</b> email, calendar, reminders, agent (hand work to Claude Code), workspace (queue, tasks, task, projects, backlog, usage, add_todo, cancel_task), ai (models, ask, image).</li>
+<li><b>Conversation memory</b> per chat so "which one is at 3 PM?" &rarr; "move it to 4" works (the move still asks first).</li>
+<li><b>Permissions</b> (Personal &rarr; Connections &rarr; Permissions):
+<table>
+<tr><th>Capability</th><th>Default</th><th>Capability</th><th>Default</th></tr>
+<tr><td>EMAIL_READ</td><td>allow</td><td>CALENDAR_READ</td><td>allow</td></tr>
+<tr><td>EMAIL_DRAFT</td><td>allow</td><td>CALENDAR_CREATE (nobody invited)</td><td>allow</td></tr>
+<tr><td>EMAIL_SEND (send/reply/forward)</td><td><b>ask</b></td><td>CALENDAR_UPDATE</td><td><b>ask</b></td></tr>
+<tr><td>EMAIL_DELETE</td><td><b>deny</b> (no such action exists)</td><td>CALENDAR_DELETE / CALENDAR_INVITE</td><td><b>ask</b></td></tr>
+<tr><td>REMINDER_*</td><td>allow</td><td>AGENT_CODING</td><td><b>ask</b></td></tr>
+<tr><td>PROJECT_READ</td><td>allow</td><td>TODO_WRITE</td><td>allow</td></tr>
+<tr><td>TASK_CONTROL</td><td>allow</td><td>AI_MODEL_USE</td><td>allow</td></tr>
+<tr><td>WEB_ACCESS</td><td>allow</td><td>IMAGE_GENERATE</td><td>allow</td></tr>
+</table>
+A call needing several capabilities gets the strictest. Setting a normally-ask capability to allow is "trusted" and the activity log marks it so.</li>
+<li><b>Safety:</b> once a run has read text written by someone else (an email body, an invite, a task, backlog item or another model's answer), outbound actions ask anyway (a prompt-injected email cannot send mail). In Assist autonomy, anything that changes something asks.</li>
+<li><b>Approval card</b> shows exactly what will run (recipient, subject, message; or title, date, time, attendees, calendar and which Google account). It runs once from the stored arguments, never regenerated.</li>
+<li><b>What is deliberately not possible:</b> the assistant cannot answer approvals; only active projects are visible (an archived or budget-paused project is "can't find it"); personal-assistant chats are listed by status only, never their text; pending-approval details are not shown, only their count.</li>
+<li><b>Connections page:</b> NOT CONFIGURED state with setup steps until Google keys exist; Connect Google (OAuth opens on the Mac); "+ Add another Google account"; each account's row sets its default for email and for calendar; "Reconnect needed" when a token expires (apps in Google "Testing" expire after 7 days); revoke/disconnect. With several accounts Octopus reads all of them, replies from the account that has the message, and sends new items from the default account; the user can say which account to use.</li>
+<li><b>Personal pages:</b> Email overview, Calendar overview, Reminders (list and cancel), Connections (accounts, permissions, activity log). Activity log never holds bodies or tokens.</li>
+<li><b>Limits:</b> forwarding doesn't include attachments; free-slot search only sees attendees whose calendars are shared; reminders push through ActivitySmith only.</li>
+</ul>
+
+<h3>4.13 Voice and Alexa</h3>
+<ul>
+<li><b>Voice</b> is a way in and out of the same pipeline, never a second assistant. Mic button in the Ask box and a floating mic button for a voice chat; the Voice page holds audio options.</li>
+<li><b>Providers:</b> speech-to-text = the browser's recognition or local Whisper (not installed by default); text-to-speech = the browser's voices or macOS <code>say</code> (can speak on the Mac).</li>
+<li><b>Settings:</b> speaking speed (0.5&ndash;2), default voice, a voice per language (e.g. Hindi &rarr; Lekha), automatic language detection (writing system plus common words), and a manual voice (from the speaker button in the Ask box) that overrides everything until "Automatic". macOS voices are a server setting; browser voices are per device.</li>
+<li>Follow-ups attach to the last chat; a spoken plan is answered "yes"/"no"; <code>/voice/command</code> returns the spoken line. Shortcuts clients poll <code>/octopus/result/{task_id}?wait=30</code>.</li>
+<li><b>Alexa</b> ("Alexa, open my octopus"): reports the queue and what Octopus is working on; reads approvals in plain words with risk, then approve/deny/skip; "add a new task" (project, prompt, read back, "yes"); "push the current code to GitHub" (never force-push); "let's discuss a task for KodeAura7" (a real back-and-forth with the Voice Partner agent, "queue it" hands the conversation to Claude Code); "stop the current task" (asks first); "go on" for a late answer; anything else goes to Octopus. A conversation survives session timeout for 15 minutes. An optional spoken code is required for voice approvals. The discussion is saved as one chat.</li>
+<li><b>Voice page, Alexa section</b> shows: skill ID set, paired, notifications allowed, public URL, last error, a Send test notification button, and the code setting.</li>
+</ul>
+
+<h3>4.14 Accounts, usage and money</h3>
+<ul>
+<li><b>Claude accounts</b> (not user logins): this Mac's own login (can be hidden once a token account exists) and extra token accounts (from <code>claude setup-token</code>). Each shows label, email, alias, color, org/plan, logged-in, active (default), 5-hour and weekly usage, limited-until, last hit, auth error and the projects that pin it. Auto palette: <span class="sw" style="background:#e8825a"></span>#e8825a <span class="sw" style="background:#4f9de8"></span>#4f9de8 <span class="sw" style="background:#4fbf8a"></span>#4fbf8a <span class="sw" style="background:#b583e8"></span>#b583e8 <span class="sw" style="background:#e8c24f"></span>#e8c24f <span class="sw" style="background:#e8627f"></span>#e8627f <span class="sw" style="background:#4fc6c9"></span>#4fc6c9 <span class="sw" style="background:#9aa3b2"></span>#9aa3b2.</li>
+<li><b>Actions:</b> add (token verified with one tiny request, a few seconds, before saving), delete, set alias, set color, edit details, show the Mac account, make default (activate), refresh usage. The account switcher sits in the topbar; the project settings and New task sheet also have an account field.</li>
+<li><b>Usage pill</b> (topbar): two rows (5h and weekly) with bars, percentages and reset times. Color: teal below 80%, amber from 80%, violet from 95%. On phone project pages it is a 36px ring showing the 5h percentage. Tapping opens a usage sheet.</li>
+<li><b>Token usage page:</b> a local date range (default 30 days), totals versus the previous period, per day, per project / model / lane (agent, api, assistant, background) / category, and every run behind the totals. Background = side calls such as titles, summaries, the classifier and prompt polish.</li>
+<li><b>Usage summary:</b> real API spend (today, month, last 7 days, by project) and Claude's 5-hour / weekly usage.</li>
+<li><b>API keys</b> (OpenAI, Gemini; AI Providers page): several per provider with a default; on rate limit, no credit or a rejected key the call falls back to the next key (a rejected key is marked). Add flow checks the key with one free request; only the last four characters are shown afterwards; the environment key is listed first and cannot be removed there; a pasted key works without a restart.</li>
+<li><b>Budget:</b> per-project monthly API cap (default $20, +/- $5 stepper in project settings) and a global monthly budget; reaching it pauses the project and pushes.</li>
+</ul>
+
+<h3>4.15 Notes, documents, pictures, recipes, schedules</h3>
+<ul>
+<li><b>Notes pad:</b> list of notes (title, body, project, meeting link); save as a Markdown file into a project's folder, the shared notes folder or a folder under the home directory. A project with no folder gets an error rather than silently using the shared folder. A note tied to a meeting survives meeting deletion.</li>
+<li><b>Project notes tab:</b> add form with kind chips (Guideline, Requirement, Note), picture attach, Polish and Add; edit buttons; a "Meeting notes" section from calendar items.</li>
+<li><b>Documents tab:</b> add files (&le;100 MB each), refresh, search, a List / Compact / Thumbnails switch, a sort select, type chips (All, PDF, Images, Text, Other); per file preview, rename, download and delete; skeleton while loading, "No documents yet" or "No documents match." when empty.</li>
+<li><b>Recipes:</b> saved prompts with Run (in one project, or in every active project for an "all" recipe). On a project, "Run here". Recipes and schedules still queue through the older router path.</li>
+<li><b>Schedules:</b> checked every 30 seconds; one that was due while the Mac slept runs once on wake. Rows have an enable toggle; add, edit, delete. Pictures on scheduled prompts are not supported.</li>
+<li><b>Quick buttons:</b> one-tap prompts on Home; an Edit/Done toggle removes buttons; "+ Add".</li>
+<li><b>Recycle bin / Hidden:</b> deleted tasks and hidden projects with restore.</li>
+<li><b>Learn a website</b> (Settings &rarr; Sites).</li>
+</ul>
+
+<h3>4.16 Backup, restore, restart, modules</h3>
+<ul>
+<li><b>Export</b> tasks, history or settings as json or csv (anything that looks like a credential is stripped). <b>Backup</b> downloads the whole database (private).</li>
+<li><b>Restore:</b> upload a file (&le;512 MB) &rarr; <i>check</i> (inspects it; requires the projects, tasks and settings tables) &rarr; <i>confirm</i>. The current data is first saved to <code>queue.db.bak-pre-restore</code> so a wrong restore can be undone. The UI needs a strong warning and a check-then-confirm flow.</li>
+<li><b>Restart Octopus</b> (Settings or the topbar): normal (waits for running tasks) or hard; native confirm. The page polls the service every 2 seconds and reloads when the process id changes. The offline popup is never shown during a restart. Email events cover the request and the result.</li>
+<li><b>Modules:</b> drop-in features in <code>modules/&lt;name&gt;/</code> (manifest keys: name, version, description, enabled, entry, requires/optional, config with typed keys, secrets, capabilities, hot_reload). Lifecycle: discover, validate, load, initialize, start, stop, unload, reconciled in dependency order. A module can register tools, commands and task-added / task-completed listeners. Module tools still need an explicit grant in tools.json and the agent's tool list. Only example today: <code>modules/hello</code>. API: list, rescan, commands, enable, disable, reload, config. <b>No dashboard screen exists yet</b>; the docs note a command-line input in the dashboard is an unbuilt UI task.</li>
+</ul>
+
+<h2>5. The current UI</h2>
+
+<h3>5.1 Architecture</h3>
+<ul>
+<li><code>dashboard.html</code> is a shell: <code>&lt;div id="app"&gt;</code>, about 22 CSS files and <code>app.js</code>. Rendering builds HTML strings and patches the DOM in place (so polling never interrupts typing); events use <code>data-action</code> delegation. No build step.</li>
+<li>Meta: viewport-fit=cover, interactive-widget=resizes-content, theme-color #0B1016, iOS standalone web app, manifest, title "Tushar's Workspace".</li>
+<li><b>Locked gate:</b> "Workspace is locked" with a sleeping Octopus, an X-API-Key password field and an Unlock button.</li>
+<li><b>Hash routes:</b> home, projects, recipes, activity, personal (email, calendar, reminders, connections), messages, routing, providers, settings, voice, usage, calendar, briefing, bin, hidden, notes, clients, crm; plus <code>#/project/&lt;slug&gt;/&lt;tab&gt;</code> (old <code>#/project/12</code> links still resolve), <code>#/client/&lt;id&gt;</code>, <code>#/contact/&lt;id&gt;</code>, <code>#/task/&lt;id&gt;</code> (opens Home with that chat). <code>?status=done|error|needs_review|cancelled</code> (from SwiftBar) opens Activity on that filter. Every view change shows a 520 ms skeleton.</li>
+<li><b>Service worker</b> (<code>sw.js</code>): Web Push only, caches nothing; approval pushes use requireInteraction with Approve/Deny action buttons; sets the app badge from the pending count; clicking a notification focuses or navigates an open dashboard window, or opens one.</li>
+<li><b>Splash on every load:</b> a dancing Octopus, a greeting ("Good morning, Tushar!"), a recap pill ("while you were away: N done &middot; M need you", or a first-run line) and "stretching tentacles&hellip;". Dismissed only by a double tap or double click (380 ms window). Records last-seen in localStorage.</li>
+</ul>
+
+<h3>5.2 Desktop navigation (900px and up)</h3>
+<ul>
+<li><b>Sidebar</b> 250px (resizable 200&ndash;420px, drag handle, double-click resets). From 1280px it sits inline and collapses to a 60px icon rail with <code>[</code> or &#8984;B; from 900 to 1279px it is a slide-over drawer with a scrim and the rail underneath.</li>
+<li><b>Sidebar contents:</b> brand (Octopus in its current mood, "TUSHAR'S / Workspace") and collapse toggle; a status pill (pulsing dot plus the hero's short text) linking to Home; the Work / Personal / All switch; nav items <b>Den Home</b> (key 1, with a needs-you badge), <b>Projects</b> (2), <b>Clients</b>, <b>CRM</b>, <b>Recipes &amp; schedules</b> (3), <b>Activity</b> (4), <b>Notes</b>, <b>Recycle bin</b>, and <b>Hidden</b> (phone only, with a count badge).
+<ul>
+<li><b>Projects</b> expands inline: groups General, Work, Personal; each row has a swatch, name, CRM badge, due badge and a meta word (needs you, running, asleep, failed, N queued, paused); ends with "+ New project".</li>
+<li><b>Clients</b> expands to one row per client with its project count, a "N past clients" link and "+ New client".</li>
+<li><b>Activity</b> expands to the filters All, Done, Failed, Review, Cancelled, each with a count.</li>
+</ul>
+Then the <b>PERSONAL ASSISTANT</b> group (Email, Calendar, Reminders, Connections, with pending-approval counts) and the <b>OCTOPUS</b> group (Token usage, AI Providers, Routing, Voice, Settings), "Keyboard shortcuts &middot; ?", and a footer with a coral <b>New task &#8984;K</b> button.</li>
+<li><b>Collapsed rail:</b> icons for each nav view, Personal, Notes, Settings and Bin; a separator; one swatch per project (General shows the Octopus); a "+" new-task button.</li>
+<li><b>Topbar:</b> title; a search box (Spotlight-style results); live/offline indicator; Claude account switcher; usage pill; restart-Octopus button; the notification bell. The status banner strip sits under it.</li>
+<li><b>Right-edge rail</b> with rotated tabs: <b>Queue</b> (badge = queued + running), <b>Messages</b> (amber badge = chats waiting on you), <b>Calendar</b>. Several can be open side by side, each resizable and stackable; tabs are draggable to reorder and a panel header can be dragged to a new column. <code>&#8984;&#8679;B</code> cycles Queue &rarr; Messages &rarr; Calendar &rarr; closed.</li>
+<li><b>Chat pane:</b> docks inside the Queue or Messages sidebar, floats, minimises to a bottom-right chip with a tab count, or sits as an inline column (resizable, 360px min, 460px default). Chat tabs sit above it; each shows a live dot, title, "#id &middot; project", a pin button and a close button; "+" starts a new chat; an icon returns to the message list or queue. A tab right-click menu offers Pin, Close and others. A mic FAB (bottom right) starts a voice chat.</li>
+<li><b>Pinning today:</b> only <i>chat</i> tabs in the desktop pane can be pinned (stored in localStorage <code>octopus-pinned-tabs</code>). Pinned chats list at the top of Messages under "PINNED" (desktop only, when no search or filter is active). Close others / Close all keep pinned tabs; closing a chat unpins it.</li>
+</ul>
+
+<h3>5.3 Phone navigation (below 900px)</h3>
+<ul>
+<li><b>Topbar:</b> left a menu button (opens the sidebar drawer) or a back arrow on project, client and contact pages; centre an eyebrow ("TUSHAR'S" on Home, "WORKSPACE" elsewhere) and the title; right: live dot (hidden below 360px), account switcher, usage pill (a 36px ring on project pages), search (takes over the whole header while open), refresh and the bell.</li>
+<li><b>Bottom tab bar</b> (7 columns, in order): Home, Projects, Recipes, a coral <b>+</b> FAB (56px, new task), Activity, Personal, Messages. Badges: Home shows the needs-you count; Personal shows pending assistant approvals; Projects is highlighted on project pages. It steps aside while the keyboard is open.</li>
+<li><b>Left drawer</b> (the sidebar): opens from the menu button or by swiping right from the first 24px of the screen; closes by swiping left or tapping the scrim.</li>
+<li><b>Right drawer</b> (Queue / Messages / Calendar): opens from a thin grip on the right edge (tap, or swipe left) with a segmented switch with badges; closes with the scrim or a swipe right.</li>
+<li><b>Page swipe:</b> a 3D carousel across Home, Projects, Recipes, Activity, Personal, Messages (axis lock |dx| &gt; 1.3|dy|, commit at 70px, edge resistance 0.25). A swipe right on a project, client or contact page goes back. Ignored in the first 24px (drawer) and inside <code>data-noswipe</code> areas such as chip rows and tab strips.</li>
+</ul>
+
+<h3>5.4 Screens and what each holds</h3>
+<h4>Splash, lock and onboarding</h4>
+<ul><li>Locked gate (5.1), splash (5.1), and the first-run onboarding "Give me something to hold" (no projects) with add-project steps and a first-run tour.</li></ul>
+
+<h4>Home (Den Home; phone title "Workspace")</h4>
+<ul>
+<li>Two columns on desktop (from 700px), Ask box docked sticky at the bottom (above the tab bar on phone).</li>
+<li><b>Left column in order:</b>
+<ul>
+<li><b>Hero:</b> mood Octopus, a status label with a pulsing dot, the status line, a sub-line (hidden in compact density) and action buttons. States: waiting, rate-limited, working, held, idle, no projects.</li>
+<li><b>Octopus panel:</b> voice and agent pickers; the plans waiting on the user; provider availability; the autonomy switch; the "Going to sleep" button.</li>
+<li><b>Rollups:</b> Total, In queue, Succeeded, Failed. Each cell links to Activity or Projects with the matching filter.</li>
+<li><b>Needs you:</b> approval cards (command block, risk chips, Details, Deny, Approve; hint "A" on desktop, "or swipe &rarr;" on phone), failed cards (Retry, Open chat, Dismiss), review cards (Open, "Looks good"), plan cards (Cancel, Run).</li>
+<li><b>Rate-limited card:</b> live countdown, "Retry now", "Open chat".</li>
+<li><b>Queue tabs:</b> <i>Running now</i> (live step, progress), <i>Up next</i> (drag handles, move-to-top &uarr;, cancel &#10005; with Undo, bulk bar) and <i>Completed</i>.</li>
+</ul></li>
+<li><b>Right column in order:</b> CRM card (the counts), Coming up, Follow-ups, Scheduled (rows with enable toggle, "Manage" link), Quick buttons, Usage (session and weekly bars, spend, 7-day chart), Models (status dot, name, usage, status line).</li>
+<li><b>Ask box:</b> on phone a one-line bar that expands into a full overlay. Controls: auto-growing textarea (Enter sends, Shift+Enter adds a line), model picker, Claude account picker, agent override, plan preview, attach picture (also by paste, up to 6, thumbnails with &#10005;), Polish text, a project target menu, microphone, and a send "&uarr;". States: sending, a routed-result line (with an "open #id" link), error text ("Could not send: &hellip;").</li>
+</ul>
+
+<h4>Projects</h4>
+<ul>
+<li>A <b>Cards / Table / Board</b> switch (CRM views); the Work/Personal/All switch (phone only); filter chips <b>All, Pending, Ongoing, In queue, Failed, Done</b> with counts; a toolbar with <b>Sort</b> (Most active, Recently used, Most queued, Name A&ndash;Z), <b>Filter</b> (Show paused projects, Only projects with tasks), Search and "+ New project"; a bulk bar when the In queue filter is on.</li>
+<li>Rows are grouped by section headings; each has a name, status and an expand toggle that lists its tasks. Two columns of rows from 900px.</li>
+<li>Empty states: "No projects yet" with "Create your first project"; "No projects match" with "Clear filters".</li>
+</ul>
+
+<h4>Project page</h4>
+<ul>
+<li><b>Header:</b> avatar (image, initial, or Octopus for General), name, a status dropdown (Not started, In progress, Need info, On hold, Completed, Archived), path, a Work/Personal switch, and buttons <b>Suggest</b>, <b>Hide</b>, <b>Pause/Resume</b>, <b>+ Task</b>. A CRM-only project shows a "CRM only" badge and "Link a folder". A paused banner has a sleeping Octopus. General has no status pill and no Hide or Suggest.</li>
+<li><b>Tabs in order:</b> Overview, Work, Backlog, Phases, Timeline, Notes, Documents, Activity, Recipes, then a spacer and a Settings button with an icon. Counts show on Backlog, Phases (done/total), Notes, Documents, Recipes. The tab is kept in the URL. Overview is hidden for General. A CRM-only project opens on Overview and tabs that need a folder show a "no folder" card with "Link a folder".</li>
+<li><b>Overview</b> (CRM record), <b>Phases</b> and <b>Timeline</b> contain the CRM record editor, phase planner and timeline/calendar content described in sections 4.4, 4.6 and 4.8.</li>
+<li><b>Work tab:</b> main column with the ask box (sends to this project), Live cards (status label, title, progress bar, meta), Up next ("#position", title, chip) and Done recently (with an "All activity &rarr;" link); side column with stats (Backlog, Up next, Running, Done this week), the pinned note ("Octopus reads this before every run"), a 7-day chart with success rate and average run time, a monthly spend bar, a Phases card, and the Octopus card with the "Queue backlog in order" button. Empty: "Nothing queued for this project" with "Queue backlog (N)" and "Suggest tasks". Collapses to one column at 1100px.</li>
+<li><b>Backlog tab:</b> see 4.5. Header actions "Select all / Clear" and "Queue&hellip;"; sticky bulk bar with Delete, Run selected&hellip; and Select all; composer at the bottom with a model menu, a mode segmented control (Accept edits and others), attach picture, Polish and send.</li>
+<li><b>Notes tab / Documents tab:</b> see 4.15.</li>
+<li><b>Activity tab:</b> per-task rows with a select checkbox and a &#8943; menu (move or delete); bulk bar with Move&hellip;, Priority&hellip;, Re-run, Cancel, Delete, Select all / Clear. Empty: "No activity yet" with "Add a task".</li>
+<li><b>Recipes tab:</b> recipe cards with "Run here". Empty: "No recipes yet".</li>
+<li><b>Settings tab:</b> <i>How tasks run</i> (Claude account card, default priority, "Mark in progress automatically"); <i>Notifications</i> (Approvals, Failures, Completions, Quiet hours); <i>Permissions and deploy</i> (allowed-command chips with &#10005;, deploy targets: name, how, "Add target"); <i>Autopilot</i> (mode and ceiling); <i>Spending</i> (monthly budget stepper and a bar); "Loading settings&hellip;" while loading.</li>
+<li><b>Pinning requirement (new):</b> the project notes say <b>any tab on the project page can be pinned</b>. Today project tabs are <b>not</b> pinnable &mdash; this must be designed (see 8).</li>
+</ul>
+
+<h4>Clients, Client page, Contact page, CRM</h4>
+<ul>
+<li><b>Clients:</b> list with logo, name, status, project count, active value; "+ New client", past-clients link.</li>
+<li><b>Client page / Contact page:</b> details, linked projects or contacts, activity feed with log forms and open follow-ups, report download (CSV / Markdown).</li>
+<li><b>CRM:</b> a Cards / Table / Board switch and the dashboard tiles and lists of 4.6 (counts, overdue, due this week, due this month, at risk, follow-ups, pipeline, by client, stale, 8-week workload).</li>
+</ul>
+
+<h4>Recipes &amp; schedules</h4>
+<ul><li>An intro line, a Schedules list with toggles, and a recipe-card grid. Empty states with "Schedule a task" and "Add a task".</li></ul>
+
+<h4>Activity</h4>
+<ul><li>The queue section (same rows and controls as Up next), then History with filter chips (All, Done, Failed, Review, Cancelled), grouped TODAY / YESTERDAY / EARLIER, and a "Recycle bin" link. Empty: "No activity yet". An SwiftBar link can open it pre-filtered.</li></ul>
+
+<h4>Messages (message centre)</h4>
+<ul>
+<li>Every chat, one entry per task with its replies folded in, newest message first, grouped by day, with a PINNED section on desktop. Search matches title, project and every message (all words must appear) and shows the matching message; it searches the whole history. Filters: status (needs you / active / done / failed), project, model, type (Tasks / Messages), unread. Paged (40 at first, then "load more"). Key <code>6</code>.</li>
+</ul>
+
+<h4>Chat pane</h4>
+<ul>
+<li>Header with title and a sub-line (project, model, status); a thread of You and Octopus bubbles, a tool/step log, inline approval cards and system pills; reply footers (status, model, time, cost); a "New reply" jump button when scrolled up; a typing indicator (dancing Octopus and a progress bar for agent chats); it auto-scrolls so a new long reply starts from its top. Composer: attach picture, Polish, a model and account menu, send. Phone header has a back arrow.</li>
+</ul>
+
+<h4>Calendar, Briefing, Notes, Bin, Hidden</h4>
+<ul><li>Calendar ("Loading the calendar&hellip;" spinner while loading); Briefing "Good morning" with "Putting your day together&hellip;" placeholder; Notes pad; Recycle bin; Hidden projects with a count badge.</li></ul>
+
+<h4>Personal</h4>
+<ul><li>Tabs Email, Calendar, Reminders, Connections (section 4.12).</li></ul>
+
+<h4>Routing, AI Providers, Token usage, Voice</h4>
+<ul>
+<li><b>Routing:</b> "Which model for what"; every routed request: classification, project, agent, model, tools, reason, outcome, duration, cost, each candidate's score.</li>
+<li><b>AI Providers:</b> models grouped by provider with availability, limits and usage; on/off switch, add/edit/remove models; API keys cards.</li>
+<li><b>Token usage:</b> section 4.14.</li>
+<li><b>Voice:</b> providers, speed, per-language voices, Alexa section.</li>
+</ul>
+
+<h4>Settings (segmented tabs)</h4>
+<table>
+<tr><th style="width:22%">Tab</th><th>Content</th></tr>
+<tr><td>General</td><td>Claude accounts; Tour and help; email notification settings; global toggles (notify on resume, hold low when busy, monthly budget); sleep mode state</td></tr>
+<tr><td>Octopus</td><td>Autonomy, Plan preview, Permissions</td></tr>
+<tr><td>Sites</td><td>"Learn a website"</td></tr>
+<tr><td>Agents &amp; tools</td><td>Edits agents.json and tools.json</td></tr>
+<tr><td>Calendar &amp; voice</td><td>Calendar and briefing settings (briefing time and push), voice</td></tr>
+<tr><td>Shortcuts</td><td>Rebindable shortcuts with Reset all</td></tr>
+<tr><td>Backup</td><td>Export and restore</td></tr>
+</table>
+<p>Restart Octopus and the Modules registry are service-level controls; Modules has no screen yet.</p>
+
+<h3>5.5 Sheets, modals and overlays</h3>
+<ul>
+<li>Bottom sheets on phone become a centred modal on desktop (640px wide).</li>
+<li><b>New task sheet (palette):</b> textarea with a mood Octopus; project chips (General first); model chips (Auto plus each model); a Claude account field; an APPROVAL mode chip row (hidden for API models or scheduled runs); priority (Low/Normal/Urgent); when chips (Now, Tonight, Tomorrow, daily, weekdays and others); RECIPES and RECENT PROMPTS lists; footer with attach picture, dictate, Polish, an ETA line, a "Keep" checkbox and the "Queue &crarr;" or "Schedule &crarr;" button (spinners "Routing&hellip;", "Scheduling&hellip;").</li>
+<li><b>Other sheets:</b> usage, account, accountEdit, addProject, keys (shortcuts list), summary, editTask, retryEdit, runOpts, chatActions, bulk, taskDetail, editTodo, editNote, editSchedule, quick (add quick button), runReview, event (timeline item / meeting), phase, report, genTasks, tour, help, preview, plan.</li>
+<li><b>Spotlight:</b> Alt+Space, a search or ask-Octopus-anything overlay. <b>Search dropdown:</b> from the topbar box with keyboard selection. <b>Palette</b> has a dictate (mic) button.</li>
+<li><b>Offline popup:</b> "CONNECTION LOST / Octopus is offline", shown after two consecutive failed polls and never during a restart; buttons Dismiss and "Try now"; includes a <code>launchctl list | grep claudequeue</code> hint and the last error.</li>
+<li><b>Confirmation popover</b> anchored to a button; menus with a scrim (sort, filter, model, account, reply menu, link menu); tab menu; native <code>confirm()</code> for restart and hard restart.</li>
+<li><b>Esc closes</b> in this order: link or tab menu, spotlight, search, notifications, menus, sheet, nav drawer, overview edit, ask overlay, right drawer, then the pane.</li>
+</ul>
+
+<h3>5.6 Keyboard shortcuts</h3>
+<table>
+<tr><th>Rebindable (Settings &rarr; Shortcuts, stored in localStorage <code>octopus-shortcuts</code>)</th><th>Fixed</th></tr>
+<tr><td>New task <code>Mod+/</code>; Collapse sidebar <code>Mod+B</code>; Open / close right panel <code>Mod+Shift+B</code>; Spotlight <code>Alt+Space</code>; Search <code>/</code>; Approve <code>A</code>; Deny <code>D</code>; Briefing <code>G</code>; Shortcuts list <code>?</code></td>
+<td><code>Mod+K</code> and <code>N</code>: new task; <code>[</code>: sidebar; <code>1</code>&ndash;<code>6</code>: Home, Projects, Recipes, Activity, Personal, Messages; <code>7</code>: Calendar; <code>Esc</code>: close</td></tr>
+</table>
+<p>A new binding steals a combo from another action; built-in combos are refused. Letter keys are ignored while typing; only Mod combos work then.</p>
+
+<h3>5.7 Gestures and touch</h3>
+<ul>
+<li>Page swipe carousel; swipe-back on detail pages; swipe to approve/deny on approval cards (<code>data-swipe</code>); drag reorder on any <code>.handle</code> in Up next and Backlog (a ticked row drags all ticked rows); edge swipes for drawers; double-tap to dismiss the splash; press-and-hold (500 ms) on any element with a title shows the title as a toast on touch screens without hover; auto-growing textareas.</li>
+<li>Rendering is held while a finger is on a handle or swipe card. Desktop resizers: sidebar, chat pane and right panels; double-click resets the width; widths stored in localStorage.</li>
+</ul>
+
+<h3>5.8 Responsive behavior</h3>
+<ul>
+<li>Desk threshold 900px. Sidebar inline from 1280px, slide-over 900&ndash;1279px, drawer on phones. Chat pane inline column from 1280px, floating below. Home two columns from 700px. Projects two columns of rows from 900px. Project Work collapses at 1100px. Settings, CRM, clients and calendar have breakpoints at 520, 600, 700, 760, 860, 900, 1080 and 1100px. The topbar live dot hides below 360px.</li>
+<li><b>Mobile rules (&lt;900px):</b> every text input is 16px so iOS does not zoom; tap targets 40&ndash;44px; diffs scroll sideways; the tab bar uses a 7-column grid with a 56px FAB gap and is tighter below 360px; the bulk bar sits above the tab bar.</li>
+<li>The visual viewport shrinks the app height while the keyboard is open (<code>--app-h</code>). Safe-area insets are used. Reduced motion is honoured.</li>
+<li><b>Density:</b> a compact mode (<code>data-density="compact"</code>, rows 44px, smaller hero, hidden meta lines; persisted as <code>octopus-compact</code>). Where the toggle is rendered in the current topbar was not found; check <code>toggleDensity</code> in app.js.</li>
+</ul>
+
+<h2>6. Visual system</h2>
+<ul>
+<li><b>Theme:</b> dark, with coral as the brand color. Dense, mono-labelled, card-based UI. Color is reserved for status. The Octopus mascot (code-drawn SVG, six moods) is the brand mark and appears in empty and error states. Icons are inline SVG; emoji appear only in Ask placeholders and Quick buttons. Copy comes in a playful tone and a plain tone.</li>
+<li><b>Fonts:</b> Bricolage Grotesque 400&ndash;800 (UI) and JetBrains Mono 400&ndash;600 (numbers, meta, code), both from Google Fonts.</li>
+</ul>
+<table>
+<tr><th>Type token</th><th>Size</th><th>Type token</th><th>Size</th></tr>
+<tr><td>eyebrow</td><td>10.5px mono uppercase</td><td>row</td><td>14.5px</td></tr>
+<tr><td>meta</td><td>11.5px</td><td>section</td><td>15px</td></tr>
+<tr><td>small</td><td>12.5px</td><td>input</td><td>16px</td></tr>
+<tr><td>body</td><td>14px</td><td>card title</td><td>18px</td></tr>
+<tr><td>title</td><td>20px (22 desktop)</td><td>hero / display</td><td>23px / 31px</td></tr>
+</table>
+<p>Reading line height 1.62.</p>
+<table>
+<tr><th>Surfaces</th><th>Value</th><th>Borders</th><th>Value</th><th>Text</th><th>Value</th></tr>
+<tr><td>bg-deep</td><td>#06090D</td><td>line-soft</td><td>#1A2330</td><td>text</td><td>#E8EEF3</td></tr>
+<tr><td>bg</td><td>#0B1016</td><td>line</td><td>#223040</td><td>text-2</td><td>#DCE4EB</td></tr>
+<tr><td>bg-sidebar</td><td>#090D12</td><td>line-strong</td><td>#2A3747</td><td>text-3</td><td>#C2CDD8</td></tr>
+<tr><td>bg-pane</td><td>#0A0E13</td><td>line-btn</td><td>#33404F</td><td>text-muted</td><td>#A3B0BE</td></tr>
+<tr><td>bg-sheet</td><td>#0F151D</td><td>line-focus</td><td>#3A4B60</td><td>text-meta</td><td>#93A1B0</td></tr>
+<tr><td>inset</td><td>#0F141B</td><td>line-menu</td><td>#2F3D4F</td><td>text-faint</td><td>#6B7A8A</td></tr>
+<tr><td>surface</td><td>#121922</td><td></td><td></td><td>text-ghost</td><td>#5B6A7A</td></tr>
+<tr><td>surface-2</td><td>#18212C</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>surface-3</td><td>#223040</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>surface-drag</td><td>#1E2936</td><td></td><td></td><td></td><td></td></tr>
+</table>
+<table>
+<tr><th>Brand and status</th><th>Value</th><th>Used for</th></tr>
+<tr><td><span class="sw" style="background:#FF7B5C"></span>coral</td><td>#FF7B5C (hover #FFA48C, on-coral #1A0A05, tint 12% alpha, line 38% alpha, you-bubble #2A1A15)</td><td>brand, primary actions, New task, FAB</td></tr>
+<tr><td><span class="sw" style="background:#FFB547"></span>wait (amber)</td><td>#FFB547</td><td>waiting, needs you, 80%+ usage</td></tr>
+<tr><td><span class="sw" style="background:#45E0C8"></span>run (teal)</td><td>#45E0C8 (soft #9FEFE2)</td><td>running, normal usage</td></tr>
+<tr><td><span class="sw" style="background:#FF5470"></span>err</td><td>#FF5470 (soft #FF8FA2)</td><td>errors, deny</td></tr>
+<tr><td><span class="sw" style="background:#7FB2FF"></span>review (blue)</td><td>#7FB2FF</td><td>needs review</td></tr>
+<tr><td><span class="sw" style="background:#A58BFF"></span>sleep / rate-limited (violet)</td><td>#A58BFF</td><td>sleep, rate limit, 95%+ usage</td></tr>
+<tr><td><span class="sw" style="background:#6FCF97"></span>ok (green)</td><td>#6FCF97</td><td>success, General project</td></tr>
+<tr><td>queued</td><td>#C2CDD8</td><td>queued</td></tr>
+<tr><td>cancelled</td><td>#93A1B0</td><td>cancelled</td></tr>
+<tr><td>offline</td><td>#5B6A7A</td><td>offline</td></tr>
+</table>
+<ul>
+<li>Each status color also has card, line and tint variants. <b>Model lanes:</b> agent (Claude Code) = coral text #FFA48C, tinted fill, squared radius 5; api = green text #8FE0B0, outlined, pill-shaped. <b>Project palette:</b> p1 #7FB2FF, p2 #FF7B5C, p3 #F58AC0, p4 #E6C07B, p5 #7FD1B9, plus muted and general #6FCF97. Diff colors for add, delete and hunk.</li>
+<li><b>Radii:</b> 5, 8, 10, 12, 14, 16, 18, 20, 26 (sheets), 999 (pill). <b>Sizing:</b> tap target 44px; row height 56px (44 compact); section gap 20px; card padding 14px; page padding 14px (28px desktop); sidebar 250px; rail 60px; pane 460px; tab bar 96px. Shadows for drag, toast, menu, modal, pane and the coral FAB. Bar blur 14px.</li>
+<li><b>Motion:</b> easing cubic-bezier(.2,.7,.3,1); durations .15s, .2s, .26s, .4s; 45 ms stagger; keyframes rise, fadein, spin, pulse, caret, shimmer, dot-bounce, load-bar, splash-out and the Octopus animations (wiggle, blink, bob, zz, dance, shadow).</li>
+<li><b>Global:</b> dark color-scheme; thin scrollbars; 2px coral focus ring; placeholder color text-faint.</li>
+</ul>
+
+<h3>Empty, error and loading states (patterns to reuse)</h3>
+<ul>
+<li><b>Loading:</b> skeleton pages (shimmer), skeleton document list, "Loading settings&hellip;", "Loading the calendar&hellip;" with a spinner, "Putting your day together&hellip;", button spinners ("Approving&hellip;", "Retrying&hellip;", "Routing&hellip;", "Scheduling&hellip;", "Adding&hellip;", "Saving&hellip;", "Refreshing&hellip;", "Checking&hellip;"), a chat typing indicator.</li>
+<li><b>Empty:</b> a reusable empty-state component (title, body, CTA): no projects, no activity, no schedules, no recipes, no documents; plus "Nothing queued", "Nothing finished yet", "Nothing yet. Write the first one in the box.", "No documents match.", "That project doesn't exist any more" with an "All projects" button; the notification panel's own empty text.</li>
+<li><b>Errors:</b> failed task cards; Ask box "Could not send: &hellip;"; palette ETA line errors; the locked gate; the offline popup and banners; the paused-project banner and rate-limit card; "Octopus is restarting"; the fail() toast helper; invite error under a meeting; approval-link result pages.</li>
+</ul>
+
+<h2>7. Screen inventory checklist (everything to design)</h2>
+<ol>
+<li>Lock gate; Splash; Onboarding/first-run tour</li>
+<li>App shell: desktop sidebar (expanded, collapsed rail, drawer), topbar (search, account switcher, usage pill, restart, bell), right-edge rail (Queue, Messages, Calendar), phone topbar, bottom tab bar, left and right drawers, status banners</li>
+<li>Home (hero states, Octopus panel, rollups, Needs you, rate-limit, queue tabs, CRM card, Coming up, Follow-ups, Scheduled, Quick buttons, Usage, Models, Ask box and overlay)</li>
+<li>Projects (Cards, Table, Board, filters, sort, bulk bar, empty states)</li>
+<li>Project page with all 10 tabs (Overview/CRM record, Work, Backlog, Phases, Timeline, Notes, Documents, Activity, Recipes, Settings), CRM-only variant, paused variant, General variant, pinned-tab behavior</li>
+<li>Clients list, Client page, Contact page, activity feed and log forms, follow-up forms, report download</li>
+<li>CRM dashboard (counts, overdue, due week/month, at risk, follow-ups, pipeline, by client, stale, workload)</li>
+<li>Recipes &amp; schedules; Activity; Messages; Chat pane (docked, floating, minimised, inline, phone full screen); voice chat pane</li>
+<li>Task detail page (plan steps, files changed, git, tests, approvals, diff, result); approval pane and approval-link result pages</li>
+<li>Calendar; Briefing; Notes pad; Recycle bin; Hidden</li>
+<li>Personal: Email, Calendar, Reminders, Connections (accounts, permissions, activity log)</li>
+<li>Routing; AI Providers (models, API keys); Token usage; Voice (incl. Alexa section)</li>
+<li>Settings: General (incl. email notifications), Octopus, Sites, Agents &amp; tools, Calendar &amp; voice, Shortcuts, Backup (export, check-then-confirm restore)</li>
+<li>Meeting form with invite states; timeline item form; phase forms; AI generate-tasks sheet; phase report sheet</li>
+<li>All sheets listed in 5.5; Spotlight; offline popup; confirm popovers; menus</li>
+<li>Notification center (bell, toasts, panel) and system notification permission flow</li>
+<li>Modules registry screen (new; not built)</li>
+<li>Emails (HTML templates for the 9 events) and the approval-link result cards</li>
+</ol>
+
+<h2>8. Open items, gaps and design brief</h2>
+<ul>
+<li><b>Design brief:</b> build the complete Den UI from sections 2&ndash;7. Keep the phone-first approach and the 900px breakpoint, the dark theme with coral brand, mono-labelled dense cards, color reserved for status, and the Octopus mascot (six moods) in empty and error states. Keep the playful vs plain copy tones.</li>
+<li><b>Pin-any-tab requirement (standing project note):</b> any tab on the project page can be pinned. Current code only pins chat tabs. Design a pin affordance on every project tab (the ten tabs plus Settings), a clear pinned state, and where pinned tabs sit (suggested: first in the strip, kept across projects, persisted per device or per user setting).</li>
+<li><b>Not built / thin:</b> Outlook / Microsoft 365 (OAuth config exists; Graph adapters not built); local Whisper needs manual install; pictures on scheduled prompts; iOS Shortcuts flows (endpoints exist); Modules dashboard screen and command input; no client portal and no multi-user roles (by design today).</li>
+<li><b>The README is out of date</b> versus the code: it lists four project tabs (Work, Activity, Recipes, Settings) while the code has ten plus Settings; it lists fewer nav items and shortcuts; and it describes toasts at bottom-centre while the code puts them top-right.</li>
+<li><b>Survey caveats:</b> the screens Overview, Phases, Calendar, Personal, Routing, Providers, Usage, CRM table, Clients and Contacts were surveyed from code only in outline; their detailed layouts should be designed from the processes in section 4. The assistant package was described from the README. The density toggle's location was not found.</li>
+<li><b>Security rule for the UI:</b> never display Claude tokens, OAuth tokens or full API keys; accounts.json holds live tokens in plaintext on disk.</li>
+</ul>
+
+<h2>9. Reference</h2>
+<h3>9.1 API endpoints (all require X-API-Key except /health, the approval quick links, OAuth callback and /alexa)</h3>
+<table>
+<tr><th style="width:22%">Area</th><th>Endpoints</th></tr>
+<tr><td>Health / service</td><td>GET /health; GET /service; POST /service/restart; GET /queue/status; GET|PATCH /settings; POST|DELETE /sleep; POST /notify/test; GET /dashboard, /dashboard/legacy</td></tr>
+<tr><td>Projects</td><td>GET|POST /projects; PATCH|DELETE /projects/{id}; GET|PATCH /projects/{id}/settings; POST|DELETE /projects/{id}/image; POST /projects/{id}/suggest; POST /projects/{id}/report; GET|POST /projects/{id}/documents</td></tr>
+<tr><td>Tasks</td><td>GET /tasks; POST /projects/{id}/tasks; GET /tasks/{id}/detail, /diff, /thread; POST /tasks/{id}/cancel, stop, pause, play, requeue, top, reviewed, read, summary; POST /queue/reorder; POST /messages/{id}/read; GET /messages</td></tr>
+<tr><td>Backlog</td><td>GET|POST /projects/{id}/todos; PATCH|DELETE /todos/{id}; POST /projects/{id}/todos/reorder, /todos/run; PUT /todos/{id}/phase</td></tr>
+<tr><td>Notes / documents</td><td>GET|POST /projects/{id}/notes; PATCH|DELETE /notes/{id}; GET|PATCH|DELETE /documents/{id}; GET|POST /pad; PATCH|DELETE /pad/{id}; POST /pad/{id}/save-file</td></tr>
+<tr><td>Phases</td><td>GET /phases; GET|POST /projects/{id}/phases; POST /projects/{id}/phases/reorder; PATCH|DELETE /phases/{id}; POST /phases/{id}/generate-tasks, start, pause, complete, reopen; GET /phases/generation-models</td></tr>
+<tr><td>CRM</td><td>GET /crm/dashboard; GET /crm/reports/{client|project}/{id}?format=json|csv|md; GET /crm/feed; GET|POST /clients; GET|PATCH|DELETE /clients/{id}; POST|DELETE /clients/{id}/logo; GET|POST /contacts; PATCH|DELETE /contacts/{id}; POST /projects/{id}/contacts; DELETE /projects/{id}/contacts/{cid}</td></tr>
+<tr><td>Activities / follow-ups</td><td>POST /activities; PATCH|DELETE /activities/{id}; GET|POST /followups; PATCH|DELETE /followups/{id}</td></tr>
+<tr><td>Timeline / briefing</td><td>GET /timeline; GET|POST /projects/{id}/timeline; PATCH|DELETE /timeline/{id}; GET /briefing</td></tr>
+<tr><td>Approvals</td><td>GET /approvals; POST /approvals/{id}/decide; GET /approvals/{id}/context; GET /approvals/{id}/quick/{approve|deny}?t=</td></tr>
+<tr><td>Octopus</td><td>POST /octopus; POST /octopus/plan; POST /octopus/plans/{id}/run, cancel; GET /routing, /routing/{id}; GET /octopus/overview, agents, tools, providers, models, usage, result/{task_id}, images/{name}; PATCH|PUT|DELETE|POST /octopus/models; POST /octopus/polish; POST /octopus/api-keys; DELETE /octopus/api-keys/{id}; POST /octopus/api-keys/{id}/default</td></tr>
+<tr><td>Accounts / usage</td><td>GET|POST /accounts; DELETE /accounts/{id}; PUT /accounts/{id}/alias, color, details; POST /accounts/mac/show; POST /accounts/{id}/activate, refresh; GET /usage/summary, /usage/tokens</td></tr>
+<tr><td>Recipes / schedules</td><td>GET|POST /recipes; DELETE /recipes/{id}; POST /recipes/{id}/run; GET|POST /schedules; PATCH|DELETE /schedules/{id}</td></tr>
+<tr><td>Uploads / voice</td><td>POST /uploads; GET /uploads/{id}; GET /voice; POST /voice/transcribe, speak, command; POST /alexa</td></tr>
+<tr><td>Notifications</td><td>GET /push/key; POST|DELETE /push/subscribe; POST /presence; GET|PATCH /email; POST /email/test</td></tr>
+<tr><td>Personal assistant</td><td>GET /assistant/status; POST /assistant/connections/{provider}/connect; GET /assistant/oauth/{provider}/callback; DELETE /assistant/connections/{provider}; GET|PATCH /assistant/policies; POST /assistant/route; GET /assistant/activity; GET /assistant/email/overview, calendar/overview; GET|DELETE /assistant/reminders</td></tr>
+<tr><td>Backup</td><td>GET /export/{kind}?format=; GET /backup; POST /restore/check; POST /restore</td></tr>
+<tr><td>Modules</td><td>GET /modules; POST /modules/rescan; GET /modules/commands; POST /modules/commands/{name}; GET /modules/{name}; POST /modules/{name}/enable|disable|reload; PATCH /modules/{name}/config</td></tr>
+</table>
+
+<h3>9.2 Settings keys worth surfacing</h3>
+<ul>
+<li><code>notify_on_resume</code>, <code>hold_low_when_busy</code>, <code>monthly_budget_usd</code>, <code>sleep_mode</code>, <code>email_to</code>, <code>email_events_off</code>, <code>briefing_time</code> (08:30), <code>briefing_push</code>, <code>voice_rate</code>, <code>voice_language_voices</code>, <code>voice_manual</code>; project settings <code>auto_in_progress</code>, <code>autopilot</code>, <code>autopilot_ceiling</code>, <code>budget_usd</code>, <code>claude_account</code>, <code>notify_approvals/failures/completions</code>, <code>quiet_hours</code>.</li>
+<li>Browser-local: <code>cq_api_key</code>, <code>octopus-pinned-tabs</code>, <code>octopus-shortcuts</code>, <code>octopus-last-seen</code>, <code>octopus-compact</code>, saved panel widths, browser voice choices.</li>
+</ul>
+
+<h3>9.3 Key files</h3>
+<ul>
+<li>Backend: api.py (about 160 routes), db.py (tables and CRM columns), worker.py (queue, notifications, autopilot, reminders, briefing), router.py, crm.py, crm_reports.py, clients.py, activities.py, timeline.py, invites.py, phases.py, mailer.py, email_templates.py, approval_links.py, approval_server.py, risk.py, webpush.py, presence.py, accounts.py, api_keys.py, documents.py, pad.py, project_images.py, titles.py, backup.py, restart_control.py, octopus/ (plan, control, execution, service, voice, models), assistant/ (intent, planner, actions, scope, capabilities, tools, providers, oauth), alexa/, den_modules/, modules/hello, models.json, agents.json, tools.json, mcp-config.json.</li>
+<li>Front end: dashboard.html, static/js/app.js, static/js/views/ (home, shell, project, projects, chat, sheets, queue-panel, status-banner, offline, splash, settings, crm-*, clients, calendar, personal, routing, providers, usage, voice-pane, and others), static/js/notifications.js, gestures.js, shortcuts.js, voice.js, static/css/tokens.css, mobile.css, static/sw.js, design_handoff_tushars_workspace/ (the original design spec).</li>
+<li>Docs: README.md, docs/MODULES.md, setup/ (launchd plist, Alexa interaction model and manifest).</li>
+</ul>
+<p style="margin-top:14pt;color:#5b6a7a">End of document.</p>
+</body></html>

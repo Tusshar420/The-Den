@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:18px; max-width:1180px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+    <sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
+      <div style="padding:14px 16px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(18px); display:flex; flex-direction:column; gap:6px;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#93A1B0;">{{ st.label }}</span>
+        <span style="display:flex; align-items:baseline; gap:8px;"><span style="font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:600; color:{{ st.color }};">{{ st.value }}</span><span style="font-size:12px; color:#6B7A8A;">{{ st.sub }}</span></span>
+      </div>
+    </sc-for>
+    <div style="grid-column:span 2; min-width:0; padding:14px 16px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(18px); display:flex; flex-direction:column; gap:8px;">
+      <span style="display:flex; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#93A1B0;"><span style="flex:1;">LAST 14 DAYS</span><span style="color:#6FCF97;">■ done</span>&nbsp;&nbsp;<span style="color:#FF5470;">■ failed</span></span>
+      <div style="flex:1; min-height:56px; display:flex; align-items:flex-end; gap:4px;">
+        <sc-for list="{{ bars }}" as="b" hint-placeholder-count="14">
+          <div title="{{ b.t }}" style="flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; gap:2px;">
+            <div style="height:{{ b.f }}; min-height:{{ b.fmin }}; border-radius:2px; background:#FF5470;"></div>
+            <div style="height:{{ b.h }}; border-radius:3px 3px 2px 2px; background:{{ b.c }};"></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section style="position:sticky; top:-1px; z-index:5; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px; margin:0 -10px; border-radius:16px; background:rgba(8,12,17,0.72); backdrop-filter:blur(18px);">
+    <div style="flex:1 1 220px; min-width:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+      <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search tasks, commands, errors…" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+    </div>
+    <div style="display:flex; gap:4px; overflow-x:auto; max-width:100%;">
+      <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="6">
+        <button onClick="{{ k.pick }}" style="flex:none; height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ k.bg }}; color:{{ k.fg }}; border:1px solid {{ k.bd }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ k.dot }};"></span>{{ k.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ k.count }}</span></button>
+      </sc-for>
+    </div>
+    <select ref="{{ fixSel }}" data-v="{{ proj }}" value="{{ proj }}" onChange="{{ onProj }}" style="height:34px; padding:0 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#C2CDD8; font-family:inherit; font-size:12.5px; cursor:pointer;">
+      <sc-for list="{{ projOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+    </select>
+  </section>
+
+  <sc-for list="{{ days }}" as="d" hint-placeholder-count="2">
+    <section style="display:flex; flex-direction:column; gap:0;">
+      <div style="display:flex; align-items:baseline; gap:10px; padding:0 4px 10px;"><h2 style="margin:0; font-size:15px; font-weight:700;">{{ d.name }}</h2><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ d.count }} events</span></div>
+      <div style="position:relative; display:flex; flex-direction:column; padding-left:28px;">
+        <div style="position:absolute; left:9px; top:8px; bottom:8px; width:2px; border-radius:2px; background:rgba(255,255,255,0.07);"></div>
+        <sc-for list="{{ d.items }}" as="e" hint-placeholder-count="4">
+          <div style="position:relative; padding-bottom:10px;">
+            <span style="position:absolute; left:-24px; top:16px; width:12px; height:12px; border-radius:50%; background:#0A0E13; border:2px solid {{ e.dot }}; box-shadow:0 0 0 3px #05080C;"></span>
+            <div style="border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid {{ e.bd }}; backdrop-filter:blur(18px); overflow:hidden;">
+              <button onClick="{{ e.toggle }}" style="width:100%; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 14px; border:0; background:transparent; cursor:pointer; text-align:left; color:#E8EEF3;">
+                <span style="flex:none; width:44px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ e.time }}</span>
+                <span style="flex:none; height:22px; padding:0 8px; display:flex; align-items:center; border-radius:7px; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; letter-spacing:.06em; background:{{ e.kbg }}; color:{{ e.dot }};">{{ e.kind }}</span>
+                <span style="flex:1 1 200px; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                  <span style="font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ e.title }}</span>
+                  <span style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#93A1B0; flex-wrap:wrap;"><span style="font-family:'JetBrains Mono', monospace; color:#6B7A8A;">{{ e.id }}</span><span style="display:flex; align-items:center; gap:5px;"><span style="width:6px; height:6px; border-radius:2px; background:{{ e.pc }};"></span>{{ e.project }}</span><span style="color:#4A5866;">·</span>{{ e.who }}</span>
+                </span>
+                <span style="flex:none; display:flex; gap:12px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;"><span>{{ e.dur }}</span><span style="color:#C2CDD8;">{{ e.cost }}</span></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:2; stroke-linecap:round; transform:{{ e.chev }}; transition:transform .2s;"><path d="M6 9l6 6 6-6"></path></svg>
+              </button>
+              <sc-if value="{{ e.open }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; flex-direction:column; gap:10px; padding:0 14px 14px 70px;">
+                  <sc-for list="{{ e.steps }}" as="st" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#A3B0BE;"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:{{ st.dot }};"></span><span style="flex:1;">{{ st.text }}</span><span style="color:#6B7A8A;">{{ st.t }}</span></div>
+                  </sc-for>
+                  <sc-if value="{{ e.err }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 12px; border-radius:11px; background:rgba(255,84,112,0.07); border:1px solid rgba(255,84,112,0.25); font-family:'JetBrains Mono', monospace; font-size:12px; color:#FF8FA2;">{{ e.err }}</div></sc-if>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <sc-for list="{{ e.acts }}" as="a" hint-placeholder-count="2">
+                      <button onClick="{{ a.run }}" style="height:32px; padding:0 12px; border-radius:10px; cursor:pointer; font-size:12.5px; font-weight:650; background:{{ a.bg }}; color:{{ a.fg }}; border:1px solid {{ a.bd }};">{{ a.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+
+  <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:48px 20px; border-radius:20px; border:1px dashed rgba(255,255,255,0.1); text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div style="font-size:16px; font-weight:700;">Nothing here</div>
+      <div style="font-size:13px; color:#93A1B0; max-width:360px; text-wrap:pretty;">No activity matches these filters. Everything Octopus does — tasks, routing, approvals, schedules — shows up on this timeline.</div>
+      <button onClick="{{ clear }}" style="margin-top:6px; height:36px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:13px; font-weight:600; color:#E8EEF3;">Clear filters</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+const K = { done:['DONE', C.green], failed:['FAILED', C.err], approval:['APPROVAL', C.amber], schedule:['SCHEDULED', C.violet], routing:['ROUTED', C.blue], running:['RUNNING', C.teal] };
+const SHOW = 150;   // events drawn at once; search or filter to reach older ones
+
+class Component extends DCLogic {
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { q:'', kind:'all', proj:'All projects', open:{} };
+  say(t, s, c) { this.props.say && this.props.say(t, s, c); }
+  renderVals() {
+    const s = this.state; const ql = s.q.trim().toLowerCase();
+    const data = D.need('activity', '/den/activity?days=14', 15000) || { events:[], bars:[], stats:{} };
+    const EV = (data.events || []).filter(e => D.inArea(D.projectById(e.project_id)));   // the workspace shown in the top-left menu
+    const base = EV.filter(e => (s.proj === 'All projects' || e.project === s.proj) && (!ql || (e.title + e.id + (e.err || '') + e.who + e.steps.map(x => x.text).join(' ')).toLowerCase().includes(ql)));
+    const list = base.filter(e => s.kind === 'all' || e.k === s.kind).slice(0, SHOW);
+    const dayNames = [...new Set(list.map(e => e.day))];
+    const days = dayNames.map(name => { const items = list.filter(e => e.day === name); return { name, count:String(items.length), items: items.map(e => { const key = e.key; const [label, dot] = K[e.k]; const open = s.open[key] != null ? !!s.open[key] : e.k === 'failed' && e.day === 'Today';
+      const acts = [];
+      const task = e.task_id ? D.taskById(e.task_id) || { id:e.task_id, thread_id: e.root_id !== e.task_id ? e.root_id : null } : null;
+      if (task) acts.push({ label:'Open chat', run:() => this.props.openChat ? this.props.openChat(task) : D.openChat(task) });
+      if (e.k === 'failed') acts.push({ label:'Retry on Claude Code', p:1, run:() => D.act(() => D.api('/tasks/' + e.task_id + '/requeue', { method:'POST', body:{ front:true } }), { ok:['Retrying ' + e.id, 'Claude Code', C.coral], reload:['activity'] }) });
+      if (e.k === 'done' && e.task_id) acts.push({ label:'Run again', run:() => { const t = D.taskById(e.task_id); D.act(() => t ? D.api('/projects/' + t.project_id + '/tasks', { method:'POST', body:{ prompt:t.prompt, model:t.model_id || 'auto', ...(t.env_id ? { env_id:t.env_id } : {}) } }) : D.api('/tasks/' + e.task_id + '/requeue', { method:'POST', body:{ front:false } }), { ok:['Queued again', e.title, C.coral], reload:['activity'] }); } });
+      if (e.k === 'routing') acts.push({ label:'Edit rule', run:() => D.go('routing') });
+      return { ...e, cost:String(e.cost || '').replace(/^\$/, D.cur()), kind:label, dot, kbg:tint(dot, 0.12), pc:D.projColor(D.projectById(e.project_id)), open, chev: open ? 'rotate(180deg)' : 'none', bd: e.k === 'failed' ? 'rgba(255,84,112,0.25)' : open ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', err:e.err || '',
+        steps: e.steps.map((x, i) => ({ text:x.text, t:x.t, dot: e.k === 'failed' ? C.err : i === e.steps.length - 1 && e.k === 'running' ? C.teal : C.green })),
+        acts: acts.map(a => ({ ...a, bg: a.p ? '#FF7B5C' : 'rgba(255,255,255,0.04)', fg: a.p ? '#1A0A05' : '#DCE4EB', bd: a.p ? 'transparent' : 'rgba(255,255,255,0.08)' })),
+        toggle:() => this.setState(st => ({ open:{ ...st.open, [key]: !open } })) }; }) }; }).filter(d => d.items.length);
+    const cnt = k => String(base.filter(e => k === 'all' || e.k === k).length);
+    const B = data.bars || []; const mx = Math.max(1, ...B.map(b => b.done + b.failed));
+    const st = data.stats || {};
+    const projects = [...new Set(EV.map(e => e.project))].sort();
+    return {
+      fixSel: this.fixSel,
+      stats:[{ label:'TASKS TODAY', value:String(st.today ?? '—'), sub: st.vs_avg == null ? '' : (st.vs_avg >= 0 ? '+' : '') + st.vs_avg + ' vs avg', color:'#E8EEF3' },
+        { label:'SUCCESS · 7D', value: st.success_7d == null ? '—' : st.success_7d + '%', sub:(st.failed_7d || 0) + ' failed', color:C.green },
+        { label:'AVG RUN', value: st.avg_run_ms ? D.dur(st.avg_run_ms) : '—', sub:'agent tasks', color:C.teal },
+        { label:'SPEND · 7D', value:D.money(st.spend_7d || 0), sub:'API only', color:'#E8EEF3' }],
+      bars: B.map((b, i) => ({ h: (b.done / mx * 82) + '%', f: (b.failed / mx * 82) + '%', fmin: b.failed ? '3px' : '0', c: i === B.length - 1 ? C.coral : 'rgba(111,207,151,0.45)', t: new Date(b.date + 'T00:00:00').toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' }) + ' · ' + b.done + ' done · ' + b.failed + ' failed' })),
+      q:s.q, onQ:e => this.setState({ q:e.target.value }),
+      kinds:[['all', 'All', '#C2CDD8'], ['done', 'Done', C.green], ['failed', 'Failed', C.err], ['approval', 'Approvals', C.amber], ['schedule', 'Scheduled', C.violet], ['routing', 'Routing', C.blue]].map(([id, label, dot]) => ({ label, dot, count:cnt(id), pick:() => this.setState({ kind:id }), bg: s.kind === id ? tint(dot, 0.14) : 'rgba(255,255,255,0.03)', fg: s.kind === id ? '#FFFFFF' : '#A3B0BE', bd: s.kind === id ? tint(dot, 0.4) : 'rgba(255,255,255,0.07)' })),
+      proj:s.proj, onProj:e => this.setState({ proj:e.target.value }), projOpts:['All projects', ...projects],
+      days, empty: days.length === 0 && !!D.need('activity', '/den/activity?days=14', 15000), clear:() => this.setState({ q:'', kind:'all', proj:'All projects' })
+    };
+  }
+}
+</script>
+</body>
+</html>

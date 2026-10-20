@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; max-width:1480px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="flex:1 1 320px; min-width:0; max-width:440px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">RECIPES · {{ count }}</span><button onClick="{{ newRecipe }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:12.5px; font-weight:700;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New recipe</button></div>
+    <sc-for list="{{ recipes }}" as="r" hint-placeholder-count="4">
+      <div onClick="{{ r.pick }}" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; cursor:pointer; background:{{ r.bg }}; border:1px solid {{ r.bd }}; backdrop-filter:blur(18px);">
+        <span style="flex:none; width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:{{ r.tint }}; color:{{ r.tone }};"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ r.icon }}"></path></svg></span>
+        <div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.when }}</div></div>
+        <button onClick="{{ r.toggle }}" title="Enable" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex:2 1 520px; min-width:0; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px);">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <input value="{{ cur.name }}" onChange="{{ onName }}" style="flex:1 1 220px; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:22px; font-weight:750;">
+      <button onClick="{{ test }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:11px; border:1px solid rgba(69,224,200,0.35); background:rgba(69,224,200,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#9FEFE2;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"></path></svg>Test run</button>
+      <button onClick="{{ save }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; cursor:pointer; font-size:13px; font-weight:700; color:#1A0A05;">Save</button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:16px; background:rgba(165,139,255,0.06); border:1px solid rgba(165,139,255,0.25);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#C9B8FF;">WHEN</div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ triggers }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; cursor:pointer; font-size:12.5px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }}; border:1px solid {{ t.bd }};">{{ t.label }}</button></sc-for></div>
+      <sc-if value="{{ isSched }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <div style="display:flex; gap:3px;"><sc-for list="{{ days }}" as="d" hint-placeholder-count="7"><button onClick="{{ d.pick }}" style="width:36px; height:34px; border-radius:9px; cursor:pointer; font-size:12px; font-weight:650; background:{{ d.bg }}; color:{{ d.fg }}; border:1px solid {{ d.bd }};">{{ d.label }}</button></sc-for></div>
+          <input type="time" value="{{ cur.time }}" onChange="{{ onTime }}" style="height:34px; padding:0 10px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:13px; color-scheme:dark;">
+        </div>
+      </sc-if>
+      <sc-if value="{{ isEvent }}" hint-placeholder-val="{{ false }}">
+        <select ref="{{ fixSel }}" data-v="{{ cur.event }}" value="{{ cur.event }}" onChange="{{ onEvent }}" style="height:36px; padding:0 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#E8EEF3; font-family:inherit; font-size:13px;"><sc-for list="{{ events }}" as="o" hint-placeholder-count="4"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+      </sc-if>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:0; padding-left:18px; position:relative;">
+      <div style="position:absolute; left:6px; top:14px; bottom:30px; width:2px; background:rgba(255,255,255,0.08); border-radius:2px;"></div>
+      <sc-for list="{{ steps }}" as="st" hint-placeholder-count="3">
+        <div style="position:relative; padding:6px 0;">
+          <span style="position:absolute; left:-17px; top:24px; width:12px; height:12px; border-radius:50%; background:#0A0E13; border:2px solid {{ st.tone }};"></span>
+          <div style="display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);">
+            <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A; width:16px;">{{ st.n }}</span>
+            <span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ st.tint }}; color:{{ st.tone }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ st.icon }}"></path></svg></span>
+            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
+              <span style="font-size:13px; font-weight:650;">{{ st.label }}</span>
+              <input value="{{ st.arg }}" onChange="{{ st.onArg }}" placeholder="{{ st.ph }}" style="border:0; outline:none; background:transparent; color:#A3B0BE; font-family:inherit; font-size:12.5px; padding:0;">
+            </div>
+            <button onClick="{{ st.up }}" title="Move up" style="width:28px; height:28px; display:grid; place-items:center; border-radius:8px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+            <button onClick="{{ st.rm }}" title="Remove" style="width:28px; height:28px; display:grid; place-items:center; border-radius:8px; border:0; background:transparent; cursor:pointer; color:#93A1B0;" style-hover="color:#FF8FA2;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+          </div>
+        </div>
+      </sc-for>
+      <div style="position:relative; padding-top:8px; display:flex; flex-direction:column; gap:6px;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">ADD A STEP</span>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ palette }}" as="p" hint-placeholder-count="6"><button onClick="{{ p.add }}" style="height:32px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.16); color:#C2CDD8;" style-hover="border-color:{{ p.tone }}; color:#FFFFFF;"><span style="width:6px; height:6px; border-radius:50%; background:{{ p.tone }};"></span>{{ p.label }}</button></sc-for></div>
+      </div>
+    </div>
+
+    <sc-if value="{{ log }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:14px; background:rgba(6,9,13,0.6); border:1px solid rgba(69,224,200,0.2);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#45E0C8;">TEST RUN · DRY — NOTHING SENT</div>
+        <sc-for list="{{ log }}" as="l" hint-placeholder-count="3"><div style="display:flex; gap:10px; font-family:'JetBrains Mono', monospace; font-size:12px; color:{{ l.c }};"><span style="color:#5B6A7A;">{{ l.t }}</span>{{ l.text }}</div></sc-for>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const STEP = {
+  ask:['Ask a model', 'M4 5h16v11H8l-4 4z', C.blue, 'What should it do?'],
+  run:['Run in project', 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', C.coral, 'Project + prompt'],
+  email:['Send email', 'M3 6h18v12H3zM3 7l9 6 9-6', C.teal, 'To, subject'],
+  notify:['Notify me', 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4', C.amber, 'Push message'],
+  approve:['Wait for approval', 'M5 12l5 5 9-10', C.violet, 'What to approve'],
+  cond:['If…', 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 9a9 9 0 0 1-9 9', '#C2CDD8', 'Condition, e.g. any failed']
+};
+const R0 = [
+  { id:1, name:'Daily summary', on:1, trig:'schedule', days:[1, 1, 1, 1, 1, 0, 0], time:'08:30', event:'', icon:'M4 19h16M4 15l4-4 3 3 5-6 4 4', steps:[['ask', 'Summarize yesterday’s activity and today’s calendar'], ['email', 'tushar@lawaccounting.com · Daily summary']] },
+  { id:2, name:'Nightly backlog run', on:1, trig:'schedule', days:[1, 1, 1, 1, 1, 1, 1], time:'23:00', event:'', icon:'M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z', steps:[['cond', 'Octopus is idle'], ['run', 'The Den · run backlog in order'], ['notify', 'Morning: what finished overnight']] },
+  { id:3, name:'Back up the den database', on:0, trig:'schedule', days:[0, 0, 0, 0, 0, 0, 1], time:'02:00', event:'', icon:'M4 7h16v13H4zM4 7l2-3h12l2 3M9 12h6', steps:[['run', 'The Den · copy den.db to backups/']] },
+  { id:4, name:'Client email → CRM', on:1, trig:'event', days:[0, 0, 0, 0, 0, 0, 0], time:'09:00', event:'New email from a client', icon:'M3 6h18v12H3zM3 7l9 6 9-6', steps:[['ask', 'Extract asks and dates'], ['approve', 'Add follow-ups to CRM'], ['notify', 'Tell me what was added']] }
+];
+const DL = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+class Component extends DCLogic {
+  componentDidMount() { this.props.onReady && this.props.onReady(); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { recipes:R0, sel:1, log:null };
+  say(t, s, c) { this.props.say && this.props.say(t, s, c); }
+  edit(fn) { const id = this.state.sel; this.setState(s => ({ recipes:s.recipes.map(r => r.id === id ? fn({ ...r }) : r), log:null })); }
+  renderVals() {
+    const s = this.state; const cur = s.recipes.find(r => r.id === s.sel) || s.recipes[0];
+    const whenOf = r => r.trig === 'manual' ? 'manual · run from ⌘K' : r.trig === 'event' ? 'when: ' + r.event.toLowerCase() : (r.days.every(Boolean) ? 'daily' : r.days.slice(0, 5).every(Boolean) && !r.days[5] ? 'weekdays' : r.days.map((d, i) => d ? DL[i] : '').join('')) + ' · ' + r.time;
+    return {
+      fixSel: this.fixSel,
+      count:String(s.recipes.length),
+      recipes: s.recipes.map(r => ({ ...r, when:whenOf(r), tone: r.on ? C.coral : '#6B7A8A', tint: r.on ? tint(C.coral, 0.12) : 'rgba(255,255,255,0.04)', bg: r.id === cur.id ? 'rgba(255,123,92,0.08)' : 'rgba(20,28,38,0.45)', bd: r.id === cur.id ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.06)',
+        pick:() => this.setState({ sel:r.id, log:null }), track: r.on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: r.on ? 'flex-end' : 'flex-start',
+        toggle:e => { e.stopPropagation(); this.setState(st => ({ recipes:st.recipes.map(x => x.id === r.id ? { ...x, on: x.on ? 0 : 1 } : x) })); this.say(r.on ? 'Paused' : 'Enabled', r.name, r.on ? '#93A1B0' : C.green); } })),
+      cur, onName:e => { const v = e.target.value; this.edit(r => ({ ...r, name:v })); },
+      triggers:[['schedule', 'On a schedule'], ['event', 'When something happens'], ['manual', 'Only when I run it']].map(([id, label]) => ({ label, pick:() => this.edit(r => ({ ...r, trig:id, event: r.event || 'New email from a client' })), bg: cur.trig === id ? 'rgba(165,139,255,0.16)' : 'rgba(255,255,255,0.03)', fg: cur.trig === id ? '#FFFFFF' : '#A3B0BE', bd: cur.trig === id ? 'rgba(165,139,255,0.45)' : 'rgba(255,255,255,0.08)' })),
+      isSched: cur.trig === 'schedule', isEvent: cur.trig === 'event',
+      days: DL.map((label, i) => ({ label, pick:() => this.edit(r => ({ ...r, days:r.days.map((d, j) => j === i ? (d ? 0 : 1) : d) })), bg: cur.days[i] ? 'rgba(165,139,255,0.16)' : 'rgba(255,255,255,0.03)', fg: cur.days[i] ? '#FFFFFF' : '#6B7A8A', bd: cur.days[i] ? 'rgba(165,139,255,0.45)' : 'rgba(255,255,255,0.08)' })),
+      onTime:e => { const v = e.target.value; this.edit(r => ({ ...r, time:v })); },
+      events:['New email from a client', 'A task fails', 'Approval waits 10 minutes', 'Usage passes 80%', 'A project goes idle'], onEvent:e => { const v = e.target.value; this.edit(r => ({ ...r, event:v })); },
+      steps: cur.steps.map(([k, arg], i) => { const [label, icon, tone, ph] = STEP[k]; return { n:String(i + 1), label, icon, tone, tint:tint(tone, 0.13), ph, arg,
+        onArg:e => { const v = e.target.value; this.edit(r => ({ ...r, steps:r.steps.map((x, j) => j === i ? [x[0], v] : x) })); },
+        up:() => i > 0 && this.edit(r => { const a = [...r.steps]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; return { ...r, steps:a }; }),
+        rm:() => this.edit(r => ({ ...r, steps:r.steps.filter((x, j) => j !== i) })) }; }),
+      palette: Object.entries(STEP).map(([k, [label, , tone]]) => ({ label, tone, add:() => this.edit(r => ({ ...r, steps:[...r.steps, [k, '']] })) })),
+      test:() => this.setState({ log:[{ t:'00.0s', text:'Trigger: ' + whenOf(cur), c:'#C9B8FF' }, ...cur.steps.map(([k, arg], i) => ({ t:(0.4 + i * 1.1).toFixed(1) + 's', text:'✓ ' + STEP[k][0] + (arg ? ' — ' + arg : ''), c:'#9FEFE2' })), { t:(0.6 + cur.steps.length * 1.1).toFixed(1) + 's', text:'Done · est. cost $0.02', c:C.green }] }),
+      log: s.log, save:() => this.say('Recipe saved', cur.name + ' · ' + whenOf(cur), C.green),
+      newRecipe:() => { const id = Date.now(); this.setState(st => ({ recipes:[...st.recipes, { id, name:'New recipe', on:0, trig:'manual', days:[0, 0, 0, 0, 0, 0, 0], time:'09:00', event:'', icon:'M13 2L4 14h7l-1 8 9-12h-7z', steps:[['ask', '']] }], sel:id, log:null })); }
+    };
+  }
+}
+</script>
+</body>
+</html>

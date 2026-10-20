@@ -108,7 +108,8 @@ def compose_forward(original: dict[str, Any], note: str) -> dict[str, Any]:
 
 
 def build_mime(to: list[str], subject: str, body: str, cc: Optional[list[str]] = None,
-               in_reply_to: Optional[str] = None, references: Optional[str] = None) -> str:
+               in_reply_to: Optional[str] = None, references: Optional[str] = None,
+               html: Optional[str] = None) -> str:
     """base64url of an RFC 5322 message, the form Gmail's `raw` field takes.
     From and Date are left for the provider to fill in."""
     msg = EmailMessage()
@@ -121,6 +122,8 @@ def build_mime(to: list[str], subject: str, body: str, cc: Optional[list[str]] =
         msg["References"] = _no_newlines("References", " ".join(filter(None, [references, in_reply_to])))
     msg["Date"] = formatdate(localtime=True)
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     return base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
 
 

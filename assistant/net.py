@@ -40,7 +40,8 @@ class ApiError(Exception):
 
 def request(method: str, url: str, *, headers: Optional[dict[str, str]] = None,
             params: Optional[dict[str, Any]] = None, json_body: Optional[Any] = None,
-            form: Optional[dict[str, str]] = None, timeout: int = 20) -> Any:
+            form: Optional[dict[str, str]] = None, timeout: int = 20,
+            raw_body: Optional[bytes] = None, content_type: Optional[str] = None) -> Any:
     """JSON in, JSON out ({} for an empty body). Raises ApiError."""
     if params:
         clean = {k: v for k, v in params.items() if v is not None}
@@ -50,6 +51,9 @@ def request(method: str, url: str, *, headers: Optional[dict[str, str]] = None,
     if json_body is not None:
         data = json.dumps(json_body).encode("utf-8")
         hdrs["Content-Type"] = "application/json"
+    elif raw_body is not None:
+        data = raw_body
+        hdrs["Content-Type"] = content_type or "application/octet-stream"
     elif form is not None:
         data = urllib.parse.urlencode(form).encode("utf-8")
         hdrs["Content-Type"] = "application/x-www-form-urlencoded"

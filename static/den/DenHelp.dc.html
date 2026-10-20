@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1120px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <div data-tour="help-tabs" style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); overflow-x:auto; scrollbar-width:none; align-self:flex-start; max-width:100%;">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="flex:none; height:34px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+  </div>
+
+  <!-- ============================================================ ABOUT -->
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ true }}">
+    <section style="position:relative; overflow:hidden; display:flex; flex-wrap:wrap; gap:20px; align-items:center; padding:{{ heroPad }}; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+      <div style="position:absolute; width:420px; height:420px; right:-160px; top:-220px; border-radius:50%; background:radial-gradient(circle, rgba(255,123,92,0.18), rgba(255,123,92,0) 65%); pointer-events:none;"></div>
+      <div style="flex:none; width:96px; height:96px; display:grid; place-items:center;"><dc-import name="DenOcto" mood="idle" size="92" hint-size="92px,92px"></dc-import></div>
+      <div style="position:relative; flex:1 1 300px; min-width:0; display:flex; flex-direction:column; gap:8px;">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#FF7B5C;">ABOUT THE DEN</div>
+        <div style="font-size:{{ heroSize }}; font-weight:800; letter-spacing:-.02em; line-height:1.1;">Your own AI helper, living on your Mac</div>
+        <div style="font-size:15px; line-height:1.6; color:#C2CDD8; max-width:640px;">You ask for work. Octopus does it in the background, one task at a time, and checks with you before anything risky. You can follow along from the Mac or from your phone.</div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
+          <span style="height:26px; display:inline-flex; align-items:center; gap:7px; padding:0 10px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#DCE4EB;"><span style="width:7px; height:7px; border-radius:50%; background:{{ ver.dot }};"></span>{{ ver.line }}</span>
+          <button onClick="{{ goUpdates }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Updates</button>
+          <button onClick="{{ goSetup }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Setup guide</button>
+          <button onClick="{{ goGuides }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05;">Take a tour</button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:{{ twoCols }}; gap:16px; align-items:start;">
+      <section style="display:flex; flex-direction:column; gap:10px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">WHO IS OCTOPUS?</div>
+        <sc-for list="{{ octoText }}" as="p" hint-placeholder-count="3"><div style="font-size:14px; line-height:1.65; color:#C2CDD8;">{{ p }}</div></sc-for>
+      </section>
+      <section style="display:flex; flex-direction:column; gap:10px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">YOUR DATA STAYS YOURS</div>
+        <sc-for list="{{ privacy }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex; gap:10px; align-items:flex-start;"><span style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:{{ p.tint }}; color:{{ p.c }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ p.icon }}"></path></svg></span><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:700;">{{ p.title }}</div><div style="font-size:13px; line-height:1.55; color:#A3B0BE; margin-top:2px;">{{ p.body }}</div></div></div>
+        </sc-for>
+      </section>
+    </div>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">HOW A TASK FLOWS</div>
+      <div style="display:grid; grid-template-columns:{{ flowCols }}; gap:10px;">
+        <sc-for list="{{ flow }}" as="f" hint-placeholder-count="5">
+          <div style="display:flex; flex-direction:{{ flowDir }}; gap:10px; padding:14px; border-radius:16px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06);">
+            <span style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:{{ f.tint }}; color:{{ f.c }}; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700;">{{ f.n }}</span>
+            <div style="min-width:0;"><div style="font-size:14px; font-weight:700;">{{ f.title }}</div><div style="font-size:12.5px; line-height:1.55; color:#A3B0BE; margin-top:3px;">{{ f.body }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:14px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">EVERYTHING IN THE DEN · GROUPED LIKE THE MENU</div>
+      <sc-for list="{{ areas }}" as="g" hint-placeholder-count="5">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="width:8px; height:8px; border-radius:50%; background:{{ g.c }};"></span><span style="font-size:15px; font-weight:750;">{{ g.name }}</span></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax({{ areaMin }}, 1fr)); gap:8px;">
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+              <button onClick="{{ it.open }}" title="{{ it.tip }}" style="display:flex; align-items:flex-start; gap:10px; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.025); cursor:{{ it.cur }}; text-align:left; font-family:inherit; color:#E8EEF3;" style-hover="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">
+                <span style="flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:{{ g.tint }}; color:{{ g.c }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ it.icon }}"></path></svg></span>
+                <span style="flex:1; min-width:0;"><span style="display:block; font-size:13.5px; font-weight:700;">{{ it.label }}</span><span style="display:block; font-size:12.5px; line-height:1.5; color:#A3B0BE; margin-top:2px;">{{ it.body }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:10px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+      <div style="display:flex; align-items:center; gap:10px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">WHAT’S NEW</span><button onClick="{{ goUpdates }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#FF7B5C;">All updates →</button></div>
+      <sc-if value="{{ newsOff }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px; line-height:1.6; color:#93A1B0;">{{ newsOffText }}</div></sc-if>
+      <sc-for list="{{ newsTop }}" as="e" hint-placeholder-count="2">
+        <div style="display:flex; flex-direction:column; gap:5px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:14.5px; font-weight:700;">{{ e.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ e.meta }}</span></div>
+          <sc-for list="{{ e.items }}" as="i" hint-placeholder-count="2"><div style="display:flex; gap:8px; font-size:13px; line-height:1.55; color:#C2CDD8;"><span style="flex:none; color:#FF7B5C;">•</span><span>{{ i }}</span></div></sc-for>
+        </div>
+      </sc-for>
+    </section>
+  </sc-if>
+
+  <!-- ============================================================ SETUP GUIDE -->
+  <sc-if value="{{ isSetup }}" hint-placeholder-val="{{ false }}">
+    <section style="display:flex; flex-direction:column; gap:10px; padding:{{ heroPad }}; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#FF7B5C;">SETUP GUIDE</div>
+      <div style="font-size:{{ heroSize }}; font-weight:800; letter-spacing:-.02em; line-height:1.1;">Set up the Den on a new Mac</div>
+      <div style="font-size:14.5px; line-height:1.65; color:#C2CDD8; max-width:720px;">Plan on 30 to 45 minutes. You will copy a few commands into <b style="color:#E8EEF3;">Terminal</b>, the Mac’s app for typing commands. To open it, press ⌘ and Space together, type Terminal, and press Return. Paste a command with ⌘V, then press Return.</div>
+      <div style="font-size:13.5px; line-height:1.6; color:#93A1B0; max-width:720px;">Every command has a Copy button. Tick each step when you finish it; your ticks are saved. Steps marked “Found on this Den” were checked for you on the Den you are looking at now.</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+        <div style="flex:1; height:8px; border-radius:8px; background:rgba(255,255,255,0.08); overflow:hidden;"><div style="height:100%; width:{{ setupPct }}; border-radius:8px; background:linear-gradient(90deg, #FF7B5C, #FFB547); transition:width .4s;"></div></div>
+        <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:12px; color:#DCE4EB;">{{ setupCount }}</span>
+      </div>
+    </section>
+
+    <sc-for list="{{ steps }}" as="st" hint-placeholder-count="6">
+      <section data-tour="{{ st.tour }}" style="display:flex; flex-direction:column; gap:12px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid {{ st.bd }}; backdrop-filter:blur(20px);">
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+          <span style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:{{ st.numBg }}; border:1.5px solid {{ st.numBd }}; color:{{ st.numFg }}; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700;">{{ st.num }}</span>
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="font-size:16px; font-weight:750;">{{ st.title }}</span><sc-if value="{{ st.live }}" hint-placeholder-val="{{ false }}"><span style="height:22px; display:inline-flex; align-items:center; gap:5px; padding:0 8px; border-radius:6px; background:{{ st.liveBg }}; font-size:11.5px; font-weight:650; color:{{ st.liveFg }};">{{ st.live }}</span></sc-if></div>
+            <div style="font-size:13.5px; line-height:1.6; color:#A3B0BE;">{{ st.why }}</div>
+          </div>
+          <button onClick="{{ st.fold }}" title="{{ st.foldTip }}" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:9px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; color:#93A1B0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; transform:{{ st.chev }}; transition:transform .2s;"><path d="M6 9l6 6 6-6"></path></svg></button>
+        </div>
+        <sc-if value="{{ st.open }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; flex-direction:column; gap:10px; padding-left:{{ stepIndent }};">
+            <sc-for list="{{ st.notes }}" as="n" hint-placeholder-count="2"><div style="display:flex; gap:8px; font-size:13.5px; line-height:1.6; color:#C2CDD8;"><span style="flex:none; color:#FF7B5C;">•</span><span>{{ n }}</span></div></sc-for>
+            <sc-for list="{{ st.cmds }}" as="c" hint-placeholder-count="1">
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <sc-if value="{{ c.label }}" hint-placeholder-val="{{ true }}"><div style="font-size:12.5px; font-weight:650; color:#93A1B0;">{{ c.label }}</div></sc-if>
+                <div style="display:flex; align-items:flex-start; gap:8px; padding:10px 8px 10px 12px; border-radius:12px; background:rgba(6,9,13,0.6); border:1px solid rgba(255,255,255,0.07);">
+                  <pre style="flex:1; min-width:0; margin:0; max-height:{{ c.maxH }}; overflow:auto; font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6; color:#DCE4EB; white-space:pre-wrap; word-break:break-word;">{{ c.text }}</pre>
+                  <button onClick="{{ c.copy }}" style="flex:none; height:30px; padding:0 11px; border-radius:9px; border:1px solid {{ c.bd }}; background:{{ c.bg }}; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; color:{{ c.fg }};">{{ c.btn }}</button>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <sc-for list="{{ st.links }}" as="l" hint-placeholder-count="1"><button onClick="{{ l.run }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ l.label }}</button></sc-for>
+              <span style="flex:1;"></span>
+              <button onClick="{{ st.tick }}" style="height:34px; display:inline-flex; align-items:center; gap:7px; padding:0 14px; border-radius:10px; border:1px solid {{ st.tickBd }}; background:{{ st.tickBg }}; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:{{ st.tickFg }};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg>{{ st.tickLabel }}</button>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+  </sc-if>
+
+  <!-- ============================================================ GUIDES & TOURS -->
+  <sc-if value="{{ isGuides }}" hint-placeholder-val="{{ false }}">
+    <section data-tour="checklist" style="display:flex; flex-direction:column; gap:12px; padding:{{ heroPad }}; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div style="flex:none; width:64px; height:64px; border-radius:50%; background:conic-gradient(#6FCF97 {{ gs.deg }}, rgba(255,255,255,0.08) 0); display:grid; place-items:center;"><div style="width:50px; height:50px; border-radius:50%; background:#121922; display:grid; place-items:center; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#E8EEF3;">{{ gs.pct }}</div></div>
+        <div style="flex:1 1 240px; min-width:0;">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6FCF97;">GETTING STARTED</div>
+          <div style="font-size:22px; font-weight:800; letter-spacing:-.015em; margin-top:4px;">{{ gs.title }}</div>
+          <div style="font-size:13.5px; line-height:1.55; color:#A3B0BE; margin-top:2px;">Most items tick themselves off when the Den sees them done. You can tick the rest by hand.</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; border-radius:16px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <sc-for list="{{ gs.items }}" as="g" hint-placeholder-count="7">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:58px; padding:10px 14px; border-top:1px solid rgba(255,255,255,0.04);">
+            <button onClick="{{ g.tick }}" title="{{ g.tickTip }}" style="flex:none; width:26px; height:26px; padding:0; display:grid; place-items:center; border-radius:50%; cursor:{{ g.tickCur }}; background:{{ g.bg }}; border:1.5px solid {{ g.bd }}; color:#06200F;"><sc-if value="{{ g.done }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+            <div style="flex:1 1 200px; min-width:0;"><div style="font-size:14px; font-weight:650; color:{{ g.fg }}; text-decoration:{{ g.strike }};">{{ g.title }}</div><div style="font-size:12px; color:#93A1B0; margin-top:1px;">{{ g.sub }}</div></div>
+            <sc-if value="{{ g.auto }}" hint-placeholder-val="{{ false }}"><span style="flex:none; height:20px; display:inline-flex; align-items:center; padding:0 7px; border-radius:6px; background:rgba(111,207,151,0.12); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.06em; color:#6FCF97;">{{ g.auto }}</span></sc-if>
+            <sc-if value="{{ g.action }}" hint-placeholder-val="{{ true }}"><button onClick="{{ g.run }}" style="flex:none; height:32px; padding:0 12px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ g.action }}</button></sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">GUIDED TOURS · {{ toursDoneLine }}</span><button onClick="{{ resetTours }}" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#93A1B0;">Start over</button></div>
+      <div style="font-size:13.5px; line-height:1.6; color:#A3B0BE;">Each tour opens the right page and points at the real buttons, one at a time. Press Esc to stop. You can also start the tour for the page you are on from ⌘K: “Take a tour of this page”.</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax({{ tourMin }}, 1fr)); gap:10px;">
+        <sc-for list="{{ tours }}" as="t" hint-placeholder-count="8">
+          <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:16px; background:rgba(255,255,255,0.025); border:1px solid {{ t.bd }};">
+            <div style="display:flex; align-items:center; gap:10px;"><span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ t.tint }}; color:{{ t.c }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ t.icon }}"></path></svg></span><span style="flex:1; min-width:0; font-size:14.5px; font-weight:700;">{{ t.title }}</span><sc-if value="{{ t.state }}" hint-placeholder-val="{{ false }}"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.06em; color:{{ t.stateC }};">{{ t.state }}</span></sc-if></div>
+            <div style="flex:1; font-size:12.5px; line-height:1.55; color:#A3B0BE;">{{ t.blurb }}</div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ t.meta }}</span><button onClick="{{ t.start }}" style="height:32px; padding:0 13px; border-radius:9px; border:0; background:{{ t.btnBg }}; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:{{ t.btnFg }};">{{ t.btn }}</button></div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns:{{ twoCols }}; gap:16px;">
+      <section style="display:flex; flex-direction:column; gap:8px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:15px; font-weight:750;">The welcome tour</div>
+        <div style="font-size:13px; line-height:1.55; color:#A3B0BE;">The five quick cards you saw the first time you opened the Den.</div>
+        <div><button onClick="{{ replayWelcome }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Show it again</button></div>
+      </section>
+      <section style="display:flex; flex-direction:column; gap:8px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:15px; font-weight:750;">Setting up another Mac?</div>
+        <div style="font-size:13px; line-height:1.55; color:#A3B0BE;">The setup guide walks through every step, with commands to copy.</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;"><button onClick="{{ goSetup }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Open the setup guide</button><button onClick="{{ goAbout }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">About the Den</button></div>
+      </section>
+    </div>
+  </sc-if>
+
+  <!-- ============================================================ UPDATES -->
+  <sc-if value="{{ isUpdates }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ updOff }}" hint-placeholder-val="{{ false }}">
+      <section data-tour="upd-status" style="display:flex; flex-direction:column; align-items:center; gap:12px; padding:36px 22px; border-radius:22px; background:rgba(20,28,38,0.45); border:1px dashed rgba(255,255,255,0.12); text-align:center;">
+        <dc-import name="DenOcto" mood="sleep" size="80" hint-size="80px,80px"></dc-import>
+        <div style="font-size:20px; font-weight:750;">Updates aren’t switched on on this Den</div>
+        <div style="max-width:520px; font-size:14px; line-height:1.6; color:#A3B0BE;">The part of the Den that checks for new versions isn’t installed or is turned off here. Everything else works as normal. If you expected updates, ask the Den’s owner.</div>
+        <button onClick="{{ updRetry }}" style="height:36px; padding:0 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB;">Check again</button>
+      </section>
+    </sc-if>
+    <sc-if value="{{ updOn }}" hint-placeholder-val="{{ true }}">
+      <section data-tour="upd-status" style="position:relative; overflow:hidden; display:flex; flex-direction:column; gap:14px; padding:{{ heroPad }}; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid {{ up.bd }}; backdrop-filter:blur(22px); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+        <div style="position:absolute; width:380px; height:380px; right:-140px; top:-200px; border-radius:50%; background:{{ up.glow }}; pointer-events:none;"></div>
+        <div style="position:relative; display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+          <div style="flex:1 1 280px; min-width:0;">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:{{ up.c }};">{{ up.eyebrow }}</div>
+            <div style="font-size:{{ heroSize }}; font-weight:800; letter-spacing:-.02em; line-height:1.1; margin-top:6px;">{{ up.title }}</div>
+            <div style="font-size:14px; line-height:1.6; color:#C2CDD8; margin-top:6px;">{{ up.sub }}</div>
+          </div>
+          <div style="flex:none; display:flex; gap:8px; flex-wrap:wrap;">
+            <sc-if value="{{ showSrc }}" hint-placeholder-val="{{ true }}"><button onClick="{{ updCheck }}" style="height:40px; display:inline-flex; align-items:center; gap:7px; padding:0 15px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:650; color:#E8EEF3;"><span style="display:inline-flex; animation:{{ up.spin }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"></path></svg></span>{{ up.checkLabel }}</button></sc-if>
+            <sc-if value="{{ up.canInstall }}" hint-placeholder-val="{{ false }}"><button onClick="{{ updAsk }}" style="height:40px; padding:0 16px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700; color:#1A0A05;">{{ up.installLabel }}</button></sc-if>
+          </div>
+        </div>
+        <div style="position:relative; display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ up.facts }}" as="f" hint-placeholder-count="3"><span style="height:26px; display:inline-flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); font-size:12px; color:#C2CDD8;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.08em; color:#6B7A8A;">{{ f.k }}</span>{{ f.v }}</span></sc-for>
+        </div>
+        <sc-if value="{{ up.err }}" hint-placeholder-val="{{ false }}"><div style="position:relative; padding:10px 12px; border-radius:12px; background:rgba(255,84,112,0.07); border:1px solid rgba(255,84,112,0.3); font-size:13px; line-height:1.55; color:#FFC7D0;">{{ up.err }}</div></sc-if>
+        <sc-if value="{{ up.latest }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative; display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:14px; background:rgba(111,207,151,0.06); border:1px solid rgba(111,207,151,0.25);">
+            <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:14.5px; font-weight:700;">{{ up.latest.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6FCF97;">{{ up.latest.meta }}</span></div>
+            <sc-for list="{{ up.latest.items }}" as="i" hint-placeholder-count="2"><div style="display:flex; gap:8px; font-size:13px; line-height:1.55; color:#C2CDD8;"><span style="flex:none; color:#6FCF97;">•</span><span>{{ i }}</span></div></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ confirmOn }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px; border-radius:14px; background:rgba(255,181,71,0.07); border:1px solid rgba(255,181,71,0.35);">
+            <div style="flex:1 1 260px; min-width:0;"><div style="font-size:14.5px; font-weight:700;">{{ confirmTitle }}</div><div style="font-size:13px; line-height:1.55; color:#C2CDD8; margin-top:2px;">The Den restarts. Running tasks finish first, and waiting tasks carry on afterwards.</div></div>
+            <button onClick="{{ updCancel }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB;">Not now</button>
+            <button onClick="{{ updInstall }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#1A0A05;">Update and restart</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <div style="display:grid; grid-template-columns:{{ twoCols }}; gap:16px; align-items:start;">
+        <sc-if value="{{ showSrc }}" hint-placeholder-val="{{ true }}"><section data-tour="upd-source" style="display:flex; flex-direction:column; gap:10px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">UPDATE ADDRESS</div>
+          <div style="font-size:13.5px; line-height:1.6; color:#A3B0BE;">{{ src.intro }}</div>
+          <sc-for list="{{ src.fields }}" as="f" hint-placeholder-count="3">
+            <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12.5px; font-weight:650; color:#C2CDD8;">{{ f.label }}</span><input value="{{ f.val }}" onChange="{{ f.set }}" type="{{ f.type }}" placeholder="{{ f.ph }}" autocomplete="off" spellcheck="false" style="height:40px; padding:0 12px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12.5px; outline:none; min-width:0;"></label>
+          </sc-for>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button onClick="{{ src.save }}" style="height:36px; padding:0 14px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#1A0A05; opacity:{{ src.op }};">{{ src.saveLabel }}</button>
+            <sc-if value="{{ src.canClear }}" hint-placeholder-val="{{ false }}"><button onClick="{{ src.clear }}" style="height:36px; padding:0 14px; border-radius:10px; border:1px solid rgba(255,84,112,0.3); background:rgba(255,84,112,0.06); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#FF8FA2;">{{ src.clearLabel }}</button></sc-if>
+          </div>
+        </section></sc-if>
+        <sc-if value="{{ showSrc }}" hint-placeholder-val="{{ true }}"><section style="display:flex; flex-direction:column; gap:8px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PAST UPDATES ON THIS DEN</div>
+          <sc-if value="{{ histEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">No updates installed here yet.</div></sc-if>
+          <sc-for list="{{ hist }}" as="h" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.025);"><span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ h.c }};"></span><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:650;">{{ h.title }}</div><sc-if value="{{ h.detail }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px; color:#93A1B0; overflow:hidden; text-overflow:ellipsis;">{{ h.detail }}</div></sc-if></div><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ h.when }}</span></div></sc-for>
+        </section></sc-if>
+      </div>
+
+      <section data-tour="upd-news" style="display:flex; flex-direction:column; gap:10px; padding:{{ cardPad }}; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">WHAT’S NEW · EVERY VERSION</div>
+        <sc-if value="{{ newsOff }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px; color:#93A1B0;">{{ newsOffText }}</div></sc-if>
+        <sc-for list="{{ newsAll }}" as="e" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:5px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.025); border:1px solid {{ e.bd }};">
+            <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:14.5px; font-weight:700;">{{ e.title }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ e.meta }}</span><sc-if value="{{ e.here }}" hint-placeholder-val="{{ false }}"><span style="height:20px; display:inline-flex; align-items:center; padding:0 7px; border-radius:6px; background:rgba(255,123,92,0.12); font-family:'JetBrains Mono', monospace; font-size:10px; color:#FFA48C;">YOU HAVE THIS</span></sc-if></div>
+            <sc-for list="{{ e.items }}" as="i" hint-placeholder-count="2"><div style="display:flex; gap:8px; font-size:13px; line-height:1.55; color:#C2CDD8;"><span style="flex:none; color:#FF7B5C;">•</span><span>{{ i }}</span></div></sc-for>
+          </div>
+        </sc-for>
+      </section>
+
+      <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ false }}">
+        <section data-tour="upd-releases" style="display:flex; flex-direction:column; gap:14px; padding:{{ cardPad }}; border-radius:20px; background:linear-gradient(135deg, rgba(165,139,255,0.07), rgba(20,28,38,0.5) 55%); border:1px solid rgba(165,139,255,0.28); backdrop-filter:blur(20px);">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="flex:1 1 240px; min-width:0;"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#C9B8FF;">RELEASES · ONLY ON THE OWNER’S DEN</div><div style="font-size:19px; font-weight:750; margin-top:4px;">Send a new version to everyone</div><div style="font-size:13px; line-height:1.55; color:#A3B0BE; margin-top:3px;">This Den is the original copy. Publishing packs it up, signs it, and offers it to every Den that uses your update address.</div></div>
+            <button onClick="{{ relReload }}" style="flex:none; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Refresh</button>
+          </div>
+          <sc-if value="{{ rel.err }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 12px; border-radius:12px; background:rgba(255,84,112,0.07); border:1px solid rgba(255,84,112,0.3); font-size:13px; color:#FFC7D0;">{{ rel.err }}</div></sc-if>
+          <sc-if value="{{ rel.loading }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">Loading…</div></sc-if>
+          <sc-if value="{{ rel.ok }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;"><sc-for list="{{ rel.facts }}" as="f" hint-placeholder-count="4"><span style="height:26px; display:inline-flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); font-size:12px; color:#C2CDD8;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.08em; color:#6B7A8A;">{{ f.k }}</span>{{ f.v }}</span></sc-for></div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:16px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.07);">
+              <div style="font-size:15px; font-weight:750;">Publish a version</div>
+              <sc-if value="{{ rel.cantWhy }}" hint-placeholder-val="{{ false }}"><div style="padding:9px 12px; border-radius:11px; background:rgba(255,181,71,0.07); border:1px solid rgba(255,181,71,0.3); font-size:13px; line-height:1.55; color:#FFDCA3;">{{ rel.cantWhy }}</div></sc-if>
+              <div style="padding:9px 12px; border-radius:11px; background:{{ rel.dirtyBg }}; border:1px solid {{ rel.dirtyBd }}; font-size:13px; line-height:1.55; color:#DCE4EB;">{{ rel.dirtyText }}<sc-if value="{{ rel.hasDirty }}" hint-placeholder-val="{{ false }}"> <button onClick="{{ rel.toggleFiles }}" style="border:0; background:none; padding:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#FFB547;">{{ rel.filesLabel }}</button></sc-if></div>
+              <sc-if value="{{ rel.showFiles }}" hint-placeholder-val="{{ false }}"><div style="max-height:160px; overflow:auto; padding:8px 10px; border-radius:10px; background:rgba(6,9,13,0.6); font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.6; color:#C2CDD8;"><sc-for list="{{ rel.files }}" as="fl" hint-placeholder-count="3"><div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ fl }}</div></sc-for></div></sc-if>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:12.5px; font-weight:650; color:#C2CDD8;">Version number</span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ rel.bumps }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.pick }}" style="height:34px; display:inline-flex; align-items:center; gap:7px; padding:0 11px; border-radius:10px; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; background:{{ b.bg }}; border:1px solid {{ b.bd }}; color:#E8EEF3;"><span style="font-family:'JetBrains Mono', monospace;">{{ b.v }}</span><span style="color:#93A1B0; font-weight:500;">{{ b.label }}</span></button></sc-for></div>
+                <input value="{{ rel.ver }}" onChange="{{ rel.setVer }}" placeholder="2.2.0" style="height:40px; max-width:200px; padding:0 12px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:13px; outline:none;">
+                <span style="font-size:12px; color:#93A1B0;">Small fixes raise the last number. New features raise the middle one. Big changes raise the first.</span>
+              </div>
+              <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12.5px; font-weight:650; color:#C2CDD8;">Title</span><input value="{{ rel.title }}" onChange="{{ rel.setTitle }}" placeholder="Faster approvals and a new Help menu" style="height:40px; padding:0 12px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); color:#E8EEF3; font-family:inherit; font-size:14px; outline:none; min-width:0;"></label>
+              <label style="display:flex; flex-direction:column; gap:5px;"><span style="font-size:12.5px; font-weight:650; color:#C2CDD8;">What changed · one line each, in plain words</span><textarea value="{{ rel.items }}" onChange="{{ rel.setItems }}" rows="4" placeholder="Approvals now show who asked&#10;New Help menu with tours" style="padding:10px 12px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.55; outline:none; resize:vertical; min-width:0;"></textarea></label>
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><button onClick="{{ rel.publish }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#A58BFF; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#140A2E; opacity:{{ rel.pubOp }};">{{ rel.pubLabel }}</button><span style="font-size:12px; color:#93A1B0;">{{ rel.pubHint }}</span></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:{{ twoCols }}; gap:12px; align-items:start;">
+              <div style="display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:16px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.07);">
+                <div style="font-size:15px; font-weight:750;">Published versions</div>
+                <sc-if value="{{ rel.noReleases }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">Nothing published yet.</div></sc-if>
+                <sc-for list="{{ rel.releases }}" as="r" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.025);"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#C9B8FF;">{{ r.version }}</span><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.title }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ r.meta }}</div></div></div></sc-for>
+                <div style="font-size:15px; font-weight:750; margin-top:6px;">Update server</div>
+                <div style="font-size:13px; line-height:1.55; color:#A3B0BE;">{{ rel.server }}</div>
+                <sc-for list="{{ rel.urls }}" as="u" hint-placeholder-count="1"><div style="display:flex; align-items:center; gap:8px; padding:6px 6px 6px 10px; border-radius:10px; background:rgba(6,9,13,0.6);"><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#DCE4EB; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ u.v }}</span><button onClick="{{ u.copy }}" style="flex:none; height:26px; padding:0 9px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:#DCE4EB;">{{ u.btn }}</button></div></sc-for>
+                <sc-if value="{{ rel.pk }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; font-weight:650; color:#C2CDD8; margin-top:4px;">Public key (safe to share)</div><div style="display:flex; align-items:center; gap:8px; padding:6px 6px 6px 10px; border-radius:10px; background:rgba(6,9,13,0.6);"><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#DCE4EB; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ rel.pk }}</span><button onClick="{{ rel.copyPk }}" style="flex:none; height:26px; padding:0 9px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:#DCE4EB;">{{ rel.pkBtn }}</button></div></sc-if>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:16px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.07);">
+                <div style="font-size:15px; font-weight:750;">People’s Dens</div>
+                <div style="font-size:13px; line-height:1.55; color:#A3B0BE;">Each person gets their own key. Remove someone and their Den stops getting updates.</div>
+                <sc-if value="{{ rel.noInstalls }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">No one added yet.</div></sc-if>
+                <sc-for list="{{ rel.installs }}" as="i" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.025);"><span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ i.dot }};"></span><div style="flex:1 1 160px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ i.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ i.meta }}</div></div><button onClick="{{ i.remove }}" style="flex:none; height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,84,112,0.3); background:rgba(255,84,112,0.05); cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#FF8FA2;">{{ i.removeLabel }}</button></div></sc-for>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;"><input value="{{ rel.newName }}" onChange="{{ rel.setNewName }}" onKeyDown="{{ rel.newKey }}" placeholder="Their name, e.g. Priya’s MacBook" style="flex:1 1 180px; min-width:0; height:38px; padding:0 12px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none;"><button onClick="{{ rel.add }}" style="flex:none; height:38px; padding:0 14px; border-radius:11px; border:0; background:#A58BFF; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:#140A2E;">Add a person</button></div>
+                <sc-if value="{{ rel.fresh }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; background:rgba(255,181,71,0.07); border:1px solid rgba(255,181,71,0.4);">
+                    <div style="font-size:14px; font-weight:750; color:#FFDCA3;">Give this to {{ rel.fresh.name }}. It won’t be shown again.</div>
+                    <div style="font-size:12.5px; line-height:1.55; color:#C2CDD8;">They paste these into Help › Updates › Update address on their own Den. Send them privately.</div>
+                    <sc-for list="{{ rel.fresh.rows }}" as="k" hint-placeholder-count="3"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size:12px; font-weight:650; color:#C2CDD8;">{{ k.label }}</span><div style="display:flex; align-items:center; gap:8px; padding:6px 6px 6px 10px; border-radius:10px; background:rgba(6,9,13,0.6);"><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#FFFFFF; word-break:break-all;">{{ k.v }}</span><button onClick="{{ k.copy }}" style="flex:none; height:26px; padding:0 9px; border-radius:8px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:#E8EEF3;">{{ k.btn }}</button></div></div></sc-for>
+                    <div style="font-size:12px; font-weight:650; color:#C2CDD8;">All three together, ready to paste into a message</div>
+                    <div style="display:flex; align-items:flex-start; gap:8px; padding:8px 6px 8px 10px; border-radius:10px; background:rgba(6,9,13,0.6);"><pre style="flex:1; min-width:0; margin:0; font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.6; color:#FFFFFF; white-space:pre-wrap; word-break:break-all;">{{ rel.fresh.all }}</pre><button onClick="{{ rel.fresh.copyAll }}" style="flex:none; height:28px; padding:0 10px; border-radius:8px; border:0; background:#FFB547; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; color:#2A1800;">{{ rel.fresh.allBtn }}</button></div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;"><button onClick="{{ rel.fresh.dismiss }}" style="height:32px; padding:0 12px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">I’ve saved it</button></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+    </sc-if>
+  </sc-if>
+
+  <!-- ============================================================ installing an update -->
+  <sc-if value="{{ inst.on }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; z-index:946; overflow:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; box-sizing:border-box; background:radial-gradient(800px 500px at 50% 0%, rgba(255,123,92,0.08), transparent 60%), #0A0E13;">
+      <div style="width:100%; max-width:520px; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; animation:denRise .4s cubic-bezier(.2,.7,.3,1);">
+        <dc-import name="DenOcto" mood="{{ inst.mood }}" size="110" hint-size="110px,110px"></dc-import>
+        <div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.14em; color:{{ inst.c }};">{{ inst.eyebrow }}</div><div style="font-size:28px; font-weight:750; margin-top:6px;">{{ inst.title }}</div><div style="font-size:14.5px; line-height:1.6; color:#C2CDD8; margin-top:6px;">{{ inst.sub }}</div></div>
+        <div style="width:100%; height:6px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden;"><div style="height:100%; width:{{ inst.pct }}; border-radius:6px; background:linear-gradient(90deg, #FF7B5C, #FFB547); transition:width .5s cubic-bezier(.2,.7,.3,1);"></div></div>
+        <div style="width:100%; display:flex; flex-direction:column; gap:2px; padding:8px; border-radius:16px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06); text-align:left;">
+          <sc-for list="{{ inst.steps }}" as="p" hint-placeholder-count="5"><div style="display:flex; align-items:center; gap:10px; min-height:38px; padding:0 8px;"><span style="flex:none; width:20px; height:20px; display:grid; place-items:center; border-radius:50%; background:{{ p.bg }}; color:#06200F; border:1.5px solid {{ p.bd }};"><sc-if value="{{ p.done }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if><sc-if value="{{ p.now }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:#FFB547; animation:denPulse 1.2s infinite;"></span></sc-if></span><span style="flex:1; font-size:13.5px; color:{{ p.fg }};">{{ p.t }}</span></div></sc-for>
+        </div>
+        <div style="font-size:12.5px; color:#93A1B0;">{{ inst.note }}</div>
+        <sc-if value="{{ inst.end }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;"><button onClick="{{ inst.close }}" style="height:42px; padding:0 16px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); cursor:pointer; font-family:inherit; font-size:14px; font-weight:650; color:#E8EEF3;">Close</button><button onClick="{{ inst.reload }}" style="height:42px; padding:0 18px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; color:#1A0A05;">{{ inst.reloadLabel }}</button></div></sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:900},&quot;page&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;about&quot;,&quot;setup&quot;,&quot;guides&quot;,&quot;updates&quot;],&quot;default&quot;:&quot;about&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;isPhone&quot;:{&quot;editor&quot;:&quot;bool&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onNav&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(id:string)=&gt;void&quot;}}">
+// Help pages (Den 2.2): About the Den, Setup guide, Guides & tours, Updates.
+// Updates talk to the updates module only through POST /modules/commands/<name>; when that module isn't
+// loaded (404) the pages say so calmly. Tours run in tour.js (window.DenTour).
+const D = window.Den;
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+const I = {
+  home:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', folder:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', chat:'M4 5h16v11H8l-4 4z',
+  users:'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.9M16 4.1a3 3 0 0 1 0 5.8', contact:'M4 4h16v16H4zM12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6M7 18a5 5 0 0 1 10 0',
+  brief:'M3 8h18v11H3zM8 8V5h8v3M3 13h18', rows:'M4 5h16M4 10h16M4 15h10M4 20h7', bolt:'M13 2L4 14h7l-1 8 9-12h-7z', check:'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9', pulse:'M3 12h4l3-8 4 16 3-8h4',
+  mail:'M3 6h18v12H3zM3 7l9 6 9-6', note:'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5', link:'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1', house:'M4 11l8-7 8 7v9H4zM10 20v-5h4v5',
+  sun:'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4', cal:'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', gauge:'M12 21a9 9 0 1 1 9-9M12 12l4-4',
+  person:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0', cpu:'M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4', route:'M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4M18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4M6 15V9a4 4 0 0 1 4-4h6M18 9v6a4 4 0 0 1-4 4H8',
+  mic:'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3M5 11a7 7 0 0 0 14 0M12 18v3', shield:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z', bell:'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4', phone:'M8 3h8v18H8zM11 18h2',
+  net:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', lock:'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', key:'M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 1 15 7zM17 9h.01',
+  trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', puzzle:'M4 8h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4z', help:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01', mac:'M3 5h18v11H3zM8 20h8M12 16v4',
+  sliders:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', refresh:'M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4'
+};
+const KEY_CMD = 'plutil -extract EnvironmentVariables.API_KEY raw ~/Library/LaunchAgents/com.tushar.claudequeue.plist';
+// The background service file. New installs start launcher.py (it applies a waiting update, then starts main.py).
+const PLIST_CMD = [
+  'DEN="$HOME/TheDen"',
+  'mkdir -p "$HOME/Library/Logs/TheDen" "$HOME/Library/LaunchAgents"',
+  'KEY=$(openssl rand -hex 24)',
+  'cat > "$HOME/Library/LaunchAgents/com.tushar.claudequeue.plist" <<EOF',
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+  '<plist version="1.0"><dict>',
+  '  <key>Label</key><string>com.tushar.claudequeue</string>',
+  '  <key>ProgramArguments</key><array>',
+  '    <string>$DEN/.venv/bin/python3</string>',
+  '    <string>$DEN/launcher.py</string>',
+  '  </array>',
+  '  <key>WorkingDirectory</key><string>$DEN</string>',
+  '  <key>EnvironmentVariables</key><dict>',
+  '    <key>PATH</key><string>$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>',
+  '    <key>HOST</key><string>0.0.0.0</string>',
+  '    <key>PORT</key><string>8787</string>',
+  '    <key>API_KEY</key><string>$KEY</string>',
+  '    <key>CLAUDE_BIN</key><string>$(command -v claude)</string>',
+  '  </dict>',
+  '  <key>RunAtLoad</key><true/>',
+  '  <key>KeepAlive</key><true/>',
+  '  <key>StandardOutPath</key><string>$HOME/Library/Logs/TheDen/stdout.log</string>',
+  '  <key>StandardErrorPath</key><string>$HOME/Library/Logs/TheDen/stderr.log</string>',
+  '</dict></plist>',
+  'EOF',
+  'echo "Service file written."'
+].join('\n');
+const TOUR_ICON = { home:I.home, projects:I.folder, queue:I.rows, crm:I.brief, mail:I.mail, recipes:I.bolt, settings:I.sliders, updates:I.refresh };
+const TOUR_TONE = { home:C.coral, projects:C.blue, queue:C.amber, crm:'#E6C07B', mail:C.teal, recipes:C.amber, settings:'#C2CDD8', updates:C.green };
+const INST_STEPS = ['Downloading the new version', 'Checking it’s genuine (its signature)', 'Restarting the Den', 'Reconnecting', 'Done'];
+const MEM = window.__denHelpMem || (window.__denHelpMem = { upd:{} });   /* shared by every Help page, so switching pages doesn't reload */
+
+// Copy that also works over plain http (Tailscale addresses), where the clipboard API is missing.
+function copyText(t) {
+  try { if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t); return true; } } catch (e) {}
+  try { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed; left:-9999px; top:0;'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (e) { return false; }
+}
+// A module command: POST /modules/commands/<name> {arg}. The result may come back as text holding JSON.
+function cmd(name, payload) {
+  return D.api('/modules/commands/' + name, { method:'POST', body:{ arg: payload == null ? '' : JSON.stringify(payload) } })
+    .then(r => { let v = r && r.result !== undefined ? r.result : r; if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) {} } return v; });
+}
+const cmpV = (a, b) => { const pa = String(a || '').split('.').map(n => parseInt(n, 10) || 0), pb = String(b || '').split('.').map(n => parseInt(n, 10) || 0); for (let k = 0; k < 3; k++) { if ((pa[k] || 0) !== (pb[k] || 0)) return (pa[k] || 0) - (pb[k] || 0); } return 0; };
+const size = n => !n ? '' : n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1024 / 1024).toFixed(1) + ' MB';
+const when = iso => { if (!iso) return ''; const d = D.parseT(iso); if (!d || isNaN(d)) return String(iso); return D.ago(iso, false); };
+
+class Component extends DCLogic {
+  state = { open:{}, copied:null, f:{}, confirm:false, inst:null, relF:{}, files:false, rmAsk:null, fresh:null, busy:{} };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.loadFor(this.props.page || 'about'); }
+  componentDidUpdate(prevProps) { const p = this.props.page || 'about'; if (p !== this._page) { this._page = p; this.loadFor(p); } }
+  componentWillUnmount() { clearTimeout(this.ct); clearTimeout(this.it); }
+  say(t, s, c) { this.props.say ? this.props.say(t, s || '', c || C.green) : D.say(t, s, c); }
+  nav(id) { this.props.onNav ? this.props.onNav(id) : D.go(id); }
+  copy(key, text, what) { const ok = copyText(text); clearTimeout(this.ct); this.setState({ copied:key }); this.ct = setTimeout(() => this.setState({ copied:null }), 1800); if (!ok) this.say('Couldn’t copy', 'Select the text and copy it by hand', C.amber); else if (what) this.say(what + ' copied', '', C.green); }
+  // ---------------------------------------------------------------- updates module data
+  u(name) { return MEM.upd[name] || {}; }
+  load(name, payload, force) {
+    const m = MEM.upd[name] || (MEM.upd[name] = {});
+    if (m.busy || (!force && m.at && Date.now() - m.at < 20000)) return Promise.resolve(m.data);
+    m.busy = true; this.forceUpdate();
+    return cmd(name, payload).then(d => { m.data = d; m.err = null; m.off = false; return d; },
+      e => { m.off = e.status === 404; m.err = m.off ? null : (e.message || 'Something went wrong'); return null; })
+      .finally(() => { m.busy = false; m.at = Date.now(); this.forceUpdate(); });
+  }
+  loadFor(page) {
+    this._page = page;
+    if (page === 'about') { this.load('den-version'); this.load('den-changelog'); }
+    if (page === 'setup' || page === 'guides') { this.load('den-update-status'); this.load('den-version'); }
+    if (page === 'updates') { this.load('den-changelog'); this.load('den-update-status'); this.load('den-version').then(v => { if (v && v.kind === 'source') this.load('den-release-status'); }); }
+  }
+  // ---------------------------------------------------------------- shared bits
+  versionLine() {
+    const v = this.u('den-version');
+    if (v.off) return { line:'Version info isn’t switched on here', dot:'#6B7A8A' };
+    if (!v.data) return { line: v.err ? 'Version unknown' : 'Checking the version…', dot:'#6B7A8A' };
+    const d = v.data; const bits = ['Version ' + d.version];
+    if (d.kind === 'source') { bits.push('original copy'); if (d.commit) bits.push(String(d.commit).slice(0, 7)); if (d.dirty) bits.push(d.dirty + (d.dirty === 1 ? ' unsaved change' : ' unsaved changes')); }
+    return { line:bits.join(' · '), dot: d.kind === 'source' ? C.violet : C.green };
+  }
+  news(limit) {
+    const c = this.u('den-changelog'); const cur = (this.u('den-version').data || {}).version;
+    const list = ((c.data && c.data.entries) || []).slice(0, limit || 50);
+    return list.map(e => { const here = !!cur && e.version === cur; return { title:e.title || ('Version ' + e.version), meta:[e.version, e.date].filter(Boolean).join(' · '), items:e.items || [], here, bd: here ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.06)' }; });
+  }
+  newsState() { const c = this.u('den-changelog'); return c.off ? 'Updates aren’t switched on on this Den, so there’s no list of changes here.' : c.err ? 'Couldn’t load the list of changes: ' + c.err : !c.data && c.busy !== false ? 'Loading…' : !((c.data && c.data.entries) || []).length ? 'No changes listed yet.' : ''; }
+
+  // ---------------------------------------------------------------- About
+  aboutVals() {
+    const go = id => () => this.nav(id);
+    const it = (id, label, icon, body) => ({ label, icon, body, open: id ? go(id) : () => {}, cur: id ? 'pointer' : 'default', tip: id ? 'Open ' + label : '' });
+    const grp = (name, c, items) => ({ name, c, tint:tint(c, 0.13), items });
+    return {
+      octoText:[
+        'Octopus is the Den’s worker. It takes the next task from the queue and runs Claude Code (Anthropic’s AI coding assistant) inside that project’s folder on your Mac.',
+        'It works on one task at a time for each AI account, so jobs never trip over each other. If it reaches a usage limit, it waits and carries on by itself when the limit resets.',
+        'Think of it as one brain with many arms: the arms reach into your projects, and the brain picks the right AI model for each request. Quick questions can go to a lighter model so they don’t wait behind long coding jobs.'
+      ],
+      flow:[
+        ['You ask', 'Type or speak in the Ask box: on the Mac, on your phone, or from a schedule. Plain words work.', C.coral],
+        ['Octopus plans', 'It picks the project, the AI model and the tools the job needs. Risky plans are shown to you first.', C.violet],
+        ['It does the work', 'Claude Code runs inside the project’s folder on your Mac. You can watch each step live.', C.teal],
+        ['It asks before risky steps', 'Deleting files, pushing code or sending email waits for your OK, on screen or as a phone notification.', C.amber],
+        ['You get the result', 'The answer lands in the chat, the task is marked done, and you get a notification.', C.green]
+      ].map(([title, body, c], i) => ({ n:String(i + 1), title, body, c, tint:tint(c, 0.14) })),
+      privacy:[
+        ['Everything stays on your Mac', 'Your projects, chats, notes and settings are kept in the Den’s folder on your own Mac. There is no Den cloud.', I.mac, C.green],
+        ['Your AI accounts are your own', 'Tasks run on your own Claude subscription or your own API keys. Your work isn’t sent to the Den’s owner.', I.person, C.blue],
+        ['What does leave your Mac', 'The text of a task goes to the AI service that does it (Anthropic, or OpenAI and Gemini if you add them). Email and calendar features talk to Google with your own sign-in.', I.net, C.amber],
+        ['Keys stay hidden', 'Claude tokens, Google sign-ins and API keys are never shown on screen. Update checks only tell the update address which version you have.', I.lock, C.violet]
+      ].map(([title, body, icon, c]) => ({ title, body, icon, c, tint:tint(c, 0.14) })),
+      areas:[
+        grp('Workspace', C.coral, [
+          it('home', 'Den Home', I.home, 'What Octopus is doing now, anything that needs you, the queue and the Ask box.'),
+          it('projects', 'Projects', I.folder, 'A project is a folder on your Mac. Inside: work, a backlog of to-dos that run only when you say, phases, timeline, notes and documents.'),
+          it('messages', 'Chats & queue', I.chat, 'Every task is a chat: reply to carry on. The Queue panel shows what runs now and next; drag to reorder.'),
+          it('clients', 'Clients', I.users, 'Companies you work for, with their projects, people and history.'),
+          it('contacts', 'Contacts', I.contact, 'People and every call, meeting and note with them.'),
+          it('team', 'Team', I.users, 'The people who work with you: their tasks, how much they can take on, and time off.'),
+          it('crm', 'CRM', I.brief, 'Your deals on a board from lead to done, with what’s overdue, due soon or at risk.'),
+          it('crmx', 'CRM records', I.rows, 'Every activity and follow-up in one place, plus reports to download.')]),
+        grp('Automation', C.amber, [
+          it('recipes', 'Recipes & schedules', I.bolt, 'Saved requests you run with one tap or on a timetable. One missed while the Mac slept runs once when it wakes.'),
+          it('review', 'Review runs', I.check, 'Finished tasks that changed files wait here so you can look at the changes.'),
+          it('activity', 'Activity', I.pulse, 'Every finished task by day, with filters for done, failed and cancelled.')]),
+        grp('Personal assistant', C.teal, [
+          it('email', 'Email', I.mail, 'Mail, chats and approvals in one list. Octopus can search and draft; it sends only with your OK.'),
+          it('notes', 'Notes', I.note, 'A notes pad. A note can belong to a project or a meeting, and be saved as a file.'),
+          it('connections', 'Connections', I.link, 'Link Google (Gmail, Calendar, Drive backups), GitHub, Tailscale and phone notifications.'),
+          it('devices', 'Smart devices', I.house, 'Alexa, Siri Shortcuts and the phones that get your notifications.'),
+          it('briefing', 'Morning briefing', I.sun, 'Your day on one page: today, overdue, meetings and approvals. It can be sent to your phone each morning.'),
+          it('calendar', 'Calendar', I.cal, 'Project dates, follow-ups, meetings and your Google Calendar together. Meetings can send real invites.')]),
+        grp('Octopus', C.violet, [
+          it('usage', 'Token usage', I.gauge, 'How much AI each project, model and day used, and what it cost.'),
+          it('accounts', 'AI accounts', I.person, 'Your Claude accounts and their 5-hour and weekly limits. With more than one, Octopus can move to the one with room.'),
+          it('providers', 'AI providers', I.cpu, 'Other AI models, such as OpenAI and Gemini, and their API keys.'),
+          it('routing', 'Routing', I.route, 'Which model handled each request, and why.'),
+          it('voice', 'Voice', I.mic, 'Talk to Octopus and hear the answers. Pick a voice for each language and the speed.')]),
+        grp('Safety & access', C.blue, [
+          it(null, 'Approvals', I.shield, 'Risky commands wait for Approve or Deny. “Always allow” remembers a safe one for that project. Unanswered ones are turned down after an hour, so the queue never gets stuck.'),
+          it('devices', 'Phone & notifications', I.bell, 'Add the Den to your phone’s home screen and turn on notifications. Approvals arrive with Approve / Deny buttons.'),
+          it('connections', 'Tailscale access', I.net, 'Tailscale is a private network between your own devices. It lets your phone reach the Den from anywhere, without opening your Mac to the internet.'),
+          it(null, 'Login, PINs & private vault', I.lock, 'A username and password protect the dashboard. A PIN-locked vault keeps private notes and files encrypted; press and hold the right-hand bar to show it.'),
+          it('bin', 'Recycle bin', I.trash, 'Deleted tasks, notes, projects and recipes wait here for a while, so you can bring them back.'),
+          it(null, 'Modules', I.puzzle, 'Optional add-ons, like approval reminder emails. They switch on and off without restarting the Den.'),
+          it('settings', 'Settings', I.sliders, 'Your choices for the whole Den: notifications, safety, budget, quick buttons and shortcuts.')]),
+        grp('Help', '#C2CDD8', [
+          it('setup', 'Setup guide', I.mac, 'Every step to set up the Den on a new Mac, with commands to copy.'),
+          it('guides', 'Guides & tours', I.help, 'A getting-started checklist and short tours of each area.'),
+          it('updates', 'Updates', I.refresh, 'Which version you have, what changed, and how to update.')])
+      ],
+      ver:this.versionLine(), newsTop:this.news(3), newsOff: !!this.newsState(), newsOffText:this.newsState()
+    };
+  }
+
+  // ---------------------------------------------------------------- live checks (shared by Setup and Guides)
+  live() {
+    const tools = D.need('den-sys-tools', '/den/system/tools', 300000);
+    const conn = D.need('den-conn', '/den/connections', 60000);
+    const tool = id => (Array.isArray(tools) ? tools.find(t => t.id === id) : null);
+    const has = id => { const t = tool(id); return t ? t.status !== 'missing' : null; };
+    const svc = id => { const x = conn && (conn.services || []).find(c => c.id === id); return x ? !!x.on : null; };
+    const pushDev = conn && (conn.devices || []).find(d => d.id === 'push');
+    const phoneChip = !!(pushDev && (pushDev.chips || []).some(c => /iPhone|iPad|Android/.test(c)));
+    let standalone = false; try { standalone = !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone; } catch (e) {}
+    const auth = D.store.auth || {};
+    const accts = D.accounts();
+    const projects = (D.store.projects || []).filter(p => !p.is_general && !p.deleted_at);
+    const ran = (D.store.tasks || []).some(t => t.status === 'done') || !!(D.store.status && D.store.status.counts && D.store.status.counts.done);
+    const upd = this.u('den-update-status');
+    const models = (D.store.models || []).filter(m => m.lane !== 'agent' && m.available);
+    return { tools, has, tool, conn, svc, phone: phoneChip || (standalone && /iPhone|iPad|Android/.test(navigator.userAgent)), login: !!auth.configured, accts:accts.length, projects:projects.length, ran,
+      updConfigured: upd.data ? !!upd.data.configured : null, updOff: !!upd.off, otherModels: models.length };
+  }
+
+  // ---------------------------------------------------------------- Setup guide
+  setupVals() {
+    const s = this.state; const L = this.live(); const ticks = D.prefs().setupDone || {};
+    const verOf = id => { const t = L.tool(id); return t && t.status !== 'missing' ? (t.version && t.version !== '?' ? ' ' + t.version : '') : ''; };
+    const found = (ok, label) => ok === true ? { live:'Found on this Den ✓' + (label || ''), liveBg:'rgba(111,207,151,0.12)', liveFg:C.green, auto:true }
+      : ok === false ? { live:'Not found on this Den yet', liveBg:'rgba(255,181,71,0.1)', liveFg:C.amber, auto:false } : { live:'', auto:false };
+    const c = (label, text, maxH) => ({ label, text, maxH: maxH || 'none' });
+    const STEPS = [
+      { id:'need', title:'What you need', why:'Check you have these before you start.', notes:[
+        'A Mac that is switched on (or wakes up) when you want work done.',
+        'Your Mac’s password. Installing tools asks for it. Nothing shows while you type it; that’s normal.',
+        'A Claude subscription (Pro or Max), or a Claude API key. Optional: OpenAI or Gemini keys for extra models.',
+        'An internet connection, and the Den files from the Den’s owner.'], cmds:[] },
+      { id:'brew', title:'Install Homebrew', why:'Homebrew is a free helper that installs the other tools for you.', notes:[
+        'Paste this into Terminal and press Return. It asks for your Mac password and may take a few minutes.',
+        'At the end it may show “Next steps” with two more commands. Copy and run those too, or run the second box below.'],
+        cmds:[c('Install Homebrew', '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'),
+          c('Make Terminal find Homebrew (Macs with Apple chips)', 'echo \'eval "$(/opt/homebrew/bin/brew shellenv)"\' >> ~/.zprofile && eval "$(/opt/homebrew/bin/brew shellenv)"'),
+          c('Check it worked: this should print a version number', 'brew --version')] },
+      { id:'tools', title:'Install Python 3, Git and Node', why:'The Den is written in Python. Git keeps track of changes in your projects. Node is needed to install Claude Code.', notes:[],
+        cmds:[c('Install all three', 'brew install python git node'), c('Check: each line should show a version', 'python3 --version && git --version && node --version')],
+        ...found(L.has('git') && L.has('node') && L.has('python') ? true : L.tools ? false : null, L.tools ? ' · Git' + verOf('git') + ' · Node' + verOf('node') : '') },
+      { id:'claude', title:'Install Claude Code and sign in', why:'Claude Code is the AI assistant that does the work inside your projects.', notes:[
+        'After installing, type claude and press Return. It opens a browser so you can sign in with your Claude account.',
+        'Or create a long-lasting sign-in code with claude setup-token. Keep it private; you will paste it into the Den later (AI accounts).'],
+        cmds:[c('Install', 'npm install -g @anthropic-ai/claude-code'), c('Sign in', 'claude'), c('Or make a sign-in code for the Den', 'claude setup-token'), c('Check', 'claude --version')],
+        ...found(L.has('claude'), verOf('claude')) },
+      { id:'tailscale', title:'Install Tailscale and sign in', why:'Tailscale is a private network between your own devices. It lets your phone reach the Den safely from anywhere.', notes:[
+        'Install it, open Tailscale from your Applications folder, and sign in.',
+        'Tell the Den’s owner the email you signed in with. They add this Mac to the shared private network.',
+        'Install the Tailscale app on your phone too, and sign in with the same account.'],
+        cmds:[c('Install', 'brew install --cask tailscale')], ...found(L.svc('tailscale')) },
+      { id:'files', title:'Get the Den files', why:'The Den’s owner gives you a release bundle: one file with the whole Den inside.', notes:[
+        'Double-click the bundle to unpack it. Move the folder into your home folder (the one with your name) and rename it TheDen.',
+        'If you get stuck, ask the owner; this is the only step that depends on how they sent it.'],
+        cmds:[c('Check: you should see files like main.py and launcher.py', 'ls ~/TheDen')] },
+      { id:'venv', title:'Create the Python environment', why:'This gives the Den its own private copy of the pieces it needs, so it never clashes with anything else on your Mac.', notes:[
+        'The second command sets up the small helper that lets Octopus stop and ask you before risky commands.'],
+        cmds:[c('Main environment', 'cd ~/TheDen && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt'),
+          c('Approval helper', 'cd ~/TheDen && python3 -m venv .approval-venv && .approval-venv/bin/pip install "mcp<2"')] },
+      { id:'service', title:'Start the Den as a background service', why:'This tells macOS to start the Den when you log in, and to restart it if it ever stops. It also creates your Den’s secret key.', notes:[
+        'The first box writes the service file. It starts launcher.py, which installs any waiting update and then starts the Den.',
+        'The second box switches it on. The third checks it: you should see {"ok": true}.'],
+        cmds:[c('1 · Write the service file', PLIST_CMD, '220px'),
+          c('2 · Switch it on', 'launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tushar.claudequeue.plist && launchctl enable gui/$(id -u)/com.tushar.claudequeue'),
+          c('3 · Check it is running', 'curl http://127.0.0.1:8787/health'),
+          c('If something goes wrong, the last lines of the log say why', 'tail -n 30 ~/Library/Logs/TheDen/stderr.log')] },
+      { id:'login', title:'Open the dashboard and create your login', why:'The dashboard is this page. A username and password keep it private.', notes:[
+        'On the Mac, open Safari or Chrome at the address below.',
+        'The first time, it asks for your Den’s key. The second box prints it. Then pick a username and password.'],
+        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard'), c('Show your Den’s key', KEY_CMD)], ...found(L.login ? true : null) },
+      { id:'accounts', title:'Add your AI accounts', why:'Octopus needs at least one Claude account to work.', notes:[
+        'Open AI accounts and add your Claude account. Use this Mac’s own Claude sign-in, or paste the code from claude setup-token.',
+        'Add a second account if you have one: Octopus moves to the one with room when a limit is reached.'],
+        cmds:[], links:[['Open AI accounts', 'accounts']], ...found(L.accts ? true : null, L.accts ? ' · ' + L.accts + (L.accts === 1 ? ' account' : ' accounts') : '') },
+      { id:'providers', title:'Add other AI providers (optional)', why:'OpenAI or Gemini keys let quick questions, pictures and research go to those models.', notes:[
+        'Open AI providers, pick the provider, and add a key. The Den checks it once, then only shows its last four characters.'],
+        cmds:[], links:[['Open AI providers', 'providers']], ...found(L.otherModels ? true : null) },
+      { id:'google', title:'Connect Google', why:'Lets Octopus read your calendar, search and draft email, and keep backups in Drive. Sending always asks you first.', notes:[
+        'Do this in a browser on the Mac itself: the Google sign-in comes back to the Mac.',
+        'Open Connections and press Connect on Gmail or Google Calendar. If it says it needs setting up first, follow the steps it shows, or ask the Den’s owner.'],
+        cmds:[], links:[['Open Connections', 'connections']], ...found(L.svc('google:email') || L.svc('google:calendar') ? true : null) },
+      { id:'phone', title:'Add the Den to your phone', why:'Use the Den from anywhere, with notifications that have Approve / Deny buttons.', notes:[
+        'On the Mac, run the command below once. It gives the Den a secure (https) address inside your private network. If Terminal says “command not found”, ask the Den’s owner.',
+        'On your phone (with Tailscale on), open Safari at https://<your-mac-name>.<your-network>.ts.net/dashboard. Tap Share, then “Add to Home Screen”.',
+        'Open the Den from the new icon, then go to Settings › Notifications › This device › Turn on here.'],
+        cmds:[c('Turn on the secure address', 'tailscale serve --bg 8787'), c('See the address', 'tailscale serve status')], links:[['Open Smart devices', 'devices']], ...found(L.phone ? true : null) },
+      { id:'updates', title:'Set the update address', why:'So your Den can get new versions from the Den’s owner.', notes:[
+        'The owner gives you an address and a key. Open Updates and paste them under “Update address”.'],
+        cmds:[], links:[['Open Updates', 'updates']], ...found(L.updConfigured) }
+    ];
+    const isDone = st => !!ticks[st.id] || !!st.auto;
+    const n = STEPS.filter(isDone).length;
+    const steps = STEPS.map((st, i) => { const done = isDone(st); const open = s.open[st.id] != null ? !!s.open[st.id] : !done;
+      return { ...st, tour:'setup-' + st.id, num: done ? '✓' : String(i + 1), numBg: done ? C.green : 'transparent', numBd: done ? C.green : 'rgba(255,255,255,0.18)', numFg: done ? '#06200F' : '#DCE4EB',
+        bd: done ? 'rgba(111,207,151,0.22)' : 'rgba(255,255,255,0.06)', live: st.live || '', liveBg: st.liveBg || 'transparent', liveFg: st.liveFg || '#93A1B0',
+        open, chev: open ? 'rotate(180deg)' : 'rotate(0deg)', foldTip: open ? 'Hide the details' : 'Show the details', fold:() => this.setState(x => ({ open:{ ...x.open, [st.id]: !open } })),
+        cmds: (st.cmds || []).map((cm, k) => { const key = st.id + ':' + k; const ok = s.copied === key;
+          return { ...cm, copy:() => this.copy(key, cm.text), btn: ok ? 'Copied ✓' : 'Copy', bg: ok ? 'rgba(111,207,151,0.14)' : 'rgba(255,255,255,0.05)', bd: ok ? 'rgba(111,207,151,0.35)' : 'rgba(255,255,255,0.1)', fg: ok ? C.green : '#E8EEF3' }; }),
+        links: (st.links || []).map(([label, id]) => ({ label, run:() => this.nav(id) })),
+        tickLabel: st.auto ? 'Done' : ticks[st.id] ? 'Done · tap to undo' : 'Mark done', tickBg: done ? 'rgba(111,207,151,0.14)' : 'rgba(255,255,255,0.04)', tickBd: done ? 'rgba(111,207,151,0.35)' : 'rgba(255,255,255,0.1)', tickFg: done ? C.green : '#DCE4EB',
+        tick:() => { if (st.auto) return this.say('Already done', 'The Den found this one for you', C.green); const next = { ...(D.prefs().setupDone || {}) }; if (next[st.id]) delete next[st.id]; else next[st.id] = new Date().toISOString(); D.setPref('setupDone', next); if (!next[st.id]) return; this.setState(x => ({ open:{ ...x.open, [st.id]:false } })); } }; });
+    return { steps, setupPct: Math.round(n / STEPS.length * 100) + '%', setupCount: n + ' of ' + STEPS.length + ' done' };
+  }
+
+  // ---------------------------------------------------------------- Guides & tours
+  guidesVals() {
+    const L = this.live(); const ticks = D.prefs().startDone || {}; const T = window.DenTour; const toursDone = D.prefs().toursDone || {};
+    const ITEMS = [
+      ['login', 'Create your login', 'A username and password for the dashboard', L.login, 'Login & password', () => D.showOverlay ? D.showOverlay('login') : this.nav('settings')],
+      ['account', 'Add an AI account', 'At least one Claude account', !!L.accts, 'Open AI accounts', () => this.nav('accounts')],
+      ['project', 'Add your first project', 'A folder on your Mac for Octopus to work in', !!L.projects, 'Open Projects', () => this.nav('projects')],
+      ['task', 'Run your first task', 'Ask Octopus something on Den Home', L.ran, 'Go to Den Home', () => this.nav('home')],
+      ['google', 'Connect Google', 'Email and calendar (optional)', !!(L.svc('google:email') || L.svc('google:calendar')), 'Open Connections', () => this.nav('connections')],
+      ['phone', 'Put the Den on your phone', 'Home Screen icon and notifications', L.phone, 'How to', () => { this.setState(x => ({ open:{ ...x.open, phone:true } })); this.nav('setup'); }],
+      ...((this.u('den-version').data || {}).kind === 'source' ? [] : [['updates', 'Set the update address', 'So new versions reach you', L.updConfigured === true, 'Open Updates', () => this.nav('updates')]]),
+      ['tour', 'Take the Home tour', 'One minute, six stops', !!toursDone.home, 'Start', () => T && T.start('home')]
+    ];
+    const items = ITEMS.map(([id, title, sub, auto, action, run]) => { const done = !!auto || !!ticks[id];
+      return { title, sub, done, auto: auto ? 'FOUND' : '', action: done ? '' : action, run, bg: done ? C.green : 'transparent', bd: done ? C.green : 'rgba(255,255,255,0.22)', fg: done ? '#93A1B0' : '#E8EEF3', strike: done ? 'line-through' : 'none',
+        tickCur: auto ? 'default' : 'pointer', tickTip: auto ? 'The Den found this done' : done ? 'Tap to undo' : 'Mark done',
+        tick:() => { if (auto) return; const next = { ...(D.prefs().startDone || {}) }; if (next[id]) delete next[id]; else next[id] = true; D.setPref('startDone', next); } }; });
+    const n = items.filter(i => i.done).length; const pct = Math.round(n / items.length * 100);
+    const list = T ? T.list() : [];
+    const tours = list.map(t => { const c = TOUR_TONE[t.id] || C.coral; const st = t.done;
+      return { title:t.title, blurb:t.blurb, meta:t.steps + ' stops · 1 min', icon:TOUR_ICON[t.id] || I.help, c, tint:tint(c, 0.14), state: st === 'done' ? 'DONE ✓' : st === 'skipped' ? 'SKIPPED' : '', stateC: st === 'done' ? C.green : '#93A1B0',
+        bd: st === 'done' ? 'rgba(111,207,151,0.2)' : 'rgba(255,255,255,0.06)', btn: st ? 'Replay' : 'Start', btnBg: st ? 'rgba(255,255,255,0.08)' : C.coral, btnFg: st ? '#E8EEF3' : '#1A0A05', start:() => T && T.start(t.id) }; });
+    const nd = list.filter(t => t.done === 'done').length;
+    return { gs:{ items, pct:pct + '%', deg:(pct * 3.6) + 'deg', title: n === items.length ? 'You’re all set' : n + ' of ' + items.length + ' done' }, tours, tourMin: this.props.isPhone ? '100%' : '240px',
+      toursDoneLine: nd + ' OF ' + list.length + ' DONE',
+      resetTours:() => { T && T.reset(); this.say('Tours reset', 'They show as new again', C.blue); },
+      replayWelcome:() => { if (D.showOverlay) D.showOverlay('tour'); } };
+  }
+
+  // ---------------------------------------------------------------- Updates
+  updatesVals() {
+    const s = this.state; const V = this.u('den-version'), S = this.u('den-update-status'), R = this.u('den-release-status');
+    const off = !!V.off && !V.data; const v = V.data || {}; const st = S.data || {};
+    const lat = st.latest || null; const avail = !!st.update_available && !!lat;
+    const state = st.state || 'idle'; const checking = !!S.busy || !!s.busy.check;
+    const isSource = v.kind === 'source';
+    const up = {
+      eyebrow: isSource ? 'THE ORIGINAL COPY' : avail ? 'UPDATE AVAILABLE' : state === 'error' ? 'UPDATE PROBLEM' : !st.configured && S.data ? 'NO UPDATE ADDRESS YET' : 'UP TO DATE',
+      c: isSource ? C.violet : avail ? C.green : state === 'error' ? C.err : !st.configured && S.data ? C.amber : C.blue,
+      title: avail ? 'Version ' + lat.version + ' is ready' : v.version ? 'You have version ' + v.version : V.busy || !V.at ? 'Checking…' : 'Version unknown',
+      sub: isSource ? 'This is the original copy of the Den (the owner’s). It doesn’t update itself; it publishes new versions below.'
+        : avail && st.can_install === false ? 'You have ' + (v.version || 'an older version') + '. This Den wasn’t started by its launcher, so it can’t update itself yet. Ask the Den’s owner to help.'
+        : avail ? 'You have ' + (v.version || 'an older version') + '. Updating takes a minute or two.'
+        : !st.configured && S.data ? 'Add the update address the Den’s owner gave you, below. Then you can check for new versions.'
+        : st.last_checked ? 'Last checked ' + when(st.last_checked) + '.' : 'Press “Check now” to look for a new version.',
+      checkLabel: checking ? 'Checking…' : 'Check now', spin: checking ? 'denSpin .8s linear infinite' : 'none',
+      canInstall: avail && !isSource && st.can_install !== false && ['idle', 'ready', 'error'].includes(state), installLabel: avail ? 'Update to ' + lat.version : '',
+      bd: avail ? 'rgba(111,207,151,0.3)' : 'rgba(255,255,255,0.07)', glow: avail ? 'radial-gradient(circle, rgba(111,207,151,0.18), rgba(111,207,151,0) 65%)' : 'radial-gradient(circle, rgba(127,178,255,0.14), rgba(127,178,255,0) 65%)',
+      facts: [['VERSION', v.version || '—'], ['COPY', isSource ? 'original (owner)' : v.kind === 'install' ? 'installed' : '—'], ...(isSource && v.dirty ? [['UNSAVED', String(v.dirty)]] : []), ...(st.source_url ? [['FROM', String(st.source_url).replace(/^https?:\/\//, '').slice(0, 48)]] : []), ...(state !== 'idle' ? [['STATE', state]] : [])].map(([k, vv]) => ({ k, v:vv })),
+      err: (state === 'error' && st.error) ? 'The last update didn’t work: ' + st.error : S.err ? 'Couldn’t check: ' + S.err : V.err ? 'Couldn’t read the version: ' + V.err : '',
+      latest: avail ? { title:lat.title || ('Version ' + lat.version), meta:[lat.version, lat.date, size(lat.size)].filter(Boolean).join(' · '), items:lat.items || [] } : null
+    };
+    const f = s.f; const hasSrc = !!st.configured;
+    const src = {
+      intro: hasSrc ? 'Updates come from ' + (st.source_url || 'the saved address') + '. To change it, paste the new details from the Den’s owner.' : 'The Den’s owner gives you three things. Paste them here once.',
+      fields:[['url', 'Update address', 'the address from the Den’s owner', 'text'], ['key', 'Your key', 'the key you were given', 'password'], ['public_key', 'Owner’s public key', 'checks every update is genuine', 'text']].map(([k, label, ph, type]) => ({ label, ph, type, val: f[k] || '', set:e => { const val = e.target.value; this.setState(x => ({ f:{ ...x.f, [k]:val } })); } })),
+      op: (f.url || '').trim() && (f.key || '').trim() ? '1' : '0.5', saveLabel: s.busy.src ? 'Saving…' : hasSrc ? 'Save new address' : 'Save',
+      canClear: hasSrc, clearLabel: s.rmSrc ? 'Tap again to remove' : 'Remove address',
+      save:() => { const url = (f.url || '').trim(), key = (f.key || '').trim(), pk = (f.public_key || '').trim(); if (!url || !key) return this.say('Address and key, please', 'Both come from the Den’s owner', C.amber);
+        if (!/^https?:\/\//.test(url)) return this.say('That address should start with http:// or https://', '', C.amber);
+        this.setState(x => ({ busy:{ ...x.busy, src:true } }));
+        cmd('den-update-source', { url, key, public_key:pk }).then(r => { MEM.upd['den-update-status'] = { data:r, at:Date.now() }; this.setState({ f:{} }); this.say('Update address saved', 'Checking for a new version…', C.green); this.check(); })
+          .catch(e => this.say('Couldn’t save the address', e.status === 404 ? 'Updates aren’t switched on on this Den' : e.message, C.err)).finally(() => this.setState(x => ({ busy:{ ...x.busy, src:false } }))); },
+      clear:() => { if (!s.rmSrc) { this.setState({ rmSrc:true }); setTimeout(() => this.setState({ rmSrc:false }), 4000); return; }
+        this.setState({ rmSrc:false }); cmd('den-update-source', { clear:true }).then(r => { MEM.upd['den-update-status'] = { data:r, at:Date.now() }; this.forceUpdate(); this.say('Update address removed', 'This Den won’t look for updates', C.amber); }).catch(e => this.say('Couldn’t remove it', e.message, C.err)); }
+    };
+    const hist = (st.history || []).slice().reverse().slice(0, 12).map(h => ({ title:(h.from || '?') + ' → ' + (h.to || '?') + (h.ok ? '' : ' · didn’t work'), detail:h.detail || '', when:when(h.at), c: h.ok ? C.green : C.err }));
+    return { updOff: off, updOn: !off, updRetry:() => { ['den-version', 'den-update-status', 'den-changelog'].forEach(n => this.load(n, null, true)); },
+      up, src, hist, histEmpty: !hist.length, newsAll:this.news(50), newsOff: !!this.newsState(), newsOffText:this.newsState(),
+      updCheck:() => this.check(), updAsk:() => this.setState({ confirm:true }), updCancel:() => this.setState({ confirm:false }), updInstall:() => this.install(lat),
+      confirmOn: !!s.confirm && avail, confirmTitle: avail ? 'Update to ' + lat.version + '?' : '',
+      isOwner: isSource, showSrc: !isSource, rel: isSource ? this.relVals(R, v) : { ok:false } };
+  }
+  check() {
+    if (this.state.busy.check) return; this.setState(x => ({ busy:{ ...x.busy, check:true } }));
+    cmd('den-update-check').then(r => { MEM.upd['den-update-status'] = { data:r, at:Date.now() }; const ok = r && r.update_available && r.latest;
+      this.say(ok ? 'Version ' + r.latest.version + ' is available' : r && r.configured === false ? 'No update address yet' : 'You’re up to date', ok ? 'Press Update when you’re ready' : '', ok ? C.green : C.blue); })
+      .catch(e => { if (e.status === 404) { MEM.upd['den-update-status'] = { off:true, at:Date.now() }; } this.say('Couldn’t check for updates', e.status === 404 ? 'Updates aren’t switched on on this Den' : e.message, C.err); })
+      .finally(() => this.setState(x => ({ busy:{ ...x.busy, check:false } })));
+  }
+  // Install: download + signature check + restart, all done by the module. Here we show progress and wait for the Den to come back.
+  install(lat) {
+    const target = lat && lat.version; const from = (this.u('den-version').data || {}).version;
+    this.setState({ confirm:false, inst:{ step:0, pct:6, target, from, t0:Date.now(), gone:false } });
+    let answered = false;
+    cmd('den-update-install').then(r => { answered = true; if (r && r.ok === false) { this.setState(x => ({ inst:{ ...x.inst, failed:(r.error || 'The update didn’t start') + (r.state ? ' (' + r.state + ')' : '') } })); } })
+      .catch(e => { answered = true; if (e.status === 404 || e.status === 409 || e.status === 500) this.setState(x => ({ inst:{ ...x.inst, failed:e.message } })); });
+    const poll = () => {
+      const i = this.state.inst; if (!i || i.failed || i.finished) return;
+      const secs = (Date.now() - i.t0) / 1000;
+      fetch('/health', { cache:'no-store' }).then(r => r.ok).catch(() => false).then(up => {
+        const cur = this.state.inst; if (!cur || cur.failed || cur.finished) return;
+        if (!up) { this.setState({ inst:{ ...cur, gone:true, step:2, pct:Math.min(80, 50 + secs / 3) } }); }
+        else if (cur.gone) {
+          this.setState({ inst:{ ...cur, step:3, pct:90 } });
+          return cmd('den-version').then(v => { const ver = v && v.version; this.setState(x => ({ inst:{ ...x.inst, step:4, pct:100, finished:true, now:ver, same: !!ver && !!from && ver === from } })); })
+            .catch(() => this.setState(x => ({ inst:{ ...x.inst, step:4, pct:100, finished:true } })));
+        } else if (answered) {
+          cmd('den-update-status').then(st => { const c2 = this.state.inst; if (!c2 || c2.gone || c2.finished) return; const stt = st && st.state;
+            if (stt === 'error') return this.setState({ inst:{ ...c2, failed:(st.error || 'The update stopped') } });
+            const step = stt === 'restarting' ? 2 : stt === 'ready' ? 1 : 0; this.setState({ inst:{ ...c2, step, pct:Math.max(c2.pct, [18, 40, 60][step] + Math.min(10, secs / 6)) } }); }).catch(() => {});
+        }
+        if (secs > 600) return this.setState(x => ({ inst:{ ...x.inst, slow:true, finished:true, step:4, pct:100 } }));
+        this.it = setTimeout(poll, 1500);
+      });
+    };
+    this.it = setTimeout(poll, 1200);
+  }
+  instVals() {
+    const i = this.state.inst; if (!i) return { on:false, steps:[] };
+    const end = !!i.finished || !!i.failed; const bad = !!i.failed;
+    return { on:true, end, mood: bad ? 'error' : i.finished ? 'dance' : 'work', c: bad ? C.err : i.finished ? C.green : C.amber, eyebrow: bad ? 'UPDATE STOPPED' : i.finished ? 'ALL DONE' : 'UPDATING',
+      title: bad ? 'The update didn’t finish' : i.slow ? 'This is taking a while' : i.finished ? (i.same ? 'The Den is back' : 'Updated' + (i.now ? ' to ' + i.now : '')) : 'Updating to ' + (i.target || 'the new version'),
+      sub: bad ? i.failed + '. Your Den is still on ' + (i.from || 'the old version') + ' and works as before.' : i.slow ? 'Check the Den on the Mac. It may still be finishing.' : i.finished ? (i.same ? 'It restarted but is still on ' + i.from + '. Look at “Past updates” for the reason.' : 'Reload to open the new version.') : 'Running tasks finish first. Waiting tasks carry on afterwards.',
+      pct: i.pct + '%', note: end ? '' : 'This page updates itself when the Den is back. You can leave it open.',
+      steps: INST_STEPS.map((t, k) => { const done = k < i.step || (i.finished && !bad), now = k === i.step && !end; return { t, done, now, bg: done ? C.green : 'transparent', bd: done ? C.green : now ? C.amber : 'rgba(255,255,255,0.2)', fg: done ? '#C2CDD8' : now ? '#FFFFFF' : '#6B7A8A' }; }),
+      reloadLabel: bad ? 'Try again later' : 'Open the new version',
+      reload:() => { if (bad) return this.setState({ inst:null }); try { sessionStorage.removeItem('den.splash'); } catch (e) {} location.reload(); },
+      close:() => { this.setState({ inst:null }); ['den-version', 'den-update-status', 'den-changelog'].forEach(n => this.load(n, null, true)); } };
+  }
+
+  // ---------------------------------------------------------------- Releases (the owner's Den only)
+  relVals(R, v) {
+    const s = this.state; const r = R.data || {}; const F = s.relF;
+    if (!R.data) return { ok:false, loading: !!R.busy || !R.at, err: R.off ? 'The release tools aren’t switched on.' : R.err ? 'Couldn’t load releases: ' + R.err : '', facts:[], bumps:[], releases:[], installs:[], urls:[], files:[] };
+    const next = r.next || {}; const dirty = r.dirty_count || 0;
+    const ver = F.ver != null ? F.ver : (next.first || next.patch || '');
+    const items = F.items || ''; const title = F.title || '';
+    const ready = !!r.can_publish && !!ver.trim() && !!title.trim() && items.split('\n').some(x => x.trim()) && !s.busy.pub;
+    const set = k => e => { const val = e.target.value; this.setState(x => ({ relF:{ ...x.relF, [k]:val } })); };
+    const fr = s.fresh; const copyRow = (key, label, val) => ({ label, v:val || '—', btn: s.copied === key ? 'Copied ✓' : 'Copy', copy:() => this.copy(key, val || '') });
+    const srv = r.server || {};
+    return { ok:true, loading:false, err:'',
+      facts:[['VERSION', r.version || v.version || '—'], ['SAVED UP TO', r.head ? String(r.head).slice(0, 7) : '—'], ['UNSAVED', String(dirty)], ['RELEASES', String((r.releases || []).length)]].map(([k, vv]) => ({ k, v:vv })),
+      cantWhy: r.can_publish ? '' : (r.reason || 'Publishing isn’t possible right now.'),
+      hasDirty: dirty > 0, dirtyBg: dirty ? 'rgba(255,181,71,0.07)' : 'rgba(111,207,151,0.06)', dirtyBd: dirty ? 'rgba(255,181,71,0.3)' : 'rgba(111,207,151,0.25)',
+      dirtyText: 'Only changes saved to git are included. ' + (dirty ? dirty + (dirty === 1 ? ' change isn’t' : ' changes aren’t') + ' saved yet and won’t be in this version.' : 'Everything is saved, so all of it goes in.'),
+      filesLabel: s.files ? 'Hide the list' : 'Show which', toggleFiles:() => this.setState({ files:!s.files }), showFiles: !!s.files && dirty > 0, files:(r.dirty_files || []).slice(0, 200),
+      bumps:(next.first ? [['first', 'your first version']] : [['patch', 'small fixes'], ['minor', 'new features'], ['major', 'big changes']]).filter(([k]) => next[k]).map(([k, label]) => ({ v:next[k], label, pick:() => this.setState(x => ({ relF:{ ...x.relF, ver:next[k] } })), bg: ver === next[k] ? 'rgba(165,139,255,0.16)' : 'rgba(255,255,255,0.04)', bd: ver === next[k] ? 'rgba(165,139,255,0.45)' : 'rgba(255,255,255,0.09)' })),
+      ver, setVer:set('ver'), title, setTitle:set('title'), items, setItems:set('items'),
+      pubOp: ready ? '1' : '0.5', pubLabel: s.busy.pub ? 'Publishing…' : 'Publish ' + (ver || ''), pubHint: r.can_publish ? 'Every Den using your address sees it the next time it checks.' : '',
+      publish:() => { if (!ready) return this.say(!r.can_publish ? 'Can’t publish right now' : 'Add a version, a title and at least one change', r.can_publish ? '' : (r.reason || ''), C.amber);
+        const body = { version:ver.trim(), title:title.trim(), items:items.split('\n').map(x => x.trim()).filter(Boolean) };
+        this.setState(x => ({ busy:{ ...x.busy, pub:true } }));
+        cmd('den-release-publish', body).then(res => { this.say('Version ' + body.version + ' published', ((res && res.release && res.release.size) ? size(res.release.size) + ' · ' : '') + 'People get it on their next check', C.violet); this.setState({ relF:{} }); this.load('den-release-status', null, true); this.load('den-changelog', null, true); })
+          .catch(e => this.say('Couldn’t publish', e.message, C.err)).finally(() => this.setState(x => ({ busy:{ ...x.busy, pub:false } }))); },
+      releases:(r.releases || []).slice().sort((a, b) => cmpV(b.version, a.version)).slice(0, 12).map(x => ({ version:x.version, title:x.title || '', meta:[x.date, size(x.size), x.commit ? String(x.commit).slice(0, 7) : '', (x.items || []).length + ' changes'].filter(Boolean).join(' · ') })),
+      noReleases: !(r.releases || []).length,
+      server: srv.running ? 'Running' + (srv.port ? ' on port ' + srv.port : '') + '. Give people one of these addresses:' : srv.error ? 'Not running: ' + srv.error : (r.installs || []).length ? 'Not running right now. Other Dens can’t reach it until it is.' : 'It starts when you add someone’s Den. These will be the addresses:',
+      urls:(srv.urls || []).map((u, k) => ({ v:u, btn: s.copied === 'url' + k ? 'Copied ✓' : 'Copy', copy:() => this.copy('url' + k, u) })),
+      pk: r.public_key || '', pkBtn: s.copied === 'pk' ? 'Copied ✓' : 'Copy', copyPk:() => this.copy('pk', r.public_key || ''),
+      installs:(r.installs || []).map(i => { const ask = s.rmAsk === i.id; const seen = i.last_seen ? 'seen ' + when(i.last_seen) : 'never checked in';
+        return { name:i.name || 'Unnamed', meta:[i.version ? 'v' + i.version : '', seen, i.ip || ''].filter(Boolean).join(' · '), dot: i.last_seen ? C.green : '#6B7A8A', removeLabel: ask ? 'Tap again' : 'Remove',
+          remove:() => { if (!ask) { this.setState({ rmAsk:i.id }); setTimeout(() => this.state.rmAsk === i.id && this.setState({ rmAsk:null }), 4000); return; }
+            this.setState({ rmAsk:null }); cmd('den-install-remove', { id:i.id }).then(() => { this.say('Removed ' + (i.name || 'that Den'), 'It no longer gets updates', C.amber); this.load('den-release-status', null, true); }).catch(e => this.say('Couldn’t remove it', e.message, C.err)); } }; }),
+      noInstalls: !(r.installs || []).length,
+      newName: F.newName || '', setNewName:set('newName'), newKey:e => { if (e.key === 'Enter') this.addInstall(); }, add:() => this.addInstall(),
+      fresh: fr ? { name:fr.name, rows:[copyRow('fk', 'Update address', fr.source_url), copyRow('fkey', 'Their key', fr.key), copyRow('fpk', 'Owner’s public key', fr.public_key)],
+        all: 'Update address: ' + (fr.source_url || '') + '\nKey: ' + (fr.key || '') + '\nPublic key: ' + (fr.public_key || ''),
+        allBtn: s.copied === 'fall' ? 'Copied ✓' : 'Copy all', copyAll:() => this.copy('fall', 'Update address: ' + (fr.source_url || '') + '\nKey: ' + (fr.key || '') + '\nPublic key: ' + (fr.public_key || '')),
+        dismiss:() => this.setState({ fresh:null }) } : null };
+  }
+  addInstall() {
+    const name = ((this.state.relF || {}).newName || '').trim(); if (!name) return this.say('Type their name first', 'So you know whose Den it is', C.amber);
+    cmd('den-install-add', { name }).then(r => { const inst = (r && r.install) || {}; this.setState(x => ({ fresh:{ name:inst.name || name, key:r.key, source_url:r.source_url, public_key:r.public_key }, relF:{ ...x.relF, newName:'' } })); this.load('den-release-status', null, true); })
+      .catch(e => this.say('Couldn’t add them', e.message, C.err));
+  }
+
+  renderVals() {
+    const page = this.props.page || 'about'; const phone = !!this.props.isPhone;
+    const TABS = [['about', 'About the Den'], ['setup', 'Setup guide'], ['guides', 'Guides & tours'], ['updates', 'Updates']];
+    const base = {
+      tabs: TABS.map(([id, label]) => ({ label, pick:() => this.nav(id), bg: page === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: page === id ? '#FFFFFF' : '#93A1B0' })),
+      isAbout: page === 'about', isSetup: page === 'setup', isGuides: page === 'guides', isUpdates: page === 'updates',
+      heroPad: phone ? '18px' : '24px 26px', cardPad: phone ? '14px' : '18px', heroSize: phone ? '24px' : '30px', twoCols: phone ? '1fr' : 'repeat(auto-fit, minmax(340px, 1fr))',
+      flowCols: phone ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))', flowDir: phone ? 'row' : 'column', areaMin: phone ? '100%' : '250px', stepIndent: phone ? '0' : '46px',
+      goUpdates:() => this.nav('updates'), goSetup:() => this.nav('setup'), goGuides:() => this.nav('guides'), goAbout:() => this.nav('about'),
+      inst:this.instVals()
+    };
+    if (page === 'setup') return { ...base, ...this.setupVals() };
+    if (page === 'guides') return { ...base, ...this.guidesVals() };
+    if (page === 'updates') return { ...base, ...this.updatesVals() };
+    return { ...base, ...this.aboutVals() };
+  }
+}
+</script>
+</body>
+</html>

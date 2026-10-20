@@ -1,0 +1,13 @@
+# Files and folders that are never put in a Den release, even when they are saved in git.
+# One pattern per line; a pattern ending in / means the whole folder.
+tests/
+data/
+docs/DEN_UI_HANDOVER.*
+design_handoff_tushars_workspace/
+.scratch*/
+setup/*.plist
+.claude/
+CLAUDE.md
+*.bak
+*.bak-*
+queue.db*

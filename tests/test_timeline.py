@@ -2,7 +2,7 @@
 schedule, on-track / at-risk / overdue, the "Good morning" briefing, the
 worker's pushes, the API and Octopus's timeline commands."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from unittest import mock
 
 from fastapi import HTTPException
@@ -260,6 +260,231 @@ class Endpoints(Base):
     def test_settings_accept_briefing_time(self):
         s = api.update_settings(api.SettingsIn(briefing_time="07:15", briefing_push=False))
         self.assertEqual((s["briefing_time"], s["briefing_push"]), ("07:15", False))
+
+
+class MeetingContacts(Base):
+    def setUp(self):
+        super().setUp()
+        self.priya = api.create_contact(api.ContactIn(name="Priya Shah"))
+        self.sam = api.create_contact(api.ContactIn(name="Sam Lee"))
+
+    def meet(self, **kw):
+        body = {"kind": "meeting", "title": "Kickoff", "date": D(1), "time": "11:00", **kw}
+        return api.add_timeline_event(self.pid, api.TimelineEventIn(**body))
+
+    def test_a_meeting_keeps_who_its_with(self):
+        ev = self.meet(contact_ids=[self.sam["id"], self.priya["id"], self.sam["id"]])
+        self.assertEqual(sorted(ev["contact_ids"]), sorted([self.priya["id"], self.sam["id"]]))
+        self.assertEqual(api.list_timeline()["events"][0]["contact_ids"], ev["contact_ids"])
+        changed = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(contact_ids=[self.priya["id"]]))
+        self.assertEqual(changed["contact_ids"], [self.priya["id"]])
+        kept = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(title="Kickoff call"))
+        self.assertEqual(kept["contact_ids"], [self.priya["id"]])        # not sent = unchanged
+        cleared = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(contact_ids=[]))
+        self.assertEqual(cleared["contact_ids"], [])
+        self.assertEqual(api.add_timeline_event(self.pid, api.TimelineEventIn(title="x", date=D(1)))["contact_ids"], [])
+
+    def test_only_meetings_have_people(self):
+        demo = api.add_timeline_event(self.pid, api.TimelineEventIn(kind="demo", title="Demo", date=D(2), contact_ids=[self.sam["id"]]))
+        self.assertEqual(demo["contact_ids"], [])
+        ev = self.meet(contact_ids=[self.sam["id"]])
+        self.assertEqual(api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(kind="demo"))["contact_ids"], [])
+
+    def test_unknown_contact_is_refused(self):
+        with self.assertRaises(HTTPException) as cm:
+            self.meet(contact_ids=[9999])
+        self.assertEqual(cm.exception.status_code, 422)
+        self.assertEqual(api.project_timeline(self.pid)["events"], [])
+
+    def test_deleting_a_contact_or_the_meeting_drops_the_link(self):
+        ev = self.meet(contact_ids=[self.priya["id"], self.sam["id"]])
+        db.delete_contact(self.sam["id"])
+        self.assertEqual(db.get_project_event(ev["id"])["contact_ids"], [self.priya["id"]])
+        api.delete_timeline_event(ev["id"])
+        self.assertEqual(db.get_conn().execute("SELECT COUNT(*) FROM event_contacts").fetchone()[0], 0)
+
+    def test_alerts_and_prompt_say_who_its_with(self):
+        ev = db.get_project_event(self.meet(contact_ids=[self.priya["id"], self.sam["id"]])["id"])
+        _, message = timeline.alert_text(ev, "d1", NOW)
+        self.assertIn("'Kickoff' with Priya Shah and Sam Lee", message)
+        self.assertIn("Kickoff with Priya Shah and Sam Lee", timeline.prompt_for(self.pid, NOW))
+
+
+class RepeatingMeetings(Base):
+    """A meeting every other day: one row dated its first day, shown and alerted at each repeat."""
+
+    def every_other_day(self, day=1, until=None, **kw):
+        body = {"kind": "meeting", "title": "Stand-up", "date": D(day), "time": "10:00", "repeat_days": 2,
+                "repeat_until": until, **kw}
+        return api.add_timeline_event(self.pid, api.TimelineEventIn(**body))
+
+    def fire(self, now):
+        """What the worker would push at `now` (and mark sent, as it does)."""
+        got = timeline.pending_alerts(now)
+        for a in got:
+            timeline.mark_alerted(a["event"], a["covered"] + [a["key"]])
+        return [(a["event"]["date"], a["key"]) for a in got]
+
+    def test_saved_once_and_shown_at_its_next_day(self):
+        ev = self.every_other_day(day=-3)                       # first one 3 days ago: then -1, +1, +3...
+        row = db.get_project_event(ev["id"])
+        self.assertEqual((row["date"], row["repeat_days"], row["repeat_until"]), (D(-3), 2, None))
+        self.assertEqual((ev["date"], ev["start_date"], ev["days_left"], ev["repeat"]), (D(1), D(-3), 1, "every other day"))
+        self.assertEqual(ev["when"], "tomorrow at 10:00 AM")
+        self.assertEqual([e["id"] for e in api.list_timeline(start=D(0), end=D(7))["events"]], [ev["id"]],
+                         "listed in a window that starts after its first day")
+        self.assertEqual(timeline.days_between(row, NOW.date(), NOW.date() + timedelta(days=6)),
+                         [NOW.date() + timedelta(days=n) for n in (1, 3, 5)])
+
+    def test_a_one_off_meeting_is_unchanged(self):
+        ev = api.add_timeline_event(self.pid, api.TimelineEventIn(kind="meeting", title="Kickoff", date=D(2), time="11:00"))
+        self.assertEqual((ev["date"], ev["start_date"], ev["repeat_days"], ev["repeat_until"], ev["repeat"]), (D(2), D(2), None, None, ""))
+        self.assertEqual(timeline.days_between(ev, NOW.date(), NOW.date() + timedelta(days=9)), [NOW.date() + timedelta(days=2)])
+        self.assertEqual(api.list_timeline(start=D(3))["events"], [])
+        self.assertEqual(api.add_timeline_event(self.pid, api.TimelineEventIn(kind="meeting", title="x", date=D(1), repeat_days=0))["repeat_days"], None)
+
+    def test_an_end_date_stops_it(self):
+        ev = self.every_other_day(day=-4, until=D(1))           # -4, -2, 0 - then over
+        self.assertEqual(ev["date"], D(0))
+        self.assertEqual(api.list_timeline(start=D(2))["events"], [], "not listed after its last day")
+        with mock.patch.object(timeline.timeutil, "now", return_value=NOW + timedelta(days=3)):
+            later = api.project_timeline(self.pid)["events"][0]
+        self.assertEqual((later["date"], later["days_left"], later["overdue"]), (D(0), -3, False), "shows its last day, past")
+
+    def test_bad_repeats_are_refused(self):
+        for kw, code in (({"repeat_days": 1000}, 422), ({"repeat_rule": {"freq": "yearly"}}, 422),
+                         ({"repeat_rule": {"freq": "weeks", "on": [7]}}, 422), ({"repeat_rule": {"freq": "months", "nth": 5}}, 422),
+                         ({"repeat_rule": {"freq": "weeks", "every": 0}}, 422), ({"repeat_until": D(0)}, 422), ({"repeat_until": "soon"}, 422)):
+            with self.assertRaises(HTTPException) as cm:
+                self.every_other_day(**kw)
+            self.assertEqual(cm.exception.status_code, code, kw)
+        with self.assertRaises(HTTPException) as cm:
+            api.add_timeline_event(self.pid, api.TimelineEventIn(kind="deadline", title="Ship", date=D(3), repeat_days=2))
+        self.assertIn("Only meetings", cm.exception.detail)
+        self.assertEqual(api.project_timeline(self.pid)["events"], [])
+
+    def rule_meeting(self, rule, day=0, **kw):
+        body = {"kind": "meeting", "title": "Sync", "date": D(day), "time": "10:00", "repeat_rule": rule, **kw}
+        return api.add_timeline_event(self.pid, api.TimelineEventIn(**body))
+
+    def days(self, ev, n=21):
+        row = db.get_project_event(ev["id"])
+        return [d.isoformat() for d in timeline.days_between(row, date(2026, 1, 1), date(2026, 1, 1) + timedelta(days=n))]
+
+    def test_rules_pick_the_days(self):
+        mon = date(2026, 10, 5)                                # a Monday
+        cases = [
+            ({"freq": "days", "every": 1}, mon, [mon + timedelta(days=i) for i in range(4)]),
+            ({"freq": "days", "every": 3}, mon, [mon + timedelta(days=i) for i in (0, 3, 6, 9)]),
+            ({"freq": "weekdays"}, mon + timedelta(days=4), [date(2026, 10, d) for d in (9, 12, 13, 14)]),
+            ({"freq": "weeks", "on": [0, 2, 4]}, mon, [date(2026, 10, d) for d in (5, 7, 9, 12)]),
+            ({"freq": "weeks", "every": 2, "on": [1]}, mon, [date(2026, 10, d) for d in (6, 20)] + [date(2026, 11, 3)]),
+            ({"freq": "months"}, date(2026, 1, 31), [date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31), date(2026, 4, 30)]),
+            ({"freq": "months", "nth": 2, "on": [1]}, date(2026, 10, 1), [date(2026, 10, 13), date(2026, 11, 10), date(2026, 12, 8)]),
+            ({"freq": "months", "nth": -1, "on": [4]}, date(2026, 10, 1), [date(2026, 10, 30), date(2026, 11, 27), date(2026, 12, 25)]),
+        ]
+        for rule, first, want in cases:
+            ev = {"date": first.isoformat(), "repeat_rule": rule, "repeat_days": None, "repeat_until": None}
+            first = timeline.align(rule, first)
+            got, day = [], first
+            while len(got) < len(want):
+                day = timeline.next_day({**ev, "date": first.isoformat()}, day)
+                got.append(day)
+                day += timedelta(days=1)
+            self.assertEqual(got, want, rule)
+
+    def test_weekly_on_chosen_days_starts_on_the_first_that_fits(self):
+        ev = self.rule_meeting({"freq": "weeks", "on": [0, 4]}, day=2)       # D(2) is a Wednesday-ish: moves on to a Mon/Fri
+        row = db.get_project_event(ev["id"])
+        self.assertIn(date.fromisoformat(row["date"]).weekday(), (0, 4))
+        self.assertGreaterEqual(row["date"], D(2))
+        self.assertEqual((row["repeat_days"], row["repeat_rule"]), (None, {"freq": "weeks", "every": 1, "on": [0, 4]}))
+        self.assertEqual(ev["repeat_rule"], row["repeat_rule"])
+        self.assertTrue(ev["repeat"].startswith("every week on "), ev["repeat"])
+
+    def test_defaults_come_from_the_first_day(self):
+        weekly = self.rule_meeting({"freq": "weeks"}, day=3)
+        first = date.fromisoformat(db.get_project_event(weekly["id"])["date"])
+        self.assertEqual(db.get_project_event(weekly["id"])["repeat_rule"]["on"], [first.weekday()])
+        monthly = self.rule_meeting({"freq": "months", "nth": 1}, day=3)
+        self.assertEqual(db.get_project_event(monthly["id"])["repeat_rule"]["on"], [date.fromisoformat(D(3)).weekday()])
+
+    def test_words(self):
+        first = date(2026, 10, 15)
+        for rule, words in (({"freq": "days", "every": 1}, "every day"), ({"freq": "days", "every": 4}, "every 4 days"),
+                            ({"freq": "weekdays", "every": 1}, "every weekday"), ({"freq": "weeks", "every": 1, "on": [0]}, "every Monday"),
+                            ({"freq": "weeks", "every": 2, "on": [0, 3]}, "every other week on Mon, Thu"),
+                            ({"freq": "months", "every": 1}, "every month on the 15th"),
+                            ({"freq": "months", "every": 3, "nth": -1, "on": [4]}, "every 3 months on the last Friday"),
+                            ({"freq": "months", "every": 1, "nth": 2, "on": [1]}, "every month on the 2nd Tuesday")):
+            self.assertEqual(timeline.repeat_words({"date": first.isoformat(), "repeat_rule": rule}), words)
+
+    def test_a_rule_can_be_changed_and_stopped(self):
+        ev = self.every_other_day(day=1)
+        wk = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(repeat_rule={"freq": "weekdays"}, repeat_until=D(30)))
+        row = db.get_project_event(ev["id"])
+        self.assertEqual((row["repeat_days"], row["repeat_rule"]["freq"], row["repeat_until"]), (None, "weekdays", D(30)))
+        self.assertLess(date.fromisoformat(row["date"]).weekday(), 5)
+        back = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(repeat_days=3))
+        self.assertEqual((back["repeat_days"], back["repeat_rule"]), (3, {"freq": "days", "every": 3}))
+        self.assertIsNone(db.get_project_event(ev["id"])["repeat_rule"], "every-N-days stays in repeat_days")
+        none = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(repeat_rule=None))
+        self.assertEqual((none["repeat_days"], none["repeat_rule"], none["repeat"]), (None, None, ""))
+
+    def test_a_weekday_meeting_is_alerted_on_each_of_its_days(self):
+        self.rule_meeting({"freq": "weekdays"}, day=1)
+        got = {k for _, k in self.fire(AT(1, 8))}
+        self.assertTrue(got <= {"d0", "d1"})
+
+    def test_every_repeat_gets_its_own_alerts(self):
+        self.every_other_day(day=1)
+        self.assertEqual(self.fire(NOW), [], "already inside 'the day before' when it was made")
+        self.assertEqual(self.fire(AT(1, 8)), [(D(1), "d0")])
+        self.assertEqual(self.fire(AT(1, 9, 30)), [(D(1), "soon")])
+        self.assertEqual(self.fire(AT(1, 12)), [])
+        self.assertEqual(self.fire(AT(2, 9)), [(D(3), "d1")], "the next repeat is alerted too")
+        self.assertEqual(self.fire(AT(2, 10)), [])
+        sent = db.list_project_events(self.pid)[0]["alerts_sent"]
+        self.assertTrue(sent and all(k.startswith(D(3) + ":") for k in sent), "earlier days' alerts are forgotten")
+
+    def test_editing_it(self):
+        ev = self.every_other_day(day=1)
+        once = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(repeat_days=None))
+        self.assertEqual((once["repeat_days"], once["date"]), (None, D(1)), "stops repeating, keeps its first day")
+        again = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(repeat_days=2, repeat_until=D(5)))
+        self.assertEqual((again["repeat_days"], again["repeat_until"]), (2, D(5)))
+        kept = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(title="Daily sync"))
+        self.assertEqual((kept["repeat_days"], kept["repeat_until"]), (2, D(5)), "not sent = unchanged")
+        with self.assertRaises(HTTPException):
+            api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(date=D(6)))       # after its end date
+        demo = api.update_timeline_event(ev["id"], api.TimelineEventUpdateIn(kind="demo"))
+        self.assertEqual((demo["repeat_days"], demo["repeat_until"]), (None, None), "only meetings repeat")
+
+    def test_with_people_briefing_and_prompt(self):
+        priya = api.create_contact(api.ContactIn(name="Priya Shah"))
+        ev = self.every_other_day(day=-2, contact_ids=[priya["id"]])        # -2, 0, 2...
+        self.assertEqual(ev["contact_ids"], [priya["id"]])
+        b = timeline.briefing(NOW.replace(hour=8), calendar=False)
+        self.assertEqual([(e["title"], e["date"]) for e in b["today"]], [("Stand-up", D(0))])
+        self.assertIn("Stand-up with Priya Shah", b["text"])
+        self.assertIn("Stand-up with Priya Shah (repeats every other day)", timeline.prompt_for(self.pid, NOW))
+        _, message = timeline.alert_text(timeline.current(db.get_project_event(ev["id"]), NOW), "d1", NOW)
+        self.assertIn("'Stand-up' with Priya Shah", message)
+
+    def test_octopus_can_add_one(self):
+        found = control.match("Schedule a sync for shop tomorrow at 10am every other day")
+        self.assertEqual((found["kind"], found["title"], found["date"], found["time"], found["repeat_days"]),
+                         ("meeting", "Sync", D(1), "10:00", 2))
+        self.assertIsNone(control.match("add a deadline for shop every other day from tomorrow"), "only meetings repeat")
+        for words, rule in (("every weekday", {"freq": "weekdays"}), ("weekly", {"freq": "weeks", "every": 1}),
+                            ("every month", {"freq": "months", "every": 1}), ("daily", {"freq": "days", "every": 1})):
+            got = control.match(f"Schedule a stand-up for shop tomorrow at 10am {words}")
+            self.assertEqual((got or {}).get("repeat_rule"), rule, words)
+            self.assertEqual(got["title"], "Stand-up")
+        out = control.run(found)
+        self.assertIn("then every other day", out["text"])
+        self.assertEqual(db.list_project_events(self.pid)[0]["repeat_days"], 2)
+        self.assertIsNone(control.match("Schedule a sync for shop tomorrow at 10am")["repeat_days"])
 
 
 class OctopusCommands(Base):

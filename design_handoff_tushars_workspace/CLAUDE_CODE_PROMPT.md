@@ -1,6 +1,6 @@
 # Prompt for Claude Code
 
-Copy everything below the line into Claude Code, run from the root of the `claude-queue` repo. First put the `design_handoff_tushars_workspace/` folder in the repo root.
+Copy everything below the line into Claude Code, run from the root of the `TheDen` repo. First put the `design_handoff_tushars_workspace/` folder in the repo root.
 
 ---
 

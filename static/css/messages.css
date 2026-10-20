@@ -22,5 +22,9 @@
 [data-density="compact"] .mrow { padding-top: 8px; padding-bottom: 8px; }
 [data-density="compact"] .mrow__msg { -webkit-line-clamp: 1; }
 
+.msg-full { align-self: flex-end; display: inline-flex; align-items: center; gap: 6px; }
+.page--messages.is-full { position: fixed; inset: 0; z-index: 60; max-width: none; margin: 0; padding: 16px max(16px, 4vw);
+  overflow-y: auto; background: var(--bg, var(--surface)); }
+
 /* Six tabs and the + button on a phone: tighten the labels so "Messages" fits. */
 .tabbar .tab { font-size: 10.5px; }

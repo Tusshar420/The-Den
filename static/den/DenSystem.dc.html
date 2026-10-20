@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:14px; padding:4px 0 40px; min-width:0; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <sc-if value="{{ isAcc }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); overflow-x:auto; scrollbar-width:none; max-width:100%;"><sc-for list="{{ provTabs }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="flex:none; height:34px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; background:{{ t.bg }}; color:{{ t.fg }};"><span style="width:8px; height:8px; border-radius:50%; background:{{ t.c }};"></span>{{ t.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ t.n }}</span></button></sc-for></div><span style="font-size:12.5px; color:#93A1B0;">Each provider keeps its own accounts, active key and fallback order.</span></div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px; align-items:start;">
+      <sc-for list="{{ accs }}" as="a" hint-placeholder-count="2">
+        <div style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); border-color:{{ a.bd }};">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="flex:none; width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:{{ a.c }}; color:#0A0E13; font-size:17px; font-weight:800;">{{ a.init }}</span>
+            <div style="flex:1; min-width:0;">
+              <sc-if value="{{ a.editing }}" hint-placeholder-val="{{ false }}"><input value="{{ a.name }}" onChange="{{ a.onName }}" onKeyDown="{{ a.nameKey }}" onBlur="{{ a.endEdit }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; height:30px; width:100%; font-weight:700;"></sc-if>
+              <sc-if value="{{ a.notEditing }}" hint-placeholder-val="{{ true }}"><div style="display:flex; align-items:center; gap:7px;"><span style="font-size:16px; font-weight:750;">{{ a.name }}</span><sc-if value="{{ a.active }}" hint-placeholder-val="{{ false }}"><span style="height:20px; padding:0 8px; display:flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:rgba(111,207,151,0.14); color:#6FCF97;">ACTIVE</span></sc-if></div></sc-if>
+              <div style="font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ a.email }} · {{ a.plan }}</div>
+            </div>
+          </div>
+          <sc-for list="{{ a.meters }}" as="m" hint-placeholder-count="2"><div style="display:flex; flex-direction:column; gap:5px;"><div style="display:flex; align-items:baseline; gap:8px;"><span style="flex:1; font-size:12.5px; color:#C2CDD8;">{{ m.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:600; color:{{ m.c }};">{{ m.pct }}</span></div><div style="height:6px; border-radius:6px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ m.pct }}; border-radius:6px; background:{{ m.c }}; transition:width .6s cubic-bezier(.2,.7,.3,1);"></div></div><div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">resets {{ m.reset }}</div></div></sc-for>
+          <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:#6B7A8A;"><span style="flex:1;">Limits refreshed {{ a.refreshed }}</span><button onClick="{{ a.refresh }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px;"><span style="display:inline-flex; animation:{{ a.spin }};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"></path></svg></span>{{ a.refreshLabel }}</button></div>
+          <sc-if value="{{ a.colorOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:7px; flex-wrap:wrap; padding:10px; border-radius:12px; background:rgba(6,9,13,0.45);"><sc-for list="{{ a.swatches }}" as="w" hint-placeholder-count="8"><button onClick="{{ w.pick }}" style="width:24px; height:24px; border-radius:50%; border:0; cursor:pointer; background:{{ w.c }}; box-shadow:{{ w.ring }};"></button></sc-for></div></sc-if>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
+            <button onClick="{{ a.activate }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; background:{{ a.actBg }}; color:{{ a.actFg }};">{{ a.actLabel }}</button>
+            <button onClick="{{ a.startEdit }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Rename</button>
+            <button onClick="{{ a.colorToggle }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;"><span style="width:10px; height:10px; border-radius:50%; background:{{ a.c }};"></span>Colour</button>
+            <span style="flex:1;"></span>
+            <button onClick="{{ a.logout }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; border-color:rgba(255,84,112,0.3); color:#FF8FA2;">{{ a.logoutLabel }}</button>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ addIdle }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ addStart }}" style="min-height:250px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:18px; border:1.5px dashed rgba(255,255,255,0.14); background:transparent; cursor:pointer; font-family:inherit; color:#93A1B0;" style-hover="border-color:rgba(255,123,92,0.5); color:#FFA48C;"><span style="width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:rgba(255,255,255,0.04);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 5v14M5 12h14"></path></svg></span><span style="font-size:14px; font-weight:700;">{{ addTitle }}</span><span style="font-size:12px;">{{ addSub }}</span></button>
+      </sc-if>
+      <sc-if value="{{ addOn }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); border-color:rgba(255,123,92,0.35);">
+          <div style="display:flex; align-items:center;"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">{{ addTitle }}</h3><button onClick="{{ addCancel }}" style="width:28px; height:28px; display:grid; place-items:center; border-radius:8px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+          <sc-if value="{{ isClaude }}" hint-placeholder-val="{{ true }}"><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ addMethods }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="flex:1; height:30px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div></sc-if>
+          <sc-if value="{{ mBrowser }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:12px; background:rgba(6,9,13,0.45);">
+              <div style="font-size:12.5px; line-height:1.5; color:#C2CDD8;">1. In Terminal on the Mac, run <b style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#7FB2FF;">claude setup-token</b><br>2. Approve in the browser, then paste the token it prints under Paste a token</div>
+              <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:22px; font-weight:600; letter-spacing:.18em; color:#E8EEF3; font-size:15px; letter-spacing:.04em;">claude setup-token</span><button onClick="{{ copyCode }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:30px;">Copy</button></div>
+              <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:{{ waitC }};"><span style="width:7px; height:7px; border-radius:50%; background:{{ waitC }}; animation:{{ waitAnim }};"></span>{{ waitTxt }}</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ mToken }}" hint-placeholder-val="{{ false }}"><input value="{{ tok }}" onChange="{{ onTok }}" type="password" placeholder="{{ tokPh }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12.5px;"></sc-if>
+          <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}"><input value="{{ baseUrl }}" onChange="{{ onBaseUrl }}" placeholder="Base URL — https://openrouter.ai/api/v1 or http://localhost:11434/v1" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; outline:none; box-sizing:border-box;"></sc-if>
+          <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}"><input value="{{ model }}" onChange="{{ onModel }}" placeholder="Model — e.g. llama3.1:8b or openai/gpt-4o" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; outline:none; box-sizing:border-box;"></sc-if>
+          <div style="display:flex; gap:8px;"><input value="{{ newName }}" onChange="{{ onNewName }}" placeholder="Name, e.g. Work" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1;"></div>
+          <div style="display:flex; gap:7px; flex-wrap:wrap;"><sc-for list="{{ newSw }}" as="w" hint-placeholder-count="8"><button onClick="{{ w.pick }}" style="width:22px; height:22px; border-radius:50%; border:0; cursor:pointer; background:{{ w.c }}; box-shadow:{{ w.ring }};"></button></sc-for></div>
+          <button onClick="{{ addSave }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:38px; opacity:{{ addOp }};">{{ addSaveLabel }}</button>
+        </div>
+      </sc-if>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">{{ limitTitle }}</h3><div style="font-size:12.5px; color:#93A1B0;">Octopus can move the queue to the next account on its own.</div></div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><span style="flex:1 1 200px; font-size:13.5px; font-weight:600;">Switch automatically</span><button onClick="{{ autoSw.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ autoSw.track }}; display:flex; justify-content:{{ autoSw.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><span style="flex:1 1 200px; font-size:13.5px; font-weight:600;">Switch at</span><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ thresh }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:28px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div></div>
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; margin-top:4px;">ORDER</div>
+      <sc-for list="{{ order }}" as="o" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.03);"><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#6B7A8A;">{{ o.n }}</span><span style="width:10px; height:10px; border-radius:50%; background:{{ o.c }};"></span><span style="flex:1; font-size:13px; font-weight:600;">{{ o.name }}</span><button onClick="{{ o.up }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:26px; width:26px; padding:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+    <section style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:16px; font-weight:700;">PINs &amp; locks</h3><div style="font-size:12.5px; color:#93A1B0;">PINs for the hidden vault and each project's Env &amp; credentials.</div></div>
+      <div style="display:flex; align-items:center; gap:12px;"><span style="flex:1; font-size:13.5px; font-weight:600;">Use one PIN for both</span><button onClick="{{ pinSame.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ pinSame.track }}; display:flex; justify-content:{{ pinSame.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+        <sc-for list="{{ pinCards }}" as="c" hint-placeholder-count="2">
+          <div style="display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:15px; background:rgba(255,255,255,0.03); border:1px solid {{ c.bd }};">
+            <div style="display:flex; align-items:center; gap:10px;"><span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ c.tint }}; color:{{ c.c }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></span><div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:700;">{{ c.title }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ c.sub }}</div></div></div>
+            <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px;">
+              <div><div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.1em; color:#6B7A8A; margin-bottom:4px;">CURRENT</div><input value="{{ c.cur }}" onChange="{{ c.onCur }}" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="width:100%; height:40px; box-sizing:border-box; text-align:center; letter-spacing:.5em; padding-left:.5em; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.55); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:16px; outline:none;"></div>
+              <div><div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.1em; color:#6B7A8A; margin-bottom:4px;">NEW</div><input value="{{ c.n1 }}" onChange="{{ c.onN1 }}" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="width:100%; height:40px; box-sizing:border-box; text-align:center; letter-spacing:.5em; padding-left:.5em; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.55); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:16px; outline:none;"></div>
+              <div><div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.1em; color:#6B7A8A; margin-bottom:4px;">CONFIRM</div><input value="{{ c.n2 }}" onChange="{{ c.onN2 }}" type="password" inputmode="numeric" maxlength="4" placeholder="••••" style="width:100%; height:40px; box-sizing:border-box; text-align:center; letter-spacing:.5em; padding-left:.5em; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.55); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:16px; outline:none;"></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-size:12px; color:{{ c.msgC }};">{{ c.msg }}</span><button onClick="{{ c.save }}" style="height:32px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; opacity:{{ c.op }};">{{ c.btn }}</button></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><span style="flex:1 1 200px; font-size:13.5px; font-weight:600;">Lock again after</span><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ lockAfter }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="height:28px; padding:0 11px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div></div>
+      <div style="font-size:11.5px; color:#6B7A8A;">Forgot a PIN? Reset it from the server with <span style="font-family:'JetBrains Mono', monospace; color:#45E0C8;">den pin --reset</span>.</div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Octopus mode</h3><div style="font-size:12.5px; color:#93A1B0;">How much Octopus does on its own.</div></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+        <sc-for list="{{ modes }}" as="m" hint-placeholder-count="3"><button onClick="{{ m.pick }}" style="display:flex; flex-direction:column; gap:6px; padding:14px; border-radius:15px; cursor:pointer; text-align:left; font-family:inherit; color:#E8EEF3; background:{{ m.bg }}; border:1.5px solid {{ m.bd }};"><div style="display:flex; align-items:center; gap:8px;"><span style="width:16px; height:16px; border-radius:50%; border:2px solid {{ m.ring }}; box-shadow:inset 0 0 0 3px #0B1016; background:{{ m.dot }};"></span><span style="font-size:14px; font-weight:700;">{{ m.label }}</span></div><span style="font-size:12.5px; line-height:1.5; color:#A3B0BE;">{{ m.desc }}</span></button></sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><div style="flex:1 1 220px;"><div style="font-size:13.5px; font-weight:600;">Show the plan first</div><div style="font-size:12px; color:#93A1B0;">Octopus shows its steps with Run / Cancel before it starts</div></div><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ planOpts }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:30px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div></div>
+      <div style="display:flex; flex-direction:column; gap:6px;"><div style="font-size:12.5px; color:#93A1B0;">Counts as risky</div><div style="display:flex; gap:5px; flex-wrap:wrap;"><sc-for list="{{ risky }}" as="r" hint-placeholder-count="4"><button onClick="{{ r.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ r.bg }}; color:{{ r.fg }}; border:1px solid {{ r.bd }};"><sc-if value="{{ r.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ r.dot }};"></span></sc-if>{{ r.label }}<sc-if value="{{ r.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ r.n }}</span></sc-if></button></sc-for></div></div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Sites</h3><div style="font-size:12.5px; color:#93A1B0;">Octopus reads a site once and uses it as reference in answers and tasks.</div></div>
+      <div style="display:flex; gap:8px;"><input value="{{ siteUrl }}" onChange="{{ onSite }}" onKeyDown="{{ siteKey }}" placeholder="https://docs.example.com" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1; font-family:'JetBrains Mono', monospace; font-size:12.5px;"><button onClick="{{ learn }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;">Learn site</button></div>
+      <sc-if value="{{ sitesEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0;">{{ sitesEmpty }}</div></sc-if><sc-for list="{{ sites }}" as="x" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);"><div style="flex:1 1 200px; min-width:0;"><div style="font-family:'JetBrains Mono', monospace; font-size:12.5px; color:#E8EEF3;">{{ x.url }}</div><div style="display:flex; align-items:center; gap:8px; margin-top:4px;"><span style="font-size:11.5px; color:{{ x.c }};">{{ x.status }}</span><sc-if value="{{ x.learning }}" hint-placeholder-val="{{ false }}"><div style="flex:0 1 140px; height:4px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;"><div style="height:100%; width:{{ x.pct }}; background:#45E0C8; transition:width .3s;"></div></div></sc-if></div></div><span style="font-size:11.5px; color:#93A1B0;">Use in answers</span><button onClick="{{ x.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ x.track }}; display:flex; justify-content:{{ x.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button><button onClick="{{ x.relearn }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px;">Re-learn</button><button onClick="{{ x.rm }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; width:28px; padding:0; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div></sc-for>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; align-items:center; gap:10px;"><div style="flex:1;"><div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Agents &amp; tools</h3><div style="font-size:12.5px; color:#93A1B0;">What Octopus is allowed to run on this machine.</div></div></div><button onClick="{{ checkAll }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Check all</button></div>
+      <sc-if value="{{ toolsEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0;">{{ toolsEmpty }}</div></sc-if>
+      <div style="display:flex; flex-direction:column; border-radius:14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <sc-for list="{{ tools }}" as="t" hint-placeholder-count="6"><div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:54px; padding:8px 12px; border-top:1px solid rgba(255,255,255,0.04);"><span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ t.c }};"></span><div style="flex:1 1 200px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ t.name }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ t.path }}</div></div><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:{{ t.c }};">{{ t.ver }}</span><sc-if value="{{ t.canInstall }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.install }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px;">Install</button></sc-if><button onClick="{{ t.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ t.track }}; display:flex; justify-content:{{ t.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Modules</h3><div style="font-size:12.5px; color:#93A1B0;">Turn off what you don’t use. Hidden modules leave the sidebar — their data is kept.</div></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:8px;">
+        <sc-for list="{{ modules }}" as="m" hint-placeholder-count="10"><div style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); opacity:{{ m.op }};"><span style="flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:rgba(255,255,255,0.05); color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ m.icon }}"></path></svg></span><span style="flex:1; font-size:13px; font-weight:600;">{{ m.label }}</span><button onClick="{{ m.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ m.track }}; display:flex; justify-content:{{ m.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Push &amp; email delivery</h3><div style="font-size:12.5px; color:#93A1B0;">Where alerts and approvals reach you.</div></div>
+      <sc-if value="{{ pushEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0;">{{ pushEmpty }}</div></sc-if><sc-for list="{{ pushDevs }}" as="d" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:12px; background:rgba(255,255,255,0.03);"><span style="color:#C2CDD8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ d.icon }}"></path></svg></span><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:600;">{{ d.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ d.sub }}</div></div><button onClick="{{ d.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ d.track }}; display:flex; justify-content:{{ d.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;"><button onClick="{{ addThis }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">+ Enable on this device</button></div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;"><span style="flex:none; width:110px; font-size:12.5px; color:#93A1B0;">Alert email</span><input value="{{ alertEmail }}" onChange="{{ onAlertEmail }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1 1 220px;"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);"><button onClick="{{ testPush }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Send test notification</button><button onClick="{{ testMail }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Send test email</button><span style="font-size:12px; color:{{ testC }};">{{ testTxt }}</span></div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><div style="flex:1 1 240px;"><div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Backup &amp; restore</h3><div style="font-size:12.5px; color:#93A1B0;">The whole database: projects, tasks, chats, notes, CRM and settings.</div></div></div><button onClick="{{ backupNow }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;">{{ backupLabel }}</button></div>
+      <sc-if value="{{ backingUp }}" hint-placeholder-val="{{ false }}"><div style="height:5px; border-radius:5px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ bkPct }}; background:#FF7B5C; transition:width .25s;"></div></div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><span style="flex:1 1 140px; font-size:13.5px; font-weight:600;">Automatic</span><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ bkSched }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:28px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div><span style="font-size:12px; color:#93A1B0;">{{ bkNote }}</span></div>
+      <div style="display:flex; align-items:center; gap:12px;"><span style="flex:1; font-size:13.5px; font-weight:600;">{{ driveLabel }}</span><button onClick="{{ drive.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ drive.track }}; display:flex; justify-content:{{ drive.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div>
+      <div style="display:flex; flex-direction:column; border-radius:14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <sc-if value="{{ bkEmpty }}" hint-placeholder-val="{{ false }}"><div style="min-height:50px; display:flex; align-items:center; padding:8px 12px; font-size:12.5px; color:#93A1B0;">{{ bkEmpty }}</div></sc-if><sc-for list="{{ backups }}" as="b" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:50px; padding:8px 12px; border-top:1px solid rgba(255,255,255,0.04);"><span style="flex:1 1 180px; font-family:'JetBrains Mono', monospace; font-size:12.5px;">{{ b.name }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ b.size }}</span><span style="font-size:11.5px; color:#93A1B0;">{{ b.where }}</span><button onClick="{{ b.dl }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px;">Download</button><button onClick="{{ b.restore }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:28px; font-size:11.5px; border-color:{{ b.rbd }}; color:{{ b.rfg }};">{{ b.rLabel }}</button></div></sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+      <div style="display:flex; flex-direction:column; gap:2px;"><h3 style="margin:0; font-size:15px; font-weight:700; font-size:16px;">Export data</h3><div style="font-size:12.5px; color:#93A1B0;">Take your data anywhere.</div></div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap;"><sc-for list="{{ exSets }}" as="e" hint-placeholder-count="4"><button onClick="{{ e.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ e.bg }}; color:{{ e.fg }}; border:1px solid {{ e.bd }};"><sc-if value="{{ e.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ e.dot }};"></span></sc-if>{{ e.label }}<sc-if value="{{ e.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ e.n }}</span></sc-if></button></sc-for></div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ exFmts }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:28px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:600; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for></div><span style="flex:1;"></span><button onClick="{{ doExport }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Export {{ exCount }}</button></div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+    <div style="position:relative; min-height:{{ loginH }}; display:grid; place-items:center; padding:24px; border-radius:{{ loginR }}; overflow:hidden; background:radial-gradient(900px 500px at 15% 10%, rgba(255,123,92,0.18), transparent 60%), radial-gradient(700px 500px at 90% 90%, rgba(69,224,200,0.12), transparent 60%), #05080C;">
+      <div style="width:100%; max-width:420px; display:flex; flex-direction:column; gap:16px; padding:28px; border-radius:24px; background:rgba(20,28,38,0.55); border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(24px) saturate(150%); box-shadow:0 40px 100px -40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.06); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
+        <div style="display:flex; align-items:center; gap:12px;"><span style="width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:#FF7B5C; color:#1A0A05; font-size:20px; font-weight:800;">D</span><div><div style="font-size:20px; font-weight:750;">Login &amp; password</div><div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ host }} · {{ lWho }}</div></div></div>
+        <div style="font-size:13px; line-height:1.55; color:#93A1B0;">{{ lIntro }}</div>
+        <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">USERNAME</span><input type="text" value="{{ lUser }}" onChange="{{ onLUser }}" onKeyDown="{{ lEnter }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Username" style="height:44px; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(6,9,13,0.55); outline:none; color:#E8EEF3; font-family:inherit; font-size:14px;"></div>
+        <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">NEW PASSWORD</span><input type="password" value="{{ lPass }}" onChange="{{ onLPass }}" onKeyDown="{{ lEnter }}" autocomplete="new-password" placeholder="8+ characters" style="height:44px; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(6,9,13,0.55); outline:none; color:#E8EEF3; font-family:inherit; font-size:14px;"><input type="password" value="{{ lPass2 }}" onChange="{{ onLPass2 }}" onKeyDown="{{ lEnter }}" autocomplete="new-password" placeholder="Type it again" style="height:44px; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(6,9,13,0.55); outline:none; color:#E8EEF3; font-family:inherit; font-size:14px;"></div>
+        <sc-if value="{{ lAskCur }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">CURRENT PASSWORD</span><input type="password" value="{{ lCur }}" onChange="{{ onLCur }}" onKeyDown="{{ lEnter }}" autocomplete="current-password" placeholder="Your password now" style="height:44px; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(6,9,13,0.55); outline:none; color:#E8EEF3; font-family:inherit; font-size:14px;"><button onClick="{{ lUseKey }}" style="align-self:flex-start; height:26px; padding:0; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:#93A1B0;">Forgot it? Use the API key instead</button></div></sc-if>
+        <sc-if value="{{ lAskKey }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">DEN API KEY</span><input type="password" value="{{ lKey }}" onChange="{{ onLKey }}" onKeyDown="{{ lEnter }}" autocomplete="off" placeholder="Proves it’s you" style="height:44px; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(6,9,13,0.55); outline:none; color:#E8EEF3; font-family:inherit; font-size:14px; font-family:'JetBrains Mono', monospace; font-size:13px;">
+          <div style="display:flex; align-items:center; gap:8px;"><code style="flex:1; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#45E0C8; min-width:0; overflow-wrap:anywhere;">{{ keyCmd }}</code><button onClick="{{ copyCmd }}" style="height:28px; padding:0 10px; border-radius:9px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:#DCE4EB;">Copy</button></div></div></sc-if>
+        <sc-if value="{{ lErr }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px; color:#FF8FA2;">{{ lErr }}</span></sc-if>
+        <button onClick="{{ lSave }}" style="height:46px; display:inline-flex; align-items:center; justify-content:center; padding:0 13px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; color:#1A0A05; white-space:nowrap; opacity:{{ lOp }};">{{ lSaveLabel }}</button>
+        <div style="font-size:12px; color:#6B7A8A;">Saving signs out every other device.</div>
+        <sc-if value="{{ lHasLogin }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:8px;"><button onClick="{{ lOut }}" style="height:40px; flex:1; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Sign out</button><button onClick="{{ lOutAll }}" style="height:40px; flex:1; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; color:#DCE4EB; white-space:nowrap; color:#FF8FA2;">Sign out everywhere</button></div></sc-if>
+        <div style="display:flex; align-items:center; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#5B6A7A;"><span>The Den · Octopus</span><span>Stays on your network</span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isTour }}" hint-placeholder-val="{{ false }}">
+    <div style="position:{{ tourPos }}; inset:0; z-index:900; display:grid; place-items:center; padding:20px; background:rgba(3,5,8,0.72); backdrop-filter:blur(6px);">
+      <div style="width:100%; max-width:520px; display:flex; flex-direction:column; border-radius:24px; overflow:hidden; background:rgba(16,22,30,0.97); border:1px solid rgba(255,255,255,0.1); box-shadow:0 40px 100px -30px rgba(0,0,0,0.9); animation:denRise .3s cubic-bezier(.2,.7,.3,1);">
+        <div style="height:190px; display:grid; place-items:center; background:radial-gradient(400px 200px at 50% 100%, {{ tour.glow }}, transparent 70%), rgba(255,255,255,0.02); border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;"><span style="width:72px; height:72px; display:grid; place-items:center; border-radius:22px; background:{{ tour.tint }}; border:1px solid {{ tour.bd }}; color:{{ tour.c }};"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ tour.icon }}"></path></svg></span><sc-if value="{{ tour.kbd }}" hint-placeholder-val="{{ false }}"><span style="height:26px; padding:0 10px; display:flex; align-items:center; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); font-family:'JetBrains Mono', monospace; font-size:12px; color:#E8EEF3;">{{ tour.kbd }}</span></sc-if></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; padding:22px 24px;">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:{{ tour.c }};">STEP {{ tourN }} OF {{ tourTotal }}</div>
+          <div style="font-size:21px; font-weight:750; line-height:1.25;">{{ tour.title }}</div>
+          <div style="font-size:14px; line-height:1.65; color:#C2CDD8; text-wrap:pretty;">{{ tour.body }}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:14px 24px 20px;">
+          <div style="display:flex; gap:5px; flex:1;"><sc-for list="{{ tourDots }}" as="d" hint-placeholder-count="5"><button onClick="{{ d.go }}" style="width:{{ d.w }}; height:7px; padding:0; border-radius:999px; border:0; cursor:pointer; background:{{ d.bg }}; transition:all .2s;"></button></sc-for></div>
+          <button onClick="{{ tourSkip }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; border:0; background:transparent; color:#93A1B0;">Skip</button>
+          <sc-if value="{{ tourBack }}" hint-placeholder-val="{{ false }}"><button onClick="{{ tourPrev }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Back</button></sc-if>
+          <button onClick="{{ tourNext }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px; padding:0 16px;">{{ tourNextLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const D = window.Den;
+const G = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97', err:'#FF5470', mute:'#93A1B0' };
+const tn = (h, a) => { if (!h || h[0] !== '#') return h; const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+const chipsOf = (cur, arr, set, multi) => arr.map(([id, label, dot, n]) => { const on = multi ? cur.includes(id) : cur === id; const c = dot || '#FF7B5C'; return { label, dot: dot || '', n: n == null ? '' : String(n), pick:() => set(id), bg: on ? tn(c, 0.16) : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? tn(c, 0.5) : 'rgba(255,255,255,0.08)' }; });
+const tg = (on, toggle) => ({ track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle });
+const seg = (on) => ({ bg: on ? 'rgba(255,255,255,0.1)' : 'transparent', fg: on ? '#FFFFFF' : '#93A1B0' });
+const SW = ['#E8825A', '#4F9DE8', '#45E0C8', '#A58BFF', '#FFB547', '#6FCF97', '#FF5470', '#E8C07B'];
+const PROV = [['claude', 'Claude', '#E8825A'], ['openai', 'OpenAI', '#6FCF97'], ['gemini', 'Gemini', '#7FB2FF'], ['other', 'Others', '#A58BFF']];
+const uc = p => p >= 95 ? G.violet : p >= 80 ? G.amber : G.teal;
+const MODES = [['assist', 'Assist', 'Suggests and drafts. Never runs anything without you pressing Run.'], ['execute', 'Execute', 'Runs what you queue. Asks before protected commands.'], ['autonomous', 'Autonomous', 'Plans and runs its own follow-ups within your budgets and rules.']];
+const RISKY = [['push', 'git push'], ['deploy', 'Deploys'], ['del', 'Deleting files'], ['pay', 'Payments'], ['mail', 'Emails to clients'], ['deps', 'Installing packages'], ['db', 'Database changes']];
+const MODS = [['crm', 'CRM', 'M3 7h18v13H3zM8 7V4h8v3'], ['clients', 'Clients', 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6'], ['team', 'Team', 'M17 20v-2a4 4 0 0 0-3-3.9M7 20v-2a4 4 0 0 1 4-4h2M9 7a3 3 0 1 0 6 0 3 3 0 0 0-6 0'], ['email', 'Email', 'M4 6h16v12H4zM4 7l8 6 8-6'], ['calendar', 'Calendar', 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4'], ['notes', 'Notes', 'M6 3h9l4 4v14H6zM9 13h7M9 17h5'], ['recipes', 'Recipes', 'M13 2L4 14h7l-1 8 9-12h-7z'], ['devices', 'Smart devices', 'M4 11l8-7 8 7v9H4z'], ['voice', 'Voice', 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3M5 11a7 7 0 0 0 14 0M12 18v3'], ['usage', 'Token usage', 'M12 21a9 9 0 1 1 9-9M12 12l4-4']];
+const PUZZLE = 'M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7z';
+const PHONE = 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M11 18h2', DESK = 'M4 5h16v11H4zM2 19h20';
+const EXSETS = [['projects', 'Projects'], ['tasks', 'Tasks & chats'], ['notes', 'Notes'], ['crm', 'CRM & contacts'], ['calendar', 'Calendar'], ['usage', 'Usage logs'], ['settings', 'Settings']];
+const LOCKS = [['1 min', 1], ['5 min', 5], ['15 min', 15], ['Never', null]];
+const KEY_CMD = 'plutil -extract EnvironmentVariables.API_KEY raw ~/Library/LaunchAgents/com.tushar.claudequeue.plist';
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayMon = s => { const d = new Date(s + 'T00:00'); return isNaN(d) ? '' : d.getDate() + ' ' + MON[d.getMonth()]; };
+const lc = c => String(c || '').toLowerCase();
+const up1 = s => (s ? s[0].toUpperCase() + s.slice(1) : '');
+const mb = n => (n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? Math.round(n / 1e6) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
+const host = u => String(u || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+const copy = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
+const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+const pctOf = w => (w && w.utilization != null ? Math.round(w.utilization <= 1 ? w.utilization * 100 : w.utilization) : 0);
+
+// A request that must not trip the shell's "API key needed" screen: the PIN routes answer 403 for a
+// wrong PIN, the sign-in check sends a key that isn't saved yet, and files come back as blobs.
+async function raw(path, { method = 'GET', body, key, blob } = {}) {
+  const h = { 'X-API-Key': key != null ? key : D.key() };
+  if (body !== undefined) h['Content-Type'] = 'application/json';
+  const res = await fetch(D.base() + path, { method, headers: h, body: body !== undefined ? JSON.stringify(body) : undefined });
+  if (!res.ok) { let d = res.statusText; try { const j = await res.json(); d = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail || j); } catch (e) {} const err = new Error(d || ('HTTP ' + res.status)); err.status = res.status; throw err; }
+  if (blob) { const m = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || ''); return { blob: await res.blob(), name: m ? m[1] : 'den-download' }; }
+  return res.status === 204 ? null : res.json();
+}
+const saveFile = ({ blob, name }) => { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); };
+
+// What the Settings extras read, while another page is shown (nothing is fetched for them then).
+const SET_IDLE = { modes:[], planOpts:[], risky:[], siteUrl:'', onSite:() => {}, siteKey:() => {}, learn:() => {}, sites:[], sitesEmpty:'', checkAll:() => {}, tools:[], toolsEmpty:'', modules:[], pushDevs:[], pushEmpty:'',
+  addThis:() => {}, alertEmail:'', onAlertEmail:() => {}, testPush:() => {}, testMail:() => {}, testTxt:'', testC:'#93A1B0', backingUp:false, bkPct:'0%', backupLabel:'', backupNow:() => {}, bkSched:[], bkNote:'',
+  driveLabel:'', drive:tg(false, () => {}), backups:[], bkEmpty:'', exSets:[], exFmts:[], exCount:'', doExport:() => {} };
+
+class Component extends DCLogic {
+  state = { prov:'claude', edit:null, names:{}, colorOpen:null, refreshing:null, confirmOut:null, add:false, method:'token', tok:'', newName:'', newC:SW[2], baseUrl:'', model:'', adding:false,
+    siteUrl:'', siteConfirm:null, checking:false, pushConfirm:null, alertEmail:null, test:null,
+    backing:false, bkPct:0, confirmRestore:null, exSets:['projects', 'tasks', 'notes', 'crm'], exFmt:'ZIP', exporting:false,
+    pinF:{}, lUser:null, lPass:'', lPass2:'', lCur:'', lKey:'', lByKey:false, lErr:'', lBusy:false, step:0, ov:{} };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); }
+  componentWillUnmount() { clearInterval(this.bt); clearTimeout(this.ot); clearTimeout(this.et); clearTimeout(this.ct); }
+  say(t, s, c) { (this.props.say || D.say)(t, s || '', c || G.coral); }
+  inp = k => e => this.setState({ [k]:e.target.value });
+  // Two-click confirm: the first click arms it for a few seconds.
+  arm(k, v) { this.setState({ [k]:v }); clearTimeout(this.ct); this.ct = setTimeout(() => this.setState({ [k]:null }), 4000); }
+  // Optimistic change: show v at once under ov[k], run the request, reload what it touched, then drop the override.
+  async opt(k, v, run, ok, names, core) {
+    this.setState(st => ({ ov:{ ...st.ov, [k]:v } }));
+    try { await D.act(run, { ok, core:false }); await Promise.all([...(names || []).map(n => D.load(n)), core ? D.refresh().catch(() => {}) : null]); } catch (e) {}
+    this.setState(st => { const o = { ...st.ov }; delete o[k]; return { ov:o }; });
+  }
+
+  // ------------------------------------------------------------ AI accounts
+  accData() {
+    const s = this.state; const ov = s.ov;
+    const pv = D.need('den-sys-prov', '/octopus/providers', 30000);
+    const ex = D.need('den-sys-acc', '/den/system/accounts', 30000);
+    const groups = (pv && pv.providers) || [];
+    const looks = (ex && ex.looks) || {};
+    const pol = p => ({ auto:false, at:90, order:[], ...((ex && ex.policy && ex.policy[p]) || {}), ...(ov['pol:' + p] || {}) });
+    const sp = ex && ex.spend; const budget = ex ? ex.budget_usd : null; const resets = ex && ex.resets_on ? dayMon(ex.resets_on) : '';
+    const spendMeter = (cost, who) => { if (cost == null) return { label:'Spend this month', pct:'0%', c:G.teal, reset:'Spend isn’t available yet' };
+      const pc = budget ? Math.min(100, Math.round(cost / budget * 100)) : 0;
+      return { label:'Spend this month', pct:pc + '%', c:uc(pc), reset:D.money(cost) + (budget ? ' of ' + D.money(budget) : ' · no monthly budget') + (resets ? ' · ' + resets : '') + (who ? ' · ' + who : '') }; };
+    const look = (p, id) => ({ ...(looks[p + ':' + id] || {}), ...(ov['look:' + p + ':' + id] || {}) });
+    const list = { claude:[], openai:[], gemini:[], other:[] };
+    D.accounts().forEach(a => { const u = a.usage || {}; const w = u.windows || {}; const p5 = pctOf(w.five_hour), pw = pctOf(w.seven_day); const lk = ov['look:claude:' + a.id] || {};
+      list.claude.push({ id:a.id, prov:'claude', kind:'claude', name: lk.name != null ? lk.name : D.acctName(a), email: a.email || (a.kind === 'mac' ? 'This Mac’s login' : 'Token account'),
+        plan: a.auth_error ? 'Needs signing in again' : a.plan ? up1(a.plan) : a.kind === 'mac' ? 'This Mac' : 'Claude', c: lk.color || a.color || SW[0], active:!!a.active,
+        meters:[{ label:'Session', pct:p5 + '%', c:uc(p5), reset:D.resetLabel(w.five_hour && w.five_hour.resets_at) }, { label:'Weekly', pct:pw + '%', c:uc(pw), reset:D.resetLabel(w.seven_day && w.seven_day.resets_at, true) }],
+        at:u.updated_at }); });
+    ['openai', 'gemini'].forEach(p => { const g = groups.find(x => x.id === p); const label = (PROV.find(x => x[0] === p) || [])[1];
+      ((g && g.keys) || []).forEach((k, i) => { const lk = look(p, k.id);
+        list[p].push({ id:k.id, prov:p, kind:'api', name:lk.name || k.label, email:'key ' + k.hint + (k.env ? ' · from the service settings' : ''), plan: k.error ? 'Error: ' + D.firstLine(k.error, 60) : 'API' + (k.default ? ' · tried first' : ''),
+          c:lk.color || SW[(i + (p === 'openai' ? 5 : 1)) % SW.length], active:!!k.default, env:!!k.env, meters:[spendMeter(sp ? (sp.providers || {})[p] || 0 : null, 'all ' + label + ' keys')], at:ex && ex.at }); }); });
+    groups.forEach(g => (g.models || []).filter(m => m.provider === 'openai_compat').forEach((m, i) => { const lk = look('other', m.id); const gpu = ex && ex.local ? ex.local[m.id] : null;
+      list.other.push({ id:m.id, prov:'other', kind: gpu ? 'local' : 'api', name:lk.name || m.label, email:m.base_url || 'custom endpoint', plan: (gpu ? 'Local · free' : 'API') + ' · ' + (m.model || m.id) + (m.available === false ? ' · unavailable' : ''), c:lk.color || SW[(i + 3) % SW.length],
+        meters:[gpu ? { label:'GPU memory', pct:gpu.pct + '%', c:uc(gpu.pct), reset: gpu.loaded ? gpu.loaded + ' loaded · ' + gpu.vram_gb + ' GB in GPU' : 'No model loaded' } : spendMeter(sp ? (sp.models || {})[m.id] || 0 : null)] }); }));
+    // Order: the owner's, and for OpenAI / Gemini the key every call starts with (the default) is always first.
+    const ord = p => { const ids = list[p].map(a => a.id); const want = pol(p).order.filter(i => ids.includes(i)); let o = [...want, ...ids.filter(i => !want.includes(i))];
+      if (p === 'openai' || p === 'gemini') { const d = (list[p].find(a => a.active) || {}).id; if (d) o = [d, ...o.filter(i => i !== d)]; }
+      return o; };
+    if (list.other.length) { const first = ord('other')[0]; list.other.forEach(a => { a.active = a.id === first; }); }
+    return { list, pol, ord, ex, pv, loaded: pv !== undefined };
+  }
+  setPolicy(p, body, ok) { const cur = this.state.ov['pol:' + p] || {}; return this.opt('pol:' + p, { ...cur, ...body }, () => D.api('/den/system/accounts/' + p + '/policy', { method:'PUT', body }), ok, ['den-sys-acc', 'den-sys-prov']); }
+  setLook(a, body) {
+    const k = 'look:' + a.prov + ':' + a.id;
+    const run = a.prov === 'claude' ? () => body.color != null ? D.api('/accounts/' + encodeURIComponent(a.id) + '/color', { method:'PUT', body:{ color:lc(body.color) } }) : D.api('/accounts/' + encodeURIComponent(a.id) + '/alias', { method:'PUT', body:{ alias:body.name } })
+      : a.prov === 'other' && body.name != null ? () => D.api('/octopus/models/' + encodeURIComponent(a.id), { method:'PUT', body:{ label:body.name } })
+      : () => D.api('/den/system/accounts/' + a.prov + '/' + encodeURIComponent(a.id) + '/look', { method:'PUT', body });
+    return this.opt(k, { ...(this.state.ov[k] || {}), ...body }, run, null, ['den-sys-acc', 'den-sys-prov'], a.prov === 'claude');
+  }
+  endEdit(a) {
+    const s = this.state; if (s.edit !== a.id) return;
+    const v = (s.names[a.id] || '').trim(); this.setState({ edit:null });
+    if (this.cancelEdit) { this.cancelEdit = false; return; }
+    if (!v || v === a.name) return;
+    if (a.prov === 'claude' && v.length > 24) return this.say('Keep it to 24 characters', '', G.amber);
+    this.setLook(a, { name:v });
+  }
+  refreshAcc(a) {
+    if (this.state.refreshing) return; this.setState({ refreshing:a.id });
+    const run = a.prov === 'claude' ? () => D.api('/accounts/' + encodeURIComponent(a.id) + '/refresh', { method:'POST' }) : () => D.api('/den/system/accounts?refresh=true').then(() => Promise.all([D.load('den-sys-acc'), D.load('den-sys-prov')]));
+    D.act(run, { ok:['Limits refreshed', a.name, G.teal], fail:'Couldn’t refresh', core: a.prov === 'claude' }).catch(() => {}).finally(() => this.setState({ refreshing:null }));
+  }
+  activate(a) {
+    if (a.active) return;
+    const ok = ['Switched to ' + a.name, a.prov === 'claude' ? 'New tasks run on this account' : 'Calls start with this one now', a.c];
+    if (a.prov === 'claude') return D.act(() => D.api('/accounts/' + encodeURIComponent(a.id) + '/activate', { method:'POST' }), { ok }).catch(() => {});
+    if (a.prov === 'other') { const o = this.accData().ord('other'); return this.setPolicy('other', { order:[a.id, ...o.filter(i => i !== a.id)] }, ok); }
+    return D.act(() => D.api('/octopus/api-keys/' + encodeURIComponent(a.id) + '/default', { method:'POST' }), { ok, reload:['den-sys-prov', 'den-sys-acc'], core:false }).catch(() => {});
+  }
+  logout(a) {
+    if (this.state.confirmOut !== a.id) return this.arm('confirmOut', a.id);
+    this.setState({ confirmOut:null });
+    const enc = encodeURIComponent(a.id);
+    const run = a.prov === 'claude' ? () => D.api('/accounts/' + enc, { method:'DELETE' })
+      : a.prov === 'other' ? () => D.api('/den/system/accounts/other/' + enc, { method:'DELETE' }).catch(e => { if (e.status === 404) return D.api('/octopus/models/' + enc, { method:'DELETE' }); throw e; })
+      : () => D.api('/octopus/api-keys/' + enc, { method:'DELETE' });
+    D.act(run, { ok:['Logged out', a.name, G.err], fail:'Couldn’t log out', reload:['den-sys-prov', 'den-sys-acc'], core: a.prov === 'claude' }).catch(() => {});
+  }
+  async addSave(prov, PN) {
+    const s = this.state; if (s.adding) return;
+    const name = s.newName.trim() || 'Work'; const token = s.tok.trim(); const color = s.newC;
+    if (prov === 'claude' && s.method === 'browser') return this.say('Run claude setup-token on the Mac', 'Then paste the token it prints under Paste a token', G.amber);
+    if (prov === 'other' && (!s.baseUrl.trim() || !s.model.trim())) return this.say('Add the base URL and the model', 'e.g. http://localhost:11434/v1 and llama3.1:8b', G.amber);
+    if (prov !== 'other' && token.length < 20) return this.say(prov === 'claude' ? 'Paste the whole token' : 'Paste the whole API key', '', G.amber);
+    this.setState({ tok:'', adding:true });           // the secret leaves the form as soon as it's sent
+    const done = () => this.setState({ add:false, newName:'', baseUrl:'', model:'', adding:false });
+    try {
+      if (prov === 'claude') {
+        const r = await D.act(() => D.api('/accounts', { method:'POST', body:{ label:name, token } }), { ok:['Account added', name, color], fail:'Couldn’t add the account' });
+        if (r && r.account) await D.api('/accounts/' + encodeURIComponent(r.account.id) + '/color', { method:'PUT', body:{ color:lc(color) } }).then(() => D.refresh()).catch(() => {});
+      } else if (prov === 'other') {
+        const m = await D.act(() => D.api('/octopus/models', { method:'POST', body:{ label:name, provider:'openai_compat', model:s.model.trim(), base_url:s.baseUrl.trim(), ...(token ? { api_key:token } : {}) } }), { ok:['Account added', name + ' · choose what it’s used for in AI providers', color], fail:'Couldn’t add it', core:false });
+        if (m && m.id) await D.api('/den/system/accounts/other/' + encodeURIComponent(m.id) + '/look', { method:'PUT', body:{ color:lc(color) } }).catch(() => {});
+      } else {
+        const before = new Set(((((this.accData().pv || {}).providers || []).find(g => g.id === prov) || {}).keys || []).map(k => k.id));
+        const r = await D.act(() => D.api('/octopus/api-keys', { method:'POST', body:{ provider:prov, label:name, key:token } }), { ok:[PN + ' key added', name, color], fail:'Couldn’t add the key', core:false });
+        const k = (((r && r.providers) || []).find(g => g.id === prov) || {}).keys || [];
+        const nk = k.find(x => !before.has(x.id));
+        if (nk) await D.api('/den/system/accounts/' + prov + '/' + encodeURIComponent(nk.id) + '/look', { method:'PUT', body:{ color:lc(color) } }).catch(() => {});
+      }
+      await Promise.all([D.load('den-sys-prov'), D.load('den-sys-acc')]);
+      done();
+    } catch (e) { this.setState({ adding:false }); }
+  }
+
+  // ------------------------------------------------------------ settings extras
+  pinVals(s) {
+    const st = D.need('den-sys-pin', '/den/secrets/status', 30000);
+    const ok = !!(st && st.vault);
+    const same = s.ov.one_pin != null ? s.ov.one_pin : !st || st.one_pin !== false; const P = s.pinF || {};
+    const lockNow = s.ov.lock !== undefined ? s.ov.lock : st ? st.lock_after_min : 5;
+    const cards = same ? [['both', 'Vault & credentials', 'One PIN for the hidden vault and every project', '#A58BFF', ok && st.vault.set]]
+      : [['vault', 'Hidden vault', 'Long-press the right rail to reveal it', '#A58BFF', ok && st.vault.set], ['creds', 'Env & credentials', 'Used in every project', '#FF7B5C', ok && st.creds && st.creds.set]];
+    const setF = (id, f) => this.setState(x => ({ pinF:{ ...(x.pinF || {}), [id]:f } }));
+    const settings = (k, v, body, okMsg) => { if (!ok) return this.say('PINs aren’t available yet', 'This Den doesn’t have the PIN service turned on', G.amber);
+      this.setState(x => ({ ov:{ ...x.ov, [k]:v } }));
+      raw('/den/secrets/settings', { method:'PUT', body }).then(() => { this.say(...okMsg); return D.load('den-sys-pin'); }).catch(e => this.say('Couldn’t change it', e.message, G.err))
+        .finally(() => this.setState(x => { const o = { ...x.ov }; delete o[k]; return { ov:o, pinF:{} }; })); };
+    return {
+      pinSame: tg(same, () => settings('one_pin', !same, { one_pin:!same }, [!same ? 'One PIN for both' : 'Separate PINs', !same ? 'The vault PIN now opens credentials too' : 'Credentials start with the current PIN', G.violet])),
+      pinCards: cards.map(([id, title, sub, c, isSet]) => { const f = P[id] || {};
+        const set = k => e => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); this.setState(x => ({ pinF:{ ...(x.pinF || {}), [id]:{ ...((x.pinF || {})[id] || {}), [k]:v, msg:'', ok:false } } })); };
+        return { title, sub, c, tint:tn(c, 0.14), bd: f.ok ? 'rgba(111,207,151,0.4)' : 'rgba(255,255,255,0.06)', cur:f.cur || '', n1:f.n1 || '', n2:f.n2 || '', onCur:set('cur'), onN1:set('n1'), onN2:set('n2'),
+          msg: f.msg || (!ok ? (st === undefined ? 'Checking…' : 'PINs aren’t available on this Den yet') : isSet ? 'Enter the current PIN to change it' : 'No PIN yet — leave Current empty'), msgC: f.ok ? G.green : f.msg ? (f.busy ? '#93A1B0' : '#FF8FA2') : '#6B7A8A',
+          btn: isSet ? 'Change PIN' : 'Set PIN', op: ok ? '1' : '0.45',
+          save:() => { if (!ok || f.busy) return;
+            const fail = m => setF(id, { msg:m, ok:false });
+            if (isSet && !/^\d{4}$/.test(f.cur || '')) return fail('Enter the current PIN');
+            if (!/^\d{4}$/.test(f.n1 || '')) return fail('New PIN must be 4 digits'); if (f.n1 !== f.n2) return fail('PINs don’t match'); if (isSet && f.n1 === f.cur) return fail('Pick a different PIN');
+            const body = { scope:id, current: isSet ? f.cur : null, new:f.n1 };
+            setF(id, { msg:'Saving…', busy:true });          // the digits leave the form at once
+            raw('/den/secrets/pin', { method:'PUT', body }).then(() => { setF(id, { msg:'PIN changed ✓', ok:true }); this.say(isSet ? 'PIN changed' : 'PIN set', title, G.green); return D.load('den-sys-pin'); })
+              .catch(e => fail(e.status === 404 ? 'PINs aren’t available yet' : e.message)); } }; }),
+      lockAfter: LOCKS.map(([l, n]) => ({ label:l, ...seg(lockNow === n), pick:() => { if (lockNow === n) return; settings('lock', n, n == null ? { lock_after_min:null, never:true } : { lock_after_min:n }, ['Lock again after ' + l.toLowerCase(), '', G.violet]); } }))
+    };
+  }
+  setVals(s) {
+    const st = D.store.settings || {};
+    const prefs = D.need('den-sys-prefs', '/den/system/prefs', 60000);
+    const risky = s.ov.risky || (prefs && prefs.risky) || ['push', 'deploy', 'del', 'pay', 'mail'];
+    const mode = s.ov.autonomy || st.autonomy || 'execute'; const plan = s.ov.plan_review || st.plan_review || 'risky';
+    // sites: what's been learned (ours lists the switched-off ones too), and the Learn site tasks still going
+    const mine = D.need('den-sys-sites', '/den/system/sites', 20000);
+    const learned = mine ? mine.sites : (D.need('den-sys-sites0', '/octopus/sites', 30000) || []).map(x => ({ ...x, on:true, ro:true }));
+    const week = Date.now() - 7 * 864e5; const known = new Set(learned.map(x => host(x.url)));
+    const tasks = (D.store.tasks || []).filter(t => t.routed_by === 'sites' && (D.parseT(t.created_at) || 0) > week);
+    const urlOf = t => { const m = /learn this website: (\S+)/.exec(t.prompt || ''); return m ? m[1] : (t.title || '').replace(/^Learn site:\s*/, ''); };
+    const going = tasks.filter(t => ['queued', 'running', 'rate_limited'].includes(t.status) || (t.status === 'error' && !known.has(host(urlOf(t))) && !(s.ov.dismiss || []).includes(t.id)));
+    const seen = new Set();
+    const siteRows = [
+      ...going.filter(t => { const u = host(urlOf(t)); if (seen.has(u)) return false; seen.add(u); return true; }).map(t => { const fail = t.status === 'error'; const run = t.status === 'running';
+        const pc = fail ? 0 : run ? Math.min(90, Math.max(15, t.typical_ms ? Math.round((Date.now() - D.parseT(t.started_at)) / t.typical_ms * 100) : 50)) : 8;
+        return { url:host(urlOf(t)), learning:!fail, pct:pc + '%', status: fail ? 'Couldn’t learn it — open the task to see why' : 'Learning… ' + (t.current_step || (run ? 'reading pages' : 'waiting in the queue')), c: fail ? '#FF8FA2' : G.teal,
+          ...tg(!fail, () => this.say(fail ? 'Learn it again first' : 'Still learning', fail ? '' : 'It’s used in answers once it’s done', G.teal)), relearn:() => this.learn(urlOf(t)),
+          rm:() => fail ? this.setState(x => ({ ov:{ ...x.ov, dismiss:[...(x.ov.dismiss || []), t.id] } })) : this.say('Still learning', 'Cancel it from the queue if you don’t want it', G.amber) }; }),
+      ...learned.filter(x => !seen.has(host(x.url || x.name))).map(x => { const on = s.ov['site:' + x.id] != null ? s.ov['site:' + x.id] : x.on !== false; const conf = s.siteConfirm === x.id;
+        return { url:host(x.url) || x.name, learning:false, pct:'0%', status: conf ? 'Tap × again to remove it' : (on ? 'Learned' : 'Not used in answers') + (x.sections ? ' · ' + x.sections + ' sections' : '') + ' · ' + (D.ago(x.updated_at || x.analyzed, false) || x.analyzed || ''), c: conf ? '#FF8FA2' : '#93A1B0',
+          ...tg(on, () => { if (x.ro) return this.say('Can’t switch it off yet', 'Needs the newer Den service', G.amber); this.opt('site:' + x.id, !on, () => D.api('/den/system/sites/' + encodeURIComponent(x.id), { method:'PUT', body:{ on:!on } }), [on ? 'Not used in answers' : 'Used in answers again', host(x.url) || x.name, on ? G.mute : G.teal], ['den-sys-sites']); }),
+          relearn:() => x.url ? this.learn(x.url) : this.say('No link saved for it', '', G.amber),
+          rm:() => { if (x.ro) return this.say('Can’t remove it yet', 'Needs the newer Den service', G.amber); if (!conf) return this.arm('siteConfirm', x.id); this.setState({ siteConfirm:null });
+            D.act(() => D.api('/den/system/sites/' + encodeURIComponent(x.id), { method:'DELETE' }), { ok:['Site removed', 'Kept in ~/.claude/skills-removed', G.mute], reload:['den-sys-sites'], core:false }).catch(() => {}); } }; })];
+    // agents & tools on this Mac
+    const tools = D.need('den-sys-tools', '/den/system/tools', 300000);
+    // modules: the sidebar pages (a layout pref - their data stays), then any plug-in modules
+    const off = D.prefs().modulesOff || [];
+    const plug = ((D.need('den-sys-mods', '/modules', 60000) || {}).modules || []);
+    // push devices, alert email
+    const devs = D.need('den-sys-push', '/den/system/push-devices', 60000);
+    const em = D.need('den-sys-email', '/email', 60000);
+    const alertEmail = s.alertEmail != null ? s.alertEmail : (em && em.to) || '';
+    // backups, export
+    const bk = D.need('den-sys-bk', '/den/system/backups', 30000);
+    const sched = s.ov.bk || (bk && bk.schedule) || 'off'; const drive = s.ov.drive != null ? s.ov.drive : !!(bk && bk.drive);
+    const items = (bk && bk.items) || [];
+    const exc = (D.need('den-sys-ex', '/den/system/export', 120000) || {}).counts || {};
+    const tst = s.test;
+    return {
+      modes: MODES.map(([id, label, desc]) => { const on = mode === id; return { label, desc, bg: on ? 'rgba(255,123,92,0.07)' : 'rgba(255,255,255,0.02)', bd: on ? 'rgba(255,123,92,0.55)' : 'rgba(255,255,255,0.08)', ring: on ? '#FF7B5C' : 'rgba(255,255,255,0.3)', dot: on ? '#FF7B5C' : 'transparent',
+        pick:() => { if (on) return; this.opt('autonomy', id, () => D.api('/settings', { method:'PATCH', body:{ autonomy:id } }), ['Octopus mode: ' + label, '', G.coral], [], true); } }; }),
+      planOpts: [['always', 'Always'], ['risky', 'Only risky'], ['never', 'Never']].map(([id, label]) => ({ label, ...seg(plan === id), pick:() => { if (plan !== id) this.opt('plan_review', id, () => D.api('/settings', { method:'PATCH', body:{ plan_review:id } }), ['Show the plan first: ' + label.toLowerCase(), '', G.coral], [], true); } })),
+      risky: chipsOf(risky, RISKY.map(([id, l]) => [id, l, G.amber]), id => { const nx = risky.includes(id) ? risky.filter(x => x !== id) : [...risky, id]; this.opt('risky', nx, () => D.api('/den/system/prefs', { method:'PATCH', body:{ risky:nx } }), null, ['den-sys-prefs']); }, true),
+      siteUrl:s.siteUrl, onSite:this.inp('siteUrl'), siteKey:e => { if (e.key === 'Enter') this.learn(s.siteUrl); }, learn:() => this.learn(s.siteUrl),
+      sites:siteRows, sitesEmpty: siteRows.length ? '' : (mine === undefined ? 'Loading…' : 'No sites yet. Paste a docs link and press Learn site.'),
+      checkAll:() => { if (s.checking) return; this.setState({ checking:true });
+        D.act(() => D.api('/den/system/tools?refresh=true').then(r => D.load('den-sys-tools').then(() => r)), { ok:r => { const n = k => r.filter(t => t.status === k).length; return ['All tools checked', n('ok') + ' OK · ' + n('missing') + ' missing · ' + n('warn') + ' need attention', G.teal]; }, fail:'Couldn’t check the tools', core:false })
+          .catch(() => {}).finally(() => this.setState({ checking:false })); },
+      tools: (tools || []).map(t => { const on = s.ov['tool:' + t.id] != null ? s.ov['tool:' + t.id] : t.on;
+        return { name:t.name, path:t.path, c: t.status === 'ok' ? G.green : t.status === 'warn' ? G.amber : '#FF8FA2', ver: t.status === 'warn' ? t.version + ' · didn’t answer' : t.version, canInstall: t.status === 'missing' && t.installable,
+          install:() => D.act(() => D.api('/den/system/tools/' + t.id + '/install', { method:'POST' }), { ok:r => ['Queued: install ' + t.name, 'Octopus runs ' + ((r && r.command) || 'the installer') + ' — it asks first if it needs to', G.green], reload:['den-sys-tools'] }).catch(() => {}),
+          ...tg(on, () => this.opt('tool:' + t.id, !on, () => D.api('/den/system/tools/' + t.id, { method:'PUT', body:{ on:!on } }), [t.name + (on ? ' not allowed' : ' allowed'), '', on ? G.mute : G.green], ['den-sys-tools'])) }; }),
+      toolsEmpty: tools ? '' : tools === undefined ? 'Checking this Mac…' : 'Can’t check the tools yet — needs the newer Den service.',
+      modules: [...MODS.map(([id, label, icon]) => { const on = !off.includes(id); return { label, icon, op: on ? '1' : '0.55', ...tg(on, () => { D.setPref('modulesOff', on ? [...off, id] : off.filter(x => x !== id)); this.say(label + (on ? ' hidden' : ' shown'), on ? 'Its data is kept' : '', on ? G.mute : G.green); }) }; }),
+        ...plug.map(m => { const on = s.ov['mod:' + m.name] != null ? s.ov['mod:' + m.name] : !!m.enabled;
+          return { label:m.name, icon:PUZZLE, op: on ? '1' : '0.55', ...tg(on, () => this.opt('mod:' + m.name, !on, () => D.api('/modules/' + encodeURIComponent(m.name) + '/' + (on ? 'disable' : 'enable'), { method:'POST' }), ['Module ' + m.name + (on ? ' off' : ' on'), '', on ? G.mute : G.green], ['den-sys-mods'])) }; })],
+      pushDevs: (devs || []).map(d => { const conf = s.pushConfirm === d.id;
+        return { name:d.name, sub: conf ? 'Tap again to stop notifications here' : 'Approvals, failures and results · added ' + (D.ago(d.added_at, false) || ''), icon: d.kind === 'desktop' ? DESK : PHONE, ...tg(!conf, () => {
+          if (!conf) return this.arm('pushConfirm', d.id); this.setState({ pushConfirm:null });
+          D.act(() => D.api('/den/system/push-devices/' + d.id, { method:'DELETE' }), { ok:['Notifications off', d.name + ' · turn them on again from that device', G.mute], reload:['den-sys-push'], core:false }).catch(() => {}); }) }; }),
+      pushEmpty: (devs || []).length ? '' : devs === undefined ? '' : devs === null ? ((st.webpush_subscriptions || 0) + (st.webpush_subscriptions === 1 ? ' device gets' : ' devices get') + ' notifications') : 'No device gets notifications yet.',
+      addThis:() => this.pushSubscribe(), alertEmail, onAlertEmail:e => { const v = e.target.value; this.setState({ alertEmail:v }); clearTimeout(this.et);
+        this.et = setTimeout(() => { if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(v.trim())) return;
+          D.act(() => D.api('/den/system/alert-email', { method:'PUT', body:{ email:v.trim() } }), { ok:['Alerts go to ' + v.trim(), '', G.green], fail:'Couldn’t save the email', reload:['den-sys-email'], core:false }).then(() => this.setState({ alertEmail:null })).catch(() => {}); }, 900); },
+      testPush:() => this.test('Notification', '/notify/test'), testMail:() => this.test('Email', '/email/test'),
+      testTxt: !tst ? '' : tst.at === 'sending' ? 'Sending…' : tst.at === 'fail' ? tst.what + ' not sent — ' + tst.err : tst.what + ' sent ✓ — check ' + (tst.what === 'Email' ? (alertEmail || 'your inbox') : 'your devices'), testC: tst && tst.at === 'ok' ? G.green : tst && tst.at === 'fail' ? '#FF8FA2' : '#93A1B0',
+      backingUp:s.backing, bkPct:s.bkPct + '%', backupLabel: s.backing ? 'Backing up… ' + s.bkPct + '%' : 'Back up now', backupNow:() => this.backupNow(),
+      bkSched: [['daily', 'Daily'], ['weekly', 'Weekly'], ['off', 'Off']].map(([id, label]) => ({ label, ...seg(sched === id), pick:() => { if (sched !== id) this.opt('bk', id, () => D.api('/den/system/backups/settings', { method:'PUT', body:{ schedule:id } }), [id === 'off' ? 'Automatic backups off' : label + ' backups at 02:00', id === 'off' ? '' : 'The newest 8 are kept', G.green], ['den-sys-bk']); } })),
+      bkNote: sched === 'off' ? 'nothing automatic' : 'at 02:00 · keep 8',
+      driveLabel:'Also copy to Google Drive · ' + (bk && bk.drive_available ? (bk.drive_error ? 'last copy failed: ' + bk.drive_error : 'to ' + bk.drive_account + ' · The Den backups') : 'not connected — add Drive under Connections'), drive: tg(drive, () => this.opt('drive', !drive, () => D.api('/den/system/backups/settings', { method:'PUT', body:{ drive:!drive } }), bk && bk.drive_available ? [!drive ? 'Backups also go to Google Drive' : 'Drive copies off', '', G.green] : ['Google Drive isn’t connected', !drive ? 'Saved — backups go there once Drive is connected' : 'Saved', G.amber], ['den-sys-bk'])),
+      backups: items.map(b => { const c = s.confirmRestore === b.name; return { name:b.name, size:mb(b.size), where:b.where + (b.auto ? ' · automatic' : '') + ' · ' + D.ago(b.at, false), rLabel: c ? 'Confirm restore' : 'Restore', rbd: c ? 'rgba(255,84,112,0.45)' : 'rgba(255,255,255,0.08)', rfg: c ? '#FF8FA2' : '#DCE4EB',
+        dl:() => raw('/den/system/backups/' + encodeURIComponent(b.name), { blob:true }).then(saveFile).then(() => this.say('Downloading', b.name, G.blue)).catch(e => this.say('Couldn’t download it', e.message, G.err)),
+        restore:() => { if (!c) return this.arm('confirmRestore', b.name); this.setState({ confirmRestore:null });
+          D.act(() => D.api('/den/system/backups/' + encodeURIComponent(b.name) + '/restore', { method:'POST', body:{ confirm:'replace-everything' } }), { ok:r => ['Restored ' + b.name, 'What you had before is saved as ' + ((r && r.safety_backup) || 'a backup'), G.amber], fail:'Restore failed', reload:['den-sys-bk', 'den-sys-sites', 'den-sys-prefs', 'den-sys-push', 'den-sys-email', 'den-sys-ex', 'den-sys-pin'] }).catch(() => {}); } }; }),
+      bkEmpty: items.length ? '' : bk === undefined ? 'Loading…' : bk === null ? 'Backups need the newer Den service.' : 'No backups yet — Back up now makes the first one.',
+      exSets: chipsOf(s.exSets, EXSETS.map(([id, l]) => [id, l, null, exc[id]]), id => this.setState(x => ({ exSets: x.exSets.includes(id) ? x.exSets.filter(y => y !== id) : [...x.exSets, id] })), true),
+      exFmts: ['ZIP', 'JSON', 'CSV'].map(f => ({ label:f, ...seg(s.exFmt === f), pick:() => this.setState({ exFmt:f }) })),
+      exCount: s.exporting ? '…' : s.exSets.length + ' set' + (s.exSets.length === 1 ? '' : 's'),
+      doExport:() => { if (!s.exSets.length) return this.say('Pick at least one', '', G.amber); if (s.exporting) return; this.setState({ exporting:true });
+        raw('/den/system/export', { method:'POST', body:{ sets:s.exSets, format:s.exFmt.toLowerCase() }, blob:true }).then(f => { saveFile(f); this.say('Export ready', s.exSets.length + ' dataset' + (s.exSets.length === 1 ? '' : 's') + ' · ' + f.name, G.green); })
+          .catch(e => this.say('Couldn’t export', e.status === 404 ? 'Needs the newer Den service' : e.message, G.err)).finally(() => this.setState({ exporting:false })); },
+    };
+  }
+  learn(u) {
+    u = String(u || '').trim(); if (!u) return this.say('Paste a website link first', '', G.amber);
+    D.act(() => D.api('/octopus/sites/learn', { method:'POST', body:{ url:u } }), { ok:r => ['Learning ' + host((r && r.url) || u), 'Octopus reads it in the background — it shows here when done', G.teal], fail:'Can’t learn that', reload:['den-sys-sites'] })
+      .then(() => this.setState({ siteUrl:'' })).catch(() => {});
+  }
+  test(what, path) {
+    this.setState({ test:{ what, at:'sending' } });
+    D.api(path, { method:'POST' }).then(() => this.setState({ test:{ what, at:'ok' } })).catch(e => this.setState({ test:{ what, at:'fail', err:e.message } }));
+  }
+  backupNow() {
+    if (this.state.backing) return; this.setState({ backing:true, bkPct:0 });
+    clearInterval(this.bt); this.bt = setInterval(() => this.setState(st => ({ bkPct:Math.min(90, st.bkPct + 10) })), 200);
+    D.act(() => D.api('/den/system/backups', { method:'POST' }), { ok:r => ['Backup complete', r.name + ' · ' + mb(r.size), G.green], fail:'Backup failed', reload:['den-sys-bk'], core:false }).catch(() => {})
+      .finally(() => { clearInterval(this.bt); this.setState({ bkPct:100 }); setTimeout(() => this.setState({ backing:false, bkPct:0 }), 300); });
+  }
+  async pushSubscribe() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return this.say('This browser can’t take push', 'On iPhone, add the Den to the Home Screen first.', G.amber);
+      const perm = await Notification.requestPermission(); if (perm !== 'granted') return this.say('Notifications are blocked', 'Allow them for this site in the browser settings.', G.amber);
+      const reg = await navigator.serviceWorker.register('/sw.js'); const k = await D.api('/push/key');
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64(k.publicKey || k.key) });
+      await D.api('/push/subscribe', { method:'POST', body:sub.toJSON() }); D.invalidate('den-sys-push'); D.refresh().catch(() => {});
+      this.say('This device gets notifications', 'Approvals come with Approve / Deny buttons.', G.green);
+    } catch (e) { this.say('Couldn’t turn on notifications', e.message, G.err); }
+  }
+
+  // ------------------------------------------------------------ login & password (login.py via Den.auth)
+  saveLogin() {
+    const s = this.state; const a = D.store.auth || {}; if (s.lBusy) return;
+    const user = (s.lUser != null ? s.lUser : a.username || '').trim(), pass = s.lPass || '';
+    if (!user) return this.setState({ lErr:'Pick a username.' });
+    if (pass.length < 8) return this.setState({ lErr:'The new password needs at least 8 characters.' });
+    if (pass !== (s.lPass2 || '')) return this.setState({ lErr:'The two passwords don’t match.' });
+    const byKey = !a.configured || s.lByKey; const key = (s.lKey || '').trim();
+    if (byKey && !key && !D.key()) return this.setState({ lErr:'Paste the Den’s API key - it proves it’s you.' });
+    if (!byKey && !s.lCur) return this.setState({ lErr:'Type your current password.' });
+    this.setState({ lBusy:true, lErr:'' });
+    D.auth.setup({ username:user, password:pass, remember:true, ...(byKey ? (key ? { key } : {}) : { current_password:s.lCur }) })
+      .then(() => { this.setState({ lBusy:false, lUser:null, lPass:'', lPass2:'', lCur:'', lKey:'', lByKey:false }); this.say(a.configured ? 'Login updated' : 'Login created', 'Sign in as ' + user + ' from now on', G.green); },
+        e => this.setState({ lBusy:false, lErr: e.status === 429 ? 'Too many tries. Wait a minute, then try again.' : e.status === 401 ? (byKey ? 'That API key isn’t right.' : 'That current password isn’t right.') : e.message }));
+  }
+  finishTour(skipped) { D.setPref('tourDone', true); this.setState({ step:0 }); this.props.onDone ? this.props.onDone(skipped ? 'skipped' : 'finished') : this.say(skipped ? 'Tour skipped' : 'Tour finished', skipped ? 'Replay it from ⌘K' : '', skipped ? G.mute : G.coral); }
+
+  renderVals() {
+    const s = this.state; const page = this.props.page || 'accounts';
+    const isAcc = page === 'accounts', isSet = page === 'setx';
+    const prov = s.prov; const PN = (PROV.find(p => p[0] === prov) || PROV[0])[1];
+    const A = isAcc ? this.accData() : null;
+    const pAccs = A ? A.list[prov] : []; const pol = A ? A.pol(prov) : { auto:false, at:90 }; const ord = A ? A.ord(prov) : [];
+    const TOUR = [
+      { title:'Welcome to the Den', body:'This is where Octopus works for you. Queue a task, watch it run, approve the risky bits — from any device.', icon:'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', c:'#FF7B5C', kbd:'' },
+      { title:'Ask anything from the bottom bar', body:'Type or speak a task. Pick the model and the project, attach a screenshot, then send. Plain language works: “fix the invoice rounding in law site”.', icon:'M4 5h16v11H8l-4 4z', c:'#45E0C8', kbd:D.keyFor('New task') },
+      { title:'Your queue, at a glance', body:'The top tile shows what’s running, on which account, and how far along it is. Drag Up next to reorder. Approvals appear right on the tile.', icon:'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01', c:'#FFB547', kbd:D.keyFor('Approve next') + ' / ' + D.keyFor('Deny next') },
+      { title:'Everything else on the right', body:'Notifications, calendar, to-dos, messages and notes live in the right rail. Open one and keep working beside it.', icon:'M4 4h16v16H4zM14 4v16', c:'#A58BFF', kbd:'⌘⇧B' },
+      { title:'Jump anywhere with ⌘K', body:'Search pages, projects and actions, or type a command like “pause everything till 9am”. Press ? any time for all shortcuts.', icon:'M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14M21 21l-6-6', c:'#7FB2FF', kbd:D.keyFor('Command palette') }
+    ];
+    const tour = TOUR[s.step] || TOUR[0]; const tc = tour.c;
+    const browser = prov === 'claude' && s.method === 'browser';
+    const ready = browser ? false : prov === 'other' ? !!(s.baseUrl.trim() && s.model.trim()) : s.tok.trim().length >= 20;
+    return {
+      ...(isSet ? this.pinVals(s) : { pinSame:tg(true, () => {}), pinCards:[], lockAfter:[] }),
+      ...(isSet ? this.setVals(s) : SET_IDLE),
+      isAcc, isSet, isLogin: page === 'login', isTour: page === 'tour',
+      provTabs: PROV.map(([id, label, c]) => ({ label, c, n: A ? String(A.list[id].length) : '', pick:() => this.setState({ prov:id, add:false, tok:'', edit:null, colorOpen:null, method:'token' }), ...seg(prov === id) })),
+      provName:PN, addTitle:'Add ' + (prov === 'other' ? 'an AI' : (prov === 'openai' ? 'an ' : 'a ') + PN) + ' account', addSub: prov === 'claude' ? 'Paste a token from claude setup-token' : prov === 'other' ? 'OpenRouter, Ollama, any OpenAI-compatible API' : 'Paste an API key',
+      tokPh: { claude:'sk-ant-oat01-…', openai:'sk-proj-…', gemini:'AIza…', other:'API key (leave empty for local)' }[prov], isOther: prov === 'other', baseUrl:s.baseUrl, onBaseUrl:this.inp('baseUrl'), model:s.model, onModel:this.inp('model'),
+      limitTitle: prov === 'claude' ? 'When an account nears its limit' : prov === 'other' ? 'Fallback order' : 'When a key hits its rate limit',
+      accs: pAccs.map(a => { const ref = s.refreshing === a.id; const editing = s.edit === a.id;
+        return { ...a, name: editing ? (s.names[a.id] != null ? s.names[a.id] : a.name) : a.name, init:(a.name || '?').replace(/[^A-Za-z0-9 ]/g, '').trim().slice(0, 2).toUpperCase() || '?', bd: a.active ? tn(a.c, 0.45) : 'rgba(255,255,255,0.06)', editing, notEditing:!editing,
+          onName:e => { const v = e.target.value; this.setState(st => ({ names:{ ...st.names, [a.id]:v } })); }, nameKey:e => { if (e.key === 'Escape') this.cancelEdit = true; if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); }, endEdit:() => this.endEdit(a),
+          startEdit:() => this.setState(st => ({ edit:a.id, colorOpen:null, names:{ ...st.names, [a.id]:a.name } })),
+          refreshed: ref ? '…' : a.at ? D.ago(a.at, false) : a.kind === 'claude' ? 'not yet' : 'just now', refreshLabel: ref ? 'Refreshing' : 'Refresh limits', spin: ref ? 'denSpin .8s linear infinite' : 'none', refresh:() => this.refreshAcc(a),
+          colorOpen: s.colorOpen === a.id, colorToggle:() => this.setState({ colorOpen: s.colorOpen === a.id ? null : a.id }), swatches: SW.map(c => ({ c, ring: lc(a.c) === lc(c) ? '0 0 0 2px #0B1016, 0 0 0 4px ' + c : 'none', pick:() => this.setLook(a, { color:c }) })),
+          actLabel: a.active ? 'Active' : 'Switch to this', actBg: a.active ? 'rgba(111,207,151,0.14)' : '#FF7B5C', actFg: a.active ? '#6FCF97' : '#1A0A05', activate:() => this.activate(a),
+          logoutLabel: s.confirmOut === a.id ? 'Confirm log out' : 'Log out', logout:() => this.logout(a) }; }),
+      addIdle: !s.add, addOn: s.add, addStart:() => this.setState({ add:true, tok:'', newName:'', baseUrl:'', model:'' }), addCancel:() => this.setState({ add:false, tok:'' }),
+      addMethods: [['browser', 'Log in with Claude'], ['token', 'Paste a token']].map(([id, label]) => ({ label, pick:() => this.setState({ method:id }), ...seg(s.method === id) })),
+      mBrowser: browser, mToken: !browser, isClaude: prov === 'claude', copyCode:() => this.say(copy('claude setup-token') ? 'Command copied' : 'Copy this', 'claude setup-token', G.green),
+      waitTxt:'Device-code sign-in isn’t built in yet — paste the token instead', waitC:G.amber, waitAnim:'none',
+      tok:s.tok, onTok:this.inp('tok'), newName:s.newName, onNewName:this.inp('newName'), newSw: SW.map(c => ({ c, ring: s.newC === c ? '0 0 0 2px #0B1016, 0 0 0 4px ' + c : 'none', pick:() => this.setState({ newC:c }) })),
+      addOp: ready && !s.adding ? '1' : '0.45', addSaveLabel: s.adding ? (prov === 'other' ? 'Adding…' : 'Checking it works…') : browser ? 'Paste the token instead' : 'Add account', addSave:() => this.addSave(prov, PN),
+      autoSw: tg(pol.auto, () => this.setPolicy(prov, { auto:!pol.auto }, [!pol.auto ? 'Switch automatically: on' : 'Switch automatically: off', !pol.auto ? (prov === 'claude' ? 'Octopus moves the default account at ' + pol.at + '%' : prov === 'other' ? 'Saved' : 'Calls move to the next key when one is rate-limited') : '', !pol.auto ? G.green : G.mute])),
+      thresh: [80, 90, 95].map(n => ({ label:n + '%', ...seg(pol.at === n), pick:() => { if (pol.at !== n) this.setPolicy(prov, { at:n }, ['Switch at ' + n + '%', '', G.teal]); } })),
+      order: ord.map((id, i) => { const a = pAccs.find(x => x.id === id) || { name:'?', c:G.mute }; return { n:String(i + 1), name:a.name, c:a.c, up:() => { if (!i) return; const o = [...ord]; [o[i - 1], o[i]] = [o[i], o[i - 1]];
+        this.setPolicy(prov, { order:o }, i === 1 && prov !== 'claude' ? [a.name + ' is tried first now', '', a.c] : null); } }; }),
+      ...(() => { const a = D.store.auth || {}; const set = k => e => this.setState({ [k]:e.target.value, lErr:'' }); const byKey = !a.configured || s.lByKey;
+        return { lWho: a.configured ? (a.username ? 'signed in as ' + a.username : 'login set') : 'no login yet', lHasLogin: !!a.configured,
+          lIntro: a.configured ? 'Change your username or password here. Shortcuts, SwiftBar and other tools keep using the API key.' : 'Create a username and password, so you sign in with those instead of pasting the API key.',
+          lUser: s.lUser != null ? s.lUser : a.username || '', lPass:s.lPass, lPass2:s.lPass2, lCur:s.lCur, lKey:s.lKey,
+          onLUser:set('lUser'), onLPass:set('lPass'), onLPass2:set('lPass2'), onLCur:set('lCur'), onLKey:set('lKey'),
+          lAskCur: !byKey, lAskKey: byKey && !D.key(), lUseKey:() => this.setState({ lByKey:true, lErr:'' }), lErr:s.lErr,
+          lEnter:e => { if (e.key === 'Enter') this.saveLogin(); }, lSave:() => this.saveLogin(), lOp: s.lBusy ? '0.6' : '1',
+          lSaveLabel: s.lBusy ? 'Saving…' : a.configured ? 'Save new login' : 'Create login',
+          lOut:() => D.auth.logout(false), lOutAll:() => D.auth.logout(true) }; })(),
+      copyCmd:() => this.say(copy(KEY_CMD) ? 'Copied' : 'Copy this', 'Paste it into Terminal on the Den’s Mac', G.green), keyCmd:KEY_CMD, host:(typeof location !== 'undefined' && location.host) || 'this Mac',
+      loginH: this.props.overlay ? '100vh' : '640px', loginR: this.props.overlay ? '0' : '22px',
+      tourPos: this.props.overlay ? 'fixed' : 'relative', tour:{ ...tour, tint:tn(tc, 0.14), bd:tn(tc, 0.35), glow:tn(tc, 0.22) }, tourN:String(s.step + 1), tourTotal:String(TOUR.length), tourBack: s.step > 0,
+      tourDots: TOUR.map((t, i) => ({ w: i === s.step ? '22px' : '7px', bg: i === s.step ? tc : i < s.step ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.14)', go:() => this.setState({ step:i }) })),
+      tourPrev:() => this.setState({ step:Math.max(0, s.step - 1) }), tourNextLabel: s.step === TOUR.length - 1 ? 'Start using the Den' : 'Next',
+      tourNext:() => { if (s.step < TOUR.length - 1) return this.setState({ step:s.step + 1 }); this.finishTour(false); },
+      tourSkip:() => this.finishTour(true)
+    };
+  }
+}
+</script>
+</body>
+</html>

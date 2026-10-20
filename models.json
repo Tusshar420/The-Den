@@ -39,6 +39,54 @@
       "rate_limit": "Your Claude subscription: a 5-hour window plus a weekly limit"
     },
     {
+      "id": "claude-code-haiku",
+      "label": "Claude Code · Haiku",
+      "provider": "claude_code",
+      "model": "claude-haiku-4-5-20251001",
+      "enabled": true,
+      "capabilities": ["coding", "filesystem", "terminal", "git", "reasoning", "long_context"],
+      "coding": 3,
+      "reasoning": 3,
+      "vision": true,
+      "context_tokens": 200000,
+      "cost": 1,
+      "speed": 5,
+      "scarce": true,
+      "rate_limit": "Your Claude subscription: a 5-hour window plus a weekly limit"
+    },
+    {
+      "id": "claude-code-sonnet",
+      "label": "Claude Code · Sonnet",
+      "provider": "claude_code",
+      "model": "claude-sonnet-5-5",
+      "enabled": true,
+      "capabilities": ["coding", "filesystem", "terminal", "git", "reasoning", "long_context"],
+      "coding": 4,
+      "reasoning": 4,
+      "vision": true,
+      "context_tokens": 200000,
+      "cost": 3,
+      "speed": 3,
+      "scarce": true,
+      "rate_limit": "Your Claude subscription: a 5-hour window plus a weekly limit"
+    },
+    {
+      "id": "claude-code-opus",
+      "label": "Claude Code · Opus",
+      "provider": "claude_code",
+      "model": "claude-opus-5-5",
+      "enabled": true,
+      "capabilities": ["coding", "filesystem", "terminal", "git", "reasoning", "long_context"],
+      "coding": 5,
+      "reasoning": 5,
+      "vision": true,
+      "context_tokens": 200000,
+      "cost": 5,
+      "speed": 2,
+      "scarce": true,
+      "rate_limit": "Your Claude subscription: a 5-hour window plus a weekly limit"
+    },
+    {
       "id": "gpt-6-sol",
       "label": "GPT-6 Sol",
       "provider": "openai",
@@ -216,6 +264,13 @@
         "description": "Project management inside Octopus: list projects, show or add to a project's backlog.",
         "candidates": ["octopus-control"],
         "transferable": false,
+        "classifiable": false
+      },
+      "discussion": {
+        "description": "Talking a task through out loud before it is queued (Alexa's \"let's discuss a task\"). Only reached by picking the Voice Partner agent - quick, cheap models, since every reply is waited for.",
+        "candidates": ["gpt-6-luna", "gemini-3.8-flash", "claude-code"],
+        "transferable": true,
+        "optimize": "cost",
         "classifiable": false
       }
     },

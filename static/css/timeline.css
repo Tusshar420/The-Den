@@ -66,7 +66,8 @@
 .ag-label--err { color: var(--err); }
 
 /* ================================================================ project Timeline tab */
-.timeline { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }
+.timeline { display: flex; flex-direction: column; gap: 18px; }
+.tl-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 18px 26px; align-items: start; }
 .tl-health { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r-card-sm);
   background: color-mix(in srgb, var(--c) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 30%, var(--line)); }
 .tl-health__why { flex: 1 1 240px; font: 500 13.5px/1.45 var(--font-ui); color: var(--text-2); }
@@ -87,6 +88,13 @@
 .ev-when .input { color-scheme: dark; }
 .ev-when .meta { padding: 0 6px; }
 .set-time { width: 120px; height: 40px; flex: none; color-scheme: dark; }
+.ev-guest { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.ev-invite { display: flex; flex-direction: column; gap: 6px; }
+.ev-invite .set-row__desc a, .ev-invite .card__desc .btn--text { color: var(--coral); }
+.ev-row--join { grid-template-columns: 28px minmax(0, 1fr) auto auto; }
+.ev-row__join { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--coral-line); background: var(--coral-tint);
+  color: var(--coral); font: 600 12px var(--font-ui); text-decoration: none; }
+.ev-row__join:hover { background: var(--coral-tint-2); }
 
 /* ================================================================ Good morning */
 .qb--morning { border-color: var(--coral-line); background: var(--coral-tint); }

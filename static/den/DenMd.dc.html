@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; min-width:0; overflow-wrap:anywhere;">
+  <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="2">
+    <div style="{{ b.style }}"><sc-if value="{{ b.mark }}" hint-placeholder-val="{{ false }}"><span style="flex:none; min-width:1.2em; color:#93A1B0;">{{ b.mark }}</span></sc-if><span style="flex:1; min-width:0; white-space:pre-wrap;"><sc-for list="{{ b.segs }}" as="s" hint-placeholder-count="1"><span style="{{ s.style }}">{{ s.t }}</span></sc-for></span></div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+// A reply's text with its formatting: paragraphs and line breaks kept, "-"/"*" bullets and "1." lists, headings and
+// **bold** titles, **bold**, *italic*, `inline code` and ``` code blocks. Built as plain text nodes (never HTML), so
+// nothing in a reply can inject markup. Props: text.
+const CODE = "font-family:'JetBrains Mono', monospace; font-size:.88em; padding:1px 5px; border-radius:5px; background:rgba(255,255,255,0.08);";
+const spans = (raw, base) => {
+  const out = [];
+  const re = /`([^`\n]+)`|\*\*([^*\n]+)\*\*|(^|[^\w*])\*([^*\n]+)\*(?![\w*])/g;
+  let last = 0, m;
+  while ((m = re.exec(raw))) {
+    const at = m.index + (m[3] ? m[3].length : 0);
+    if (at > last) out.push({ t: raw.slice(last, at), style: base });
+    if (m[1] != null) out.push({ t: m[1], style: base + CODE });
+    else if (m[2] != null) out.push({ t: m[2], style: base + 'font-weight:700; color:#E8EEF3;' });
+    else out.push({ t: m[4], style: base + 'font-style:italic;' });
+    last = re.lastIndex;
+  }
+  if (last < raw.length) out.push({ t: raw.slice(last), style: base });
+  return out;
+};
+class Component extends DCLogic {
+  renderVals() {
+    const lines = String(this.props.text == null ? '' : this.props.text).replace(/\r\n?/g, '\n').split('\n');
+    const blocks = [];
+    let para = [], code = null;
+    const flush = () => {
+      if (para.length) blocks.push({ mark: '', segs: spans(para.join('\n'), ''), style: 'display:flex; gap:6px; margin:0 0 .6em;' });
+      para = [];
+    };
+    for (const line of lines) {
+      if (code) {
+        if (/^\s*```/.test(line)) {
+          blocks.push({ mark: '', segs: [{ t: code.join('\n'), style: '' }], style: "display:flex; margin:0 0 .6em; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,0.3); font-family:'JetBrains Mono', monospace; font-size:12.5px; overflow-x:auto;" });
+          code = null;
+        } else code.push(line);
+        continue;
+      }
+      let m;
+      if (/^\s*```/.test(line)) { flush(); code = []; }
+      else if ((m = /^#{1,6}\s+(.*)$/.exec(line))) { flush(); blocks.push({ mark: '', segs: spans(m[1], 'font-weight:700; color:#E8EEF3;'), style: 'display:flex; margin:.5em 0 .35em;' }); }
+      else if ((m = /^(\s*)([-*+•]|\d+[.)])\s+(.*)$/.exec(line))) {
+        flush();
+        const depth = Math.min(3, Math.floor(m[1].replace(/\t/g, '    ').length / 2));
+        blocks.push({ mark: /\d/.test(m[2]) ? m[2] : '•', segs: spans(m[3], ''), style: 'display:flex; gap:6px; margin:0 0 .2em; padding-left:' + (depth * 16 + 2) + 'px;' });
+      }
+      else if (!line.trim()) { flush(); }
+      else if (blocks.length && /^\s+\S/.test(line) && !para.length && blocks[blocks.length - 1].mark) {
+        const prev = blocks[blocks.length - 1];
+        prev.segs = prev.segs.concat(spans('\n' + line.trim(), ''));
+      }
+      else para.push(line);
+    }
+    if (code) blocks.push({ mark: '', segs: [{ t: code.join('\n'), style: '' }], style: "display:flex; margin:0 0 .6em; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,0.3); font-family:'JetBrains Mono', monospace; font-size:12.5px; overflow-x:auto;" });
+    flush();
+    if (blocks.length) blocks[blocks.length - 1].style += ' margin-bottom:0;';
+    return { blocks };
+  }
+}
+</script>
+</body>
+</html>

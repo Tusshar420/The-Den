@@ -16,6 +16,10 @@ Built in:
          whisper   local Whisper through whisper.cpp (`whisper-cli`) - needs the binary and a model file
     tts  browser   the browser's own speechSynthesis - speaks on the phone / laptop you are using
          macos     the Mac's `say` - speaks on the Mac, or returns a .wav for any device to play
+
+Which voice speaks: a voice picked by hand in the Ask box (voice_manual) wins until it is set back to automatic.
+Otherwise the reply's language is detected (languages.py) and the voice chosen for that language on the Voice
+page is used; a language with no choice gets the default voice (voice_tts_voice). Speed is voice_rate.
 """
 
 import os
@@ -27,11 +31,13 @@ from pathlib import Path
 from typing import Any, Optional
 
 import db
+from octopus.voice.languages import BY_CODE, DEFAULT_LANGUAGE, LANGUAGES, describe as describe_languages, detect_language
 
 SAY = "/usr/bin/say"
 AFCONVERT = "/usr/bin/afconvert"
 TRANSCRIBE_TIMEOUT = 90
 SPEAK_MAX_CHARS = 600
+SAY_WORDS_PER_MINUTE = 175          # `say` at speed 1.0
 
 
 class VoiceError(Exception):
@@ -102,6 +108,32 @@ def macos_voices() -> list[dict[str, str]]:
     return voices
 
 
+def speech_rate() -> float:
+    try:
+        return min(2.0, max(0.5, float(db.get_setting("voice_rate"))))
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def _say_speed() -> list[str]:
+    rate = speech_rate()
+    return [] if rate == 1.0 else ["-r", str(round(SAY_WORDS_PER_MINUTE * rate))]
+
+
+def voice_for(text: str) -> Optional[str]:
+    """The macOS voice to read `text` in: the one picked by hand in the Ask box, else the one chosen for its
+    language, else the default voice (None = the system's). A chosen voice that is no longer installed is
+    ignored rather than breaking speech."""
+    installed = {v["name"] for v in macos_voices()}
+    manual = db.get_setting("voice_manual")
+    if manual and manual in installed:
+        return manual
+    chosen = (db.get_setting("voice_language_voices") or {}).get(detect_language(text))
+    if chosen and chosen in installed:
+        return chosen
+    return db.get_setting("voice_tts_voice") or None
+
+
 # ----------------------------------------------------------------------- stt
 
 class BrowserSTT(STT):
@@ -162,7 +194,10 @@ class WhisperCppSTT(STT):
             src, wav = Path(d) / f"in.{ext}", Path(d) / "in16k.wav"
             src.write_bytes(audio)
             self._to_wav(src, wav)
-            done = _run([self.binary(), "-m", self.model(), "-f", str(wav), "-nt", "-np"], TRANSCRIBE_TIMEOUT)
+            model = self.model()
+            # Multilingual models default to English; "auto" lets them follow whichever language is being spoken.
+            lang = [] if model.endswith(".en.bin") else ["-l", "auto"]
+            done = _run([self.binary(), "-m", model, "-f", str(wav), "-nt", "-np"] + lang, TRANSCRIBE_TIMEOUT)
         if done.returncode != 0:
             raise VoiceError("whisper failed: " + (done.stderr.strip()[-200:] or f"exit {done.returncode}"))
         return re.sub(r"\s+", " ", done.stdout).strip()
@@ -200,7 +235,7 @@ class MacOSTTS(TTS):
         voice = self._voice(voice)
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "speech.wav"
-            cmd = [SAY, "-o", str(out), "--data-format=LEI16@22050", "-f", "-"] + (["-v", voice] if voice else [])
+            cmd = [SAY] + _say_speed() + ["-o", str(out), "--data-format=LEI16@22050", "-f", "-"] + (["-v", voice] if voice else [])
             done = _run(cmd, 60, input_text=text)
             if done.returncode != 0 or not out.exists():
                 raise VoiceError("say failed: " + (done.stderr.strip()[-160:] or f"exit {done.returncode}"))
@@ -214,7 +249,7 @@ class MacOSTTS(TTS):
         text, voice = clean_for_speech(text), self._voice(voice)
         if not text:
             raise VoiceError("nothing to say")
-        proc = subprocess.Popen([SAY, "-f", "-"] + (["-v", voice] if voice else []), stdin=subprocess.PIPE, text=True,
+        proc = subprocess.Popen([SAY] + _say_speed() + ["-f", "-"] + (["-v", voice] if voice else []), stdin=subprocess.PIPE, text=True,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         assert proc.stdin is not None
         proc.stdin.write(text)
@@ -251,8 +286,9 @@ def status() -> dict[str, Any]:
     stt, tts = db.get_setting("voice_stt"), db.get_setting("voice_tts")
     return {"stt": [_view(p, stt) for p in STT_PROVIDERS.values()], "tts": [_view(p, tts) for p in TTS_PROVIDERS.values()],
             "settings": {"voice_stt": stt, "voice_tts": tts, "voice_tts_voice": db.get_setting("voice_tts_voice"),
-                         "voice_speak_replies": db.get_setting("voice_speak_replies")},
-            "voices": macos_voices()}
+                         "voice_manual": db.get_setting("voice_manual"), "voice_speak_replies": db.get_setting("voice_speak_replies"),
+                         "voice_rate": speech_rate(), "voice_language_voices": db.get_setting("voice_language_voices")},
+            "voices": macos_voices(), "languages": describe_languages()}
 
 
 def _pick(registry: dict[str, Any], provider_id: Optional[str], setting: str, kind: str) -> Any:
@@ -269,8 +305,8 @@ def transcribe(audio: bytes, mime: str, provider_id: Optional[str] = None) -> st
 
 def synthesize(text: str, voice: Optional[str] = None, provider_id: Optional[str] = None) -> tuple[bytes, str]:
     p = _pick(TTS_PROVIDERS, provider_id, "voice_tts", "text-to-speech")
-    return p.synthesize(text, voice if voice is not None else (db.get_setting("voice_tts_voice") or None))
+    return p.synthesize(text, voice if voice is not None else (voice_for(text) if p.id == "macos" else None))
 
 
 def speak_on_mac(text: str, voice: Optional[str] = None) -> None:
-    TTS_PROVIDERS["macos"].speak_aloud(text, voice if voice is not None else (db.get_setting("voice_tts_voice") or None))
+    TTS_PROVIDERS["macos"].speak_aloud(text, voice if voice is not None else voice_for(text))

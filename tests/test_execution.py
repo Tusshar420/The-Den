@@ -21,9 +21,14 @@ class ClaudeArgs(unittest.TestCase):
     def args(self, **task):
         return execution.claude_args(task)
 
-    def test_a_task_with_no_recorded_tools_runs_exactly_as_before(self):
-        self.assertEqual(self.args(agent_id=None, tools=None), [])
-        self.assertEqual(self.args(agent_id="coding", tools=None), [])          # coding has no extra instructions
+    def test_a_task_with_no_recorded_tools_gets_only_the_house_rules(self):
+        self.assertEqual(self.args(agent_id=None, tools=None), ["--append-system-prompt", execution.HOUSE_RULES])
+        self.assertEqual(self.args(agent_id="coding", tools=None), ["--append-system-prompt", execution.HOUSE_RULES])
+
+    def test_every_run_is_told_not_to_search_the_whole_home_folder(self):
+        a = self.args(agent_id="writing", tools=[])
+        self.assertTrue(a[a.index("--append-system-prompt") + 1].endswith(execution.HOUSE_RULES))
+        self.assertIn("find ~", execution.HOUSE_RULES)
 
     def test_only_granted_tools_stay_on(self):
         a = self.args(agent_id="coding", tools=["filesystem", "git", "terminal"])

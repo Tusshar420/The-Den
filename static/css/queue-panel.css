@@ -1,0 +1,98 @@
+/* ================================================================ queue sidebar (desktop) */
+.queue-btn { position: relative; }
+.queue-btn__n { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--coral); color: #fff; font: 700 11px/18px var(--font-mono); text-align: center; }
+.queue-panel { position: relative; flex: none; width: var(--queue-w, 380px); height: 100%; display: flex; flex-direction: column; background: var(--bg-pane); border-left: 1px solid var(--surface-2); z-index: 32; animation: fadein .2s ease; }
+.queue-panel__head { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--surface-2); }
+.queue-panel__title { font: 700 16px/1.2 var(--font-ui); }
+.queue-panel__tools { display: flex; gap: 4px; margin-left: auto; }
+.queue-panel__tools .icon-btn { width: 34px; height: 34px; }
+.queue-panel__body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 12px 32px; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+.queue-resizer { position: absolute; top: 0; bottom: 0; left: -4px; width: 8px; z-index: 33; cursor: col-resize; touch-action: none; }
+.queue-resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background var(--t); }
+.queue-resizer:hover::after, .is-resizing .queue-resizer::after { background: var(--coral); }
+.is-resizing .queue-panel { transition: none; }
+/* the chat pane lives in .app__row, which ends where the queue sidebar and the rail begin - so it never sits under them */
+.app--desk { --rail-w: 38px; }
+/* right-edge tab rail */
+.rail { flex: none; width: var(--rail-w, 38px); height: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0; background: var(--bg-pane); border-left: 1px solid var(--surface-2); z-index: 32; }
+.rail__tab { position: relative; width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text-meta); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background var(--t), color var(--t); }
+/* The Hidden page's way in: an unlabelled dot in the bottom corner that only shows on hover. */
+.rail__quiet { margin-top: auto; width: 14px; height: 14px; padding: 0; border: none; border-radius: 50%; background: currentColor; color: var(--text-meta); opacity: 0; cursor: default; transition: opacity var(--t); }
+.rail__quiet:hover { opacity: .12; }
+.rail__tab:hover { background: var(--surface-3); color: var(--text); }
+.rail__tab.is-on { color: var(--coral); border-color: var(--coral); }
+.rail__text { writing-mode: vertical-rl; transform: rotate(180deg); font: 700 13px/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.rail__n { position: absolute; top: -6px; left: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--coral); color: #fff; font: 700 10px/16px var(--font-mono); text-align: center; }
+.rail__n--wait { background: var(--wait); color: var(--on-wait); }
+.queue-panel__tabs { padding: 10px 12px 0; }
+.queue-panel__tabs .tabs { width: 100%; }
+.queue-panel__tabs .tabs__opt { flex: 1; }
+
+.queue-panel__filter { padding: 10px 12px 0; }
+.queue-panel__filter .chip-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.queue-panel__filter .chip { flex: none; height: 28px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.queue-panel__filter .chip__dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* queue sidebar: Now / Up next groups. Rows wrap to their content (a progress bar adds a line) instead of Home's fixed row height. */
+.qp-group { display: flex; flex-direction: column; gap: 8px; }
+.qp-group + .qp-group { margin-top: 16px; }
+.qp-group__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
+.qp-group__head .section__note { margin-left: auto; }
+.qp-group__label { font: 600 11px var(--font-mono); color: var(--text-meta); letter-spacing: .08em; }
+.qp-group__head .qp-group__label { flex: none; }
+.queue-panel .qrow { position: relative; height: auto; min-height: var(--row-h); padding-top: 8px; padding-bottom: 8px; }
+.queue-panel .qrow--now { grid-template-columns: 16px minmax(0, 1fr) auto; padding-left: 12px; }
+.qrow__lead { display: flex; align-items: center; justify-content: center; }
+.qrow__lead .spinner { width: 14px; height: 14px; margin: 0; }
+.queue-panel .list--queue .qrow { grid-template-columns: 18px 24px 8px minmax(0, 1fr); padding-right: 10px; }
+.queue-panel .list--queue .handle { height: auto; }
+/* Up next actions float over the row's right end on hover / keyboard focus, so the title gets the full width */
+.queue-panel .list--queue .qrow__acts { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); padding: 3px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); opacity: 0; pointer-events: none; transition: opacity var(--t); }
+.queue-panel .list--queue .qrow:hover .qrow__acts, .queue-panel .list--queue .qrow:focus-within .qrow__acts { opacity: 1; pointer-events: auto; }
+.queue-panel .qrow__acts button { width: 30px; height: 30px; }
+/* Touch screens have no hover: put the actions on their own line under the title instead of floating over it */
+@media (hover: none) {
+  .queue-panel .list--queue .qrow__acts { position: static; transform: none; opacity: 1; pointer-events: auto; padding: 0; background: none; border: none; box-shadow: none; grid-column: 1 / -1; justify-content: flex-end; }
+}
+.queue-panel .list--queue .qrow.is-dragging .qrow__acts { opacity: 0; }
+.queue-panel .bulk { padding: 0; }
+.queue-panel .bulkbar { margin-top: 12px; }
+.qp-all { display: block; margin: 12px auto 0; }
+
+/* messages sidebar: the message centre's controls stay put above the scrolling chats */
+.queue-panel__controls { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 4px; }
+.queue-panel__controls .chip-row { flex-wrap: wrap; gap: 6px; }
+.queue-panel__controls .chip-row .chip { height: 32px; padding: 0 12px; }
+.queue-panel__controls .msg-total { margin-left: auto; font: 500 var(--fs-meta) var(--font-mono); color: var(--text-meta); }
+.queue-panel__controls .menu--msg { max-height: min(60vh, 420px); }
+.queue-panel--messages .queue-panel__body { display: flex; flex-direction: column; gap: 14px; }
+.queue-panel--messages .msg-group { display: flex; flex-direction: column; gap: 8px; }
+.queue-panel--messages .mrow { padding: 10px 12px; gap: 10px; }
+
+/* a chat docked inside the Messages sidebar: its pane fills the sidebar instead of sitting in a column of its own */
+.queue-panel--chat { overflow: hidden; }
+.app--desk .queue-panel--chat .pane { position: relative; inset: auto; flex: 1; width: 100%; min-height: 0; border-left: 0; box-shadow: none; animation: none; }
+.queue-panel > .pane__tabs { margin: 10px 12px 0; }
+
+/* Calendar sidebar: the panel is narrow, so the month shows dots instead of title chips (like the phone layout). */
+.queue-panel--calendar .queue-panel__body { display: flex; flex-direction: column; gap: 14px; }
+.queue-panel--calendar .cal-cell { min-height: 46px; align-items: center; padding: 4px 2px; }
+.queue-panel--calendar .cal-cell__n { align-self: center; }
+.queue-panel--calendar .cal-cell__items { display: none; }
+.queue-panel--calendar .cal-cell__dots { display: flex; justify-content: center; }
+
+/* several sidebars side by side: drag a header (or a rail tab) onto another panel to move it, a coral edge shows where it lands */
+.queue-panel__head[draggable="true"] { cursor: grab; }
+.queue-panel__head[draggable="true"]:active { cursor: grabbing; }
+.rail__tab[draggable="true"] { cursor: grab; }
+.queue-panel.is-drop-before::before, .queue-panel.is-drop-after::after { content: ""; position: absolute; top: 0; bottom: 0; width: 3px; background: var(--coral); z-index: 40; pointer-events: none; }
+.queue-panel.is-drop-above::before, .queue-panel.is-drop-below::before { content: ""; position: absolute; left: 0; right: 0; height: 50%; background: rgba(255, 122, 89, .16); border: 2px solid var(--coral); z-index: 40; pointer-events: none; }
+.queue-panel.is-drop-above::before { top: 0; }
+.queue-panel.is-drop-below::before { bottom: 0; }
+/* a column of stacked sidebars: they share the column's width and split its height */
+.queue-stack { flex: none; width: var(--queue-w, 380px); height: 100%; display: flex; flex-direction: column; z-index: 32; }
+.queue-stack > .queue-panel { width: 100%; height: auto; flex: 1 1 0; min-height: 0; }
+.queue-stack > .queue-panel + .queue-panel { border-top: 1px solid var(--surface-3); }
+.queue-panel.is-drop-before::before { left: 0; }
+.queue-panel.is-drop-after::after { right: 0; }
+.is-side-dragging .queue-panel { animation: none; }

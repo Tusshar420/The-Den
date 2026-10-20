@@ -4,11 +4,17 @@
 
 /* ================================================================ shell */
 .app { display: flex; width: 100%; height: 100dvh; overflow: hidden; position: relative; background: var(--bg); }
+/* desktop: the header sits on .app__work above .app__row, so it runs across the page and the docked chat pane;
+   on a phone it stays inside .app__main and scrolls with the page */
+.app__work { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
+.app__row { flex: 1; min-height: 0; display: flex; }
+.app--desk .app__row { position: relative; }
 .app__main { flex: 1; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; position: relative; scrollbar-width: none; }
 .app--desk .app__main { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
 .page { padding: 4px var(--page-pad-x) calc(120px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--section-gap); }
 .app--desk .page { padding: 8px 28px 48px; }
 .page--home { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 22px 26px; align-items: start; max-width: 1180px; }
+@media (min-width: 700px) { .page--home { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } } /* tablet: main column wider than the info column */
 .page__col { display: flex; flex-direction: column; gap: var(--section-gap); min-width: 0; }
 .page--narrow { max-width: 820px; }
 
@@ -24,7 +30,18 @@
 .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px;
   padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
   background: rgba(11, 16, 22, .88); backdrop-filter: var(--blur-bar); -webkit-backdrop-filter: var(--blur-bar); }
-.app--desk .topbar { padding: 16px 28px; }
+.app--desk .topbar { padding: 16px 28px; position: relative; flex: none; z-index: 34; }   /* above the chat pane, so its menus can drop over it */
+.app--desk.app--pane .topbar { border-bottom: 1px solid var(--surface-2); }
+/* Desktop header: shed the extras as its own width shrinks (chat pane / queue sidebar open, small window), so it never
+   overflows - reset times first (the account menu has them), then "live", the account's name, the shortcut hints. */
+.app--desk .topbar { container-type: inline-size; container-name: topbar; }
+.app--desk .topbar__titles { min-width: 96px; }
+@container topbar (max-width: 1200px) { .topbar .usage-pill__reset { display: none; } .topbar .usage-pill__row { grid-template-columns: 16px 44px 30px; } }
+@container topbar (max-width: 940px) { .topbar .live { display: none; } }
+@container topbar (max-width: 840px) { .topbar .topbar__new span { display: none; } .topbar .tsearch { min-width: 110px; } }
+@container topbar (max-width: 740px) { .topbar .tsearch__kbd { display: none; } .topbar .tsearch { min-width: 44px; } }
+@container topbar (max-width: 660px) { .topbar .topbar__new { padding: 0 12px; } .topbar .topbar__new-l { display: none; } }
+.app--desk .pager { min-height: 100%; }
 .topbar__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .topbar__eyebrow { font: 500 var(--fs-eyebrow) var(--font-mono); color: var(--text-meta); letter-spacing: .06em; }
 .topbar__title { font: 800 var(--fs-title)/1.05 var(--font-ui); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -55,9 +72,13 @@
 
 /* ================================================================ desktop sidebar */
 .sidebar { width: var(--sidebar-w); flex: none; height: 100%; border-right: 1px solid var(--surface-2); background: var(--bg-sidebar);
-  display: flex; flex-direction: column; padding: 18px 14px; gap: 18px; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 18px 14px; gap: 14px; overflow: hidden;
   transition: margin-left var(--t-page) var(--ease-out), transform var(--t-page) var(--ease-out), visibility 0s; }
-.sidebar > * { flex-shrink: 0; } /* scroll instead of squashing the scope switch */
+.sidebar > * { flex-shrink: 0; }
+/* everything above the foot scrolls; the foot (live counts + New task) stays pinned to the bottom */
+.sidebar > .sidebar__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+  margin: 0 -14px; padding: 0 14px 4px; }
+.sidebar__scroll > * { flex-shrink: 0; } /* scroll instead of squashing the scope switch */
 /* collapsed beside the page: slide out of the flow so the page takes the width */
 .sidebar.is-collapsed { margin-left: calc(-1 * var(--sidebar-w)); visibility: hidden; transition: margin-left var(--t-page) var(--ease-out), transform var(--t-page) var(--ease-out), visibility 0s var(--t-page); }
 /* narrower desktops: a drawer over the page, with a scrim behind it */
@@ -69,6 +90,16 @@
 .sidebar__toggle { width: 34px; height: 34px; border-radius: var(--r-md); }
 .sidebar__toggle:hover { background: var(--surface); color: var(--text); }
 .topbar__menu { margin-right: -2px; }
+.rail { width: var(--rail-w); flex: none; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; border-right: 1px solid var(--surface-2); background: var(--bg-sidebar); }
+.rail__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding-top: 4px; }
+.rail__item { position: relative; flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: none; border-radius: var(--r-md); background: transparent; color: var(--text-muted); }
+.rail__item:hover { background: var(--surface); color: var(--text); }
+.rail__item.is-active { background: var(--surface-2); color: var(--text); }
+.rail__brand { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: none; background: none; }
+.rail__badge { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--wait); color: var(--on-wait); font: 700 10px/16px var(--font-ui); }
+.rail__sep { flex: none; width: 24px; height: 1px; margin: 8px 0; background: var(--line-soft); }
+.rail__swatch { width: 10px; height: 10px; border-radius: 3px; }
+.rail__new { flex: none; width: 40px; height: 40px; margin-top: 6px; border: none; border-radius: var(--r-btn-lg); background: var(--coral); color: var(--on-coral); font: 700 22px/1 var(--font-ui); }
 .sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; background: none; border: none; text-align: left; }
 .sidebar__brand-top { font: 500 var(--fs-eyebrow) var(--font-mono); color: var(--text-meta); letter-spacing: .06em; }
 .sidebar__brand-name { font: 800 20px/1 var(--font-ui); letter-spacing: -.02em; }
@@ -200,6 +231,7 @@
 .ask__box.is-sending { opacity: .7; }
 .ask__box.is-error { border-color: rgba(255, 84, 112, .5); }
 .ask__input { resize: none; border: none; background: none; outline: none; font: 500 var(--fs-input)/1.4 var(--font-ui); padding: 6px 6px 2px 0; max-height: 180px; overflow-y: auto; }
+.ask__input:placeholder-shown { background: url(/static/octopus.svg) no-repeat 0 5px / 22px 22px; padding-left: 30px; } /* the Octopus sits where the placeholder starts */
 .ask__controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 .ask__model { flex: none; height: 36px; padding: 0 10px; border-radius: var(--r-md); border: 1px solid var(--line-strong); background: var(--inset); display: flex; align-items: center; gap: 7px; font: 600 12.5px var(--font-ui); }
 .ask__target { flex: 1 1 96px; min-width: 0; height: 36px; padding: 0 4px; border: none; background: none; text-align: left; font: 500 12px var(--font-mono); color: var(--text-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -250,6 +282,13 @@
 .risk-chip { padding: 3px 8px; border-radius: 6px; background: #1E2833; color: var(--text-3); }
 .risk-chip--warn { background: var(--wait-tint); color: var(--wait); }
 .risk-chip--ok { background: var(--ok-tint); color: var(--ok); }
+/* "Restart needed" (ui.js restartTag): a task changed Octopus's own code, loaded on the next restart */
+.restart-tag { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border: 1px solid color-mix(in srgb, var(--wait) 45%, transparent);
+  border-radius: 999px; background: var(--wait-tint); color: var(--wait); font: 600 10.5px/1.3 var(--font-mono); letter-spacing: .02em; white-space: nowrap; cursor: default; }
+button.restart-tag { cursor: pointer; }
+button.restart-tag:hover { background: color-mix(in srgb, var(--wait) 22%, transparent); }
+.pane__sub > .restart-tag { margin-left: 6px; }
+.op-now__body > .restart-tag { align-self: flex-start; margin-top: 2px; }
 .need__actions { display: grid; grid-template-columns: auto 1fr 1.5fr; gap: 8px; margin-top: 2px; }
 .need__actions .btn { height: 46px; border-radius: var(--r-btn-lg); }
 /* swipe-to-approve: the card sits on a reveal layer */
@@ -275,6 +314,15 @@
 .qrow.is-paused .qrow__body { opacity: .6; }
 .running__title { font: 600 var(--fs-row) var(--font-ui); }
 .running__step { font: 500 12px var(--font-mono); color: var(--run-soft); }
+
+/* task progress bar (ui.progressBar): plan steps done, or a time-based guess (--guess) */
+.prog { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 320px; }
+.prog__bar { flex: 1; min-width: 40px; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.prog__bar > span { display: block; height: 100%; background: var(--run); border-radius: inherit; transition: width .5s; }
+.prog__pct { flex: none; font: 500 11px var(--font-mono); color: var(--run-soft); font-variant-numeric: tabular-nums; }
+.prog--guess .prog__bar > span { opacity: .55; }
+.prog--guess .prog__pct { color: var(--text-meta); }
+.is-paused .prog { opacity: .6; }
 
 /* rate-limited card */
 .sleep-card { border-radius: var(--r-card-lg); background: var(--sleep-card); border: 1px solid var(--sleep-line); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -323,7 +371,7 @@
 .avatar--general { background: var(--surface-2); border: 1px solid var(--line-strong); padding: 4px; }
 .prow__name { font: 700 16px var(--font-ui); }
 .prow__status { font: 500 12px var(--font-mono); color: var(--c, var(--queued)); }
-.pstat { color: var(--c, var(--queued)); }
+.prow__stage { color: var(--c, var(--queued)); font-weight: 600; }
 .prow__toggle { min-width: 48px; height: var(--tap); padding: 0 10px; border-radius: var(--r-btn); border: none; background: transparent; color: var(--text-meta); display: flex; align-items: center; justify-content: center; gap: 6px; font: 600 12px var(--font-mono); flex: none; }
 .prow__toggle[aria-expanded="true"] { background: var(--surface-2); }
 .prow__toggle svg { transition: transform var(--t) ease; }
@@ -338,6 +386,8 @@
 .menu-scrim { position: fixed; inset: 0; z-index: 6; }
 .menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 7; width: 240px; padding: 6px; border-radius: var(--r-card-sm); background: var(--surface-2); border: 1px solid var(--line-menu);
   box-shadow: var(--sh-menu); display: flex; flex-direction: column; animation: rise var(--t-fast) ease; }
+.menu > * { flex-shrink: 0; }   /* in a scrolling menu, rows keep their full height instead of squashing into each other */
+.menu--anchored { left: clamp(0px, var(--mx, 0px), calc(100% - min(320px, 100%))); }   /* opens above the button that was tapped, kept inside the box */
 .menu__label { padding: 8px 12px 4px; font: 600 var(--fs-eyebrow) var(--font-mono); color: var(--text-faint); letter-spacing: .08em; }
 .menu__opt { min-height: var(--tap); display: flex; align-items: center; gap: 10px; padding: 0 12px; border: none; border-radius: var(--r-md); background: none; font: 500 14.5px var(--font-ui); text-align: left; }
 .menu__opt:hover { background: var(--surface-3); }
@@ -358,10 +408,11 @@
 .tabs { display: flex; gap: 4px; padding: 4px; border-radius: var(--r-btn-lg); background: var(--surface); border: 1px solid var(--line); align-self: flex-start; max-width: 100%; overflow-x: auto; }
 .tabs__opt { height: 34px; padding: 0 14px; border-radius: var(--r-md); border: none; background: transparent; color: var(--text-meta); font: 600 13.5px var(--font-ui); white-space: nowrap; }
 .tabs__opt.is-on { background: var(--surface-3); color: var(--text); }
+.tabs__n { margin-left: 6px; color: var(--text-meta); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ================================================================ side pane (chat / approval) */
 .pane { position: absolute; inset: 0; z-index: 30; background: var(--bg-pane); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; animation: rise var(--t) ease; padding-top: env(safe-area-inset-top); }
-.app--desk .pane { left: auto; width: min(var(--pane-w), 100% - var(--sidebar-w)); border-left: 1px solid var(--line); box-shadow: var(--sh-pane); padding-top: 0; }
+.app--desk .pane { left: auto; width: min(var(--pane-w), 100%); border-left: 1px solid var(--line); box-shadow: var(--sh-pane); padding-top: 0; }
 @media (min-width: 1280px) { .app--desk .pane { position: relative; inset: auto; width: var(--pane-w); flex: none; height: 100%; box-shadow: none; border-left-color: var(--surface-2); animation: none; } }
 .pane__head { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: rgba(10, 14, 19, .92); backdrop-filter: var(--blur-bar); -webkit-backdrop-filter: var(--blur-bar); border-bottom: 1px solid var(--surface-2); }
 .pane__title { font: 700 16px/1.2 var(--font-ui); }
@@ -376,7 +427,19 @@
 .msg-octo { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; align-items: start; }
 .msg-octo__col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .msg-octo__bubble { padding: 12px 15px; border-radius: 4px 18px 18px 18px; background: var(--surface); border: 1px solid var(--line); font: 400 15px/var(--lh-reading) var(--font-ui); color: var(--text-2);
-  text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 62ch; }
+  text-wrap: pretty; overflow-wrap: anywhere; max-width: 62ch; }
+.msg-octo__bubble p { margin: 0 0 .7em; }
+.msg-octo__bubble > :last-child { margin-bottom: 0; }
+.msg-octo__bubble .md-h { font-weight: 700; color: var(--text); margin-top: 1.1em; }
+.msg-octo__bubble > .md-h:first-child { margin-top: 0; }
+.msg-octo__bubble li > ul, .msg-octo__bubble li > ol { margin: .3em 0 .2em; }
+.msg-octo__bubble li strong { color: var(--text); }
+.msg-octo__bubble ul, .msg-octo__bubble ol { margin: 0 0 .7em; padding-left: 1.4em; }
+.msg-octo__bubble li { margin: .15em 0; }
+.msg-octo__bubble code { font: 500 .88em var(--font-mono); padding: 1px 5px; border-radius: 5px; background: var(--surface-2); }
+.msg-octo__bubble .md-code { margin: 0 0 .7em; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font: 400 12.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-octo__bubble .md-code code { padding: 0; background: none; }
+.msg-octo__bubble a { color: var(--run); text-decoration: underline; }
 .msg-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 0 4px; font: 500 11px var(--font-mono); color: var(--text-faint); }
 .msg-foot__status { padding: 1px 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--c); font-weight: 600; }
 .msg-note { padding: 0 4px; font: italic 400 12px/1.4 var(--font-ui); color: var(--text-faint); }
@@ -426,3 +489,36 @@
 /* phone: the same sidebar as a drawer (opened from the topbar menu button) */
 .app:not(.app--desk) .sidebar { width: min(var(--sidebar-w), 86vw); padding-top: calc(18px + env(safe-area-inset-top)); padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 .app:not(.app--desk) .sidebar .nav-item__key, .app:not(.app--desk) .sidebar__new span, .app:not(.app--desk) .sidebar__keys { display: none; }
+
+/* ================================================================ confirm popup (anchored above a button; see confirmNear) */
+.confirm-pop { position: fixed; z-index: 60; width: min(300px, calc(100vw - 16px)); padding: 12px; border-radius: var(--r-card-sm); background: var(--surface-2);
+  border: 1px solid var(--line-menu); box-shadow: var(--sh-menu); animation: rise var(--t-fast) ease; }
+.confirm-pop__text { margin: 0 0 10px; font: 400 13.5px/1.4 var(--font-ui); color: var(--text); }
+.confirm-pop__acts { display: flex; justify-content: flex-end; gap: 8px; }
+.confirm-pop .btn:focus-visible, .confirm-pop .btn:focus { outline: 2px solid var(--coral); outline-offset: 2px; }
+
+/* Collapsible Home sections */
+.fold { display: inline-flex; align-items: baseline; gap: 6px; padding: 0; border: none; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.fold svg { align-self: center; color: var(--text-meta); transition: transform var(--t-fast, .15s) var(--ease-out, ease); }
+.fold.is-folded svg { transform: rotate(-90deg); }
+
+/* lazy lists: the "Show more" line under a long list (a button; on hover devices it only shows while the section is hovered) */
+.lazy-scroll { max-height: 400px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.lazy-more { display: flex; justify-content: center; padding: 10px 0 4px; }
+/* inside a scrolling list, pin it to the bottom edge so hovering is enough to reach it */
+.lazy-scroll > .lazy-more { position: sticky; bottom: 0; padding: 8px 0 4px; background: linear-gradient(to top, var(--surface, var(--bg, #fff)) 60%, transparent); }
+@media (hover: hover) {
+  .lazy-more { opacity: 0; transition: opacity .15s; }
+  .section:hover .lazy-more, .lazy-scroll:hover .lazy-more, .queue-panel__body:hover .lazy-more, .lazy-more:focus-within { opacity: 1; }
+}
+
+.estate { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 28px 20px; border-radius: var(--r-card-sm); border: 1px dashed var(--line-strong); }
+.estate__title { font: 600 15px var(--font-ui); color: var(--text); }
+.estate__body { max-width: 380px; font: 500 13.5px/1.45 var(--font-ui); color: var(--text-meta); }
+.estate .btn { margin-top: 6px; }
+.estate--720 { max-width: 720px; }
+.sidebar__accts { gap: 0; }
+.nav-acct { height: 30px; }
+.nav-acct__def { font: 500 10px var(--font-mono); font-style: normal; color: var(--text-ghost); margin-left: 4px; }
+.msg-you__edit { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--text-meta); cursor: pointer; }
+.msg-you__edit:hover { color: var(--text); border-color: rgba(255, 123, 92, .5); }

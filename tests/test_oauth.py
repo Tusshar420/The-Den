@@ -31,6 +31,8 @@ class FakeGoogleAuth(BaseHTTPRequestHandler):
     log = []
     mode = "ok"
     expected_verifier_hash = None
+    email = ME            # who signs in (the account's address in the id_token)
+    scope = None          # what Google says was granted (None: only openid email)
 
     def log_message(self, *a):
         pass
@@ -44,8 +46,8 @@ class FakeGoogleAuth(BaseHTTPRequestHandler):
             challenge = base64.urlsafe_b64encode(hashlib.sha256(form["code_verifier"].encode()).digest()).rstrip(b"=").decode()
             if challenge != type(self).expected_verifier_hash or form["code"] != "good-code":
                 return self._send(400, {"error": "invalid_grant", "error_description": "Bad code"})
-            body = {"access_token": ACCESS, "expires_in": 3600, "scope": form.get("scope") or "openid email",
-                    "id_token": jwt({"email": ME})}
+            body = {"access_token": ACCESS, "expires_in": 3600, "scope": type(self).scope or form.get("scope") or "openid email",
+                    "id_token": jwt({"email": type(self).email})}
             if type(self).mode != "no_refresh":
                 body["refresh_token"] = REFRESH
             return self._send(200, body)
@@ -68,6 +70,7 @@ class OAuthBase(TestBase):
     def setUp(self):
         super().setUp()
         FakeGoogleAuth.log, FakeGoogleAuth.mode, FakeGoogleAuth.expected_verifier_hash = [], "ok", None
+        FakeGoogleAuth.email, FakeGoogleAuth.scope = ME, None
         self.server = HTTPServer(("127.0.0.1", 0), FakeGoogleAuth)
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True).start()
         self.addCleanup(self.server.server_close)
@@ -102,7 +105,8 @@ class ConsentUrl(OAuthBase):
         scopes = set(q["scope"].split())
         self.assertEqual(scopes, {"openid", "email",
                                   "https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose",
-                                  "https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.freebusy"})
+                                  "https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.freebusy",
+                                  "https://www.googleapis.com/auth/drive.file"})
         self.assertFalse(any(s.endswith(("gmail.modify", "mail.google.com/", "calendar")) for s in scopes),
                          "no scope that could delete mail or manage whole calendars")
         self.assertNotIn("csecret", url)

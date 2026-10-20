@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1280px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
+    <sc-for list="{{ accts }}" as="a" hint-placeholder-count="2">
+      <div style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid {{ a.bd }}; backdrop-filter:blur(22px);">
+        <div style="display:flex; align-items:center; gap:10px;"><span style="width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:{{ a.tint }}; color:{{ a.color }}; font-size:13px; font-weight:750;">{{ a.short }}</span><div style="flex:1;"><div style="font-size:16px; font-weight:700;">{{ a.name }}</div><div style="font-size:12px; color:#93A1B0;">{{ a.plan }}</div></div><sc-if value="{{ a.on }}" hint-placeholder-val="{{ false }}"><span style="height:22px; padding:0 8px; display:flex; align-items:center; border-radius:7px; background:rgba(255,123,92,0.14); color:#FFA48C; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600;">DEFAULT</span></sc-if><sc-if value="{{ a.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ a.make }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12px; font-weight:600; color:#DCE4EB;">Make default</button></sc-if></div>
+        <div style="display:flex; gap:18px; flex-wrap:wrap;">
+          <sc-for list="{{ a.rings }}" as="r" hint-placeholder-count="2">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="width:76px; height:76px; border-radius:50%; background:conic-gradient({{ r.color }} {{ r.deg }}, rgba(255,255,255,0.07) 0); display:grid; place-items:center;"><span style="width:62px; height:62px; border-radius:50%; background:#121922; display:grid; place-items:center; font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:600; color:{{ r.color }};">{{ r.pct }}</span></span>
+              <div><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#93A1B0;">{{ r.label }}</div><div style="font-size:13.5px; font-weight:650;">resets {{ r.reset }}</div><div style="font-size:12px; color:#6B7A8A;">{{ r.left }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v5l3 2"></path></svg>
+    <span style="flex:1 1 200px; font-size:13px; color:#C2CDD8;">Limits {{ limAgo }}</span>
+    <span style="font-size:12px; color:#93A1B0;">Auto-refresh</span>
+    <div style="display:flex; gap:2px; padding:2px; border-radius:9px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ limAuto }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.pick }}" style="height:26px; padding:0 9px; border-radius:7px; border:0; cursor:pointer; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};">{{ o.label }}</button></sc-for></div>
+    <button onClick="{{ limRefresh }}" style="height:32px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; animation:{{ limSpin }};"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"></path></svg>{{ limLabel }}</button>
+  </section>
+  <section style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:14px 16px; border-radius:18px; background:rgba(255,181,71,0.06); border:1px solid rgba(255,181,71,0.25);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFB547" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"></path></svg>
+    <div style="flex:1 1 280px; font-size:13.5px; line-height:1.6;">At this pace <b>LA</b> hits its session limit around <b style="color:#FFCB7A;">23:40</b>. Tushar has 96% left.</div>
+    <button onClick="{{ passOn }}" style="height:38px; padding:0 15px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13px; font-weight:700;">Pass 3 queued tasks to Tushar</button>
+  </section>
+
+  <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><h2 style="margin:0; font-size:16px; font-weight:700; flex:1;">API spend</h2>
+      <div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ ranges }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.pick }}" style="height:28px; padding:0 11px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ r.bg }}; color:{{ r.fg }};">{{ r.label }}</button></sc-for></div>
+    </div>
+    <div style="display:flex; align-items:baseline; gap:10px;"><span style="font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:600;">{{ total }}</span><span style="font-size:12.5px; color:#93A1B0;">{{ totalSub }}</span></div>
+    <div style="height:140px; display:flex; align-items:flex-end; gap:3px;">
+      <sc-for list="{{ bars }}" as="b" hint-placeholder-count="30"><div title="{{ b.t }}" style="flex:1; height:{{ b.h }}; min-height:3px; border-radius:4px 4px 2px 2px; background:{{ b.c }};"></div></sc-for>
+    </div>
+  </section>
+
+  <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;">
+    <sc-for list="{{ breakdowns }}" as="g" hint-placeholder-count="2">
+      <div style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+        <h3 style="margin:0; font-size:15px; font-weight:700;">{{ g.title }}</h3>
+        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:13px;"><span style="width:8px; height:8px; border-radius:3px; background:{{ r.color }};"></span><span style="flex:1; font-weight:600;">{{ r.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ r.share }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; min-width:56px; text-align:right;">{{ r.cost }}</span></div>
+            <div style="height:6px; border-radius:6px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ r.share }}; background:{{ r.color }}; border-radius:6px;"></div></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+    <div data-den-caps="1" style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+      <h3 style="margin:0; font-size:15px; font-weight:700;">Budget caps</h3>
+      <sc-for list="{{ caps }}" as="c" hint-placeholder-count="2">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:baseline; font-size:13px;"><span style="flex:1; font-weight:600;">{{ c.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#93A1B0;">{{ c.spent }} of </span><span style="font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:600; color:#FFA48C;">&nbsp;${{ c.cap }}</span></div>
+          <input type="range" min="{{ c.min }}" max="{{ c.max }}" step="{{ c.step }}" value="{{ c.cap }}" onChange="{{ c.set }}" style="width:100%; accent-color:#FF7B5C;">
+          <div style="height:6px; border-radius:6px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ c.pct }}; background:{{ c.color }}; border-radius:6px;"></div></div>
+        </div>
+      </sc-for>
+      <div style="display:flex; flex-direction:column; gap:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05);">
+        <sc-for list="{{ capOpts }}" as="o" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:10px;"><span style="flex:1; font-size:13px; color:#C2CDD8;">{{ o.label }}</span><button onClick="{{ o.toggle }}" style="width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ o.track }}; display:flex; justify-content:{{ o.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+      </div>
+    </div>
+  </section>
+<section style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px);">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <h2 style="margin:0; font-size:16px; font-weight:700;">Who worked on what</h2>
+      <span style="font-size:12.5px; color:#93A1B0;">{{ logSummary }}</span>
+      <span style="flex:1;"></span>
+      <div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ logViews }}" as="v" hint-placeholder-count="3"><button onClick="{{ v.pick }}" style="height:28px; padding:0 11px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ v.bg }}; color:{{ v.fg }};">{{ v.label }}</button></sc-for></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.05);">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">WHEN</span><sc-for list="{{ fWhen }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for></div>
+      <sc-if value="{{ isCustom }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-left:72px;">
+          <div style="display:flex; gap:3px; padding:3px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ cModes }}" as="m" hint-placeholder-count="2"><button onClick="{{ m.pick }}" style="height:26px; padding:0 10px; border-radius:7px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ m.bg }}; color:{{ m.fg }};">{{ m.label }}</button></sc-for></div>
+          <div style="flex:1 1 170px; min-width:0;"><dc-import name="DenDatePicker" value="{{ cFrom }}" on-change="{{ setFrom }}" hint-size="100%,36px"></dc-import></div>
+          <sc-if value="{{ isRange }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px; color:#93A1B0;">to</span><div style="flex:1 1 170px; min-width:0;"><dc-import name="DenDatePicker" value="{{ cTo }}" on-change="{{ setTo }}" hint-size="100%,36px"></dc-import></div></sc-if>
+          <span style="font-size:12px; color:{{ cHintC }};">{{ cHint }}</span>
+        </div>
+      </sc-if>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MODEL</span><sc-for list="{{ fModel }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PROJECT</span><sc-for list="{{ fProj }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">ACCOUNT</span><sc-for list="{{ fAcct }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for><span style="flex:1;"></span><sc-if value="{{ filtered }}" hint-placeholder-val="{{ false }}"><button onClick="{{ resetF }}" style="border:0; background:none; cursor:pointer; font-size:12px; font-weight:650; color:#FF7B5C;">Reset filters</button></sc-if></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
+      <sc-for list="{{ logKpis }}" as="k" hint-placeholder-count="4"><div style="padding:10px 12px; border-radius:13px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ k.label }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:{{ k.c }}; margin-top:3px;">{{ k.v }}</div></div></sc-for>
+    </div>
+
+    <sc-if value="{{ vMatrix }}" hint-placeholder-val="{{ true }}">
+      <div style="overflow-x:auto; border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:grid; grid-template-columns:{{ mxCols }}; min-width:{{ mxMin }};">
+          <div style="padding:10px 12px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; background:rgba(255,255,255,0.03);">PROJECT ↓ · MODEL →</div>
+          <sc-for list="{{ mxHead }}" as="h" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:6px; padding:10px 12px; background:rgba(255,255,255,0.03); font-size:12px; font-weight:650;"><span style="width:7px; height:7px; border-radius:50%; background:{{ h.c }};"></span>{{ h.label }}</div></sc-for>
+          <div style="padding:10px 12px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; background:rgba(255,255,255,0.03); text-align:right;">TOTAL</div>
+          <sc-for list="{{ mxRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex; align-items:center; gap:7px; padding:10px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:13px; font-weight:650; white-space:nowrap;"><span style="width:8px; height:8px; border-radius:3px; background:{{ r.c }};"></span>{{ r.label }}</div>
+            <sc-for list="{{ r.cells }}" as="x" hint-placeholder-count="4">
+              <button onClick="{{ x.drill }}" title="{{ x.tip }}" style="display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:8px 12px; border:0; border-top:1px solid rgba(255,255,255,0.04); background:{{ x.bg }}; cursor:{{ x.cur }}; text-align:left; color:#E8EEF3;">
+                <span style="font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; color:{{ x.fg }};">{{ x.cost }}</span>
+                <span style="font-size:10.5px; color:#93A1B0;">{{ x.sub }}</span>
+              </button>
+            </sc-for>
+            <div style="padding:8px 12px; border-top:1px solid rgba(255,255,255,0.04); text-align:right;"><div style="font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600;">{{ r.total }}</div><div style="font-size:10.5px; color:#93A1B0;">{{ r.runs }}</div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="font-size:11.5px; color:#6B7A8A;">Click a cell to see those runs. Claude Code runs on your plan, so they show time and tokens instead of dollars.</div>
+    </sc-if>
+
+    <sc-if value="{{ vTime }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:grid; grid-template-columns:110px repeat(24, minmax(10px, 1fr)); gap:2px; align-items:center;">
+          <span></span><sc-for list="{{ hourLabels }}" as="h" hint-placeholder-count="24"><span style="font-family:'JetBrains Mono', monospace; font-size:9px; color:#5B6A7A; text-align:center;">{{ h }}</span></sc-for>
+          <sc-for list="{{ heat }}" as="r" hint-placeholder-count="4">
+            <span style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden;"><span style="flex:none; width:7px; height:7px; border-radius:50%; background:{{ r.c }};"></span>{{ r.label }}</span>
+            <sc-for list="{{ r.cells }}" as="x" hint-placeholder-count="24"><span title="{{ x.t }}" style="height:22px; border-radius:4px; background:{{ x.bg }};"></span></sc-for>
+          </sc-for>
+        </div>
+        <div style="font-size:11.5px; color:#6B7A8A;">Darker = more runs in that hour, across the selected period.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vRuns }}" hint-placeholder-val="{{ false }}">
+      <div style="overflow-x:auto; border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:grid; grid-template-columns:96px minmax(220px, 2fr) 150px 130px 92px 72px 72px; min-width:860px;">
+          <sc-for list="{{ runHead }}" as="h" hint-placeholder-count="7"><button onClick="{{ h.sort }}" style="padding:10px 12px; border:0; background:rgba(255,255,255,0.03); cursor:{{ h.cur }}; text-align:{{ h.al }}; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:{{ h.fg }};">{{ h.label }}</button></sc-for>
+          <sc-for list="{{ runs }}" as="r" hint-placeholder-count="8">
+            <div style="padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ r.when }}</div>
+            <div onClick="{{ r.open }}" title="Open chat" style="padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); min-width:0; cursor:pointer;"><div style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.task }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ r.id }} · {{ r.acct }}</div></div>
+            <div style="display:flex; align-items:center; gap:6px; padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:12.5px; white-space:nowrap; overflow:hidden;"><span style="flex:none; width:7px; height:7px; border-radius:2px; background:{{ r.pc }};"></span>{{ r.project }}</div>
+            <div style="display:flex; align-items:center; gap:6px; padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-size:12.5px; white-space:nowrap;"><span style="flex:none; width:7px; height:7px; border-radius:50%; background:{{ r.mc }};"></span>{{ r.model }}</div>
+            <div style="padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8; text-align:right;">{{ r.tok }}</div>
+            <div style="padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8; text-align:right;">{{ r.dur }}</div>
+            <div style="padding:9px 12px; border-top:1px solid rgba(255,255,255,0.04); font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; text-align:right; color:{{ r.cc }};">{{ r.cost }}</div>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ runsMore }}" hint-placeholder-val="{{ false }}"><button onClick="{{ showMore }}" style="align-self:center; height:34px; padding:0 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Show {{ moreN }} more</button></sc-if>
+    </sc-if>
+    <sc-if value="{{ logEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:30px; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); text-align:center; font-size:13px; color:#93A1B0;">No runs match these filters.</div></sc-if>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+const ucol = n => n >= 95 ? C.violet : n >= 80 ? C.amber : C.teal;
+const DAILY = [0.8, 1.2, 0.4, 2.1, 1.6, 0.3, 0.2, 1.9, 2.4, 1.1, 0.9, 1.7, 3.1, 0.6, 0.5, 1.4, 2.2, 1.8, 0.7, 1.0, 2.6, 1.3, 0.4, 0.9, 1.5, 2.0, 1.2, 0.8, 1.6, 4.12];
+class Component extends DCLogic {
+  logVals(s) {
+    const MCOL = [C.coral, C.green, '#8FE0B0', C.amber, C.blue, C.violet, C.teal];
+    const raw = (this.data(s) || {}).runs || [];
+    const modelNames = [...new Set(raw.map(r => r.model))]; modelNames.sort((a, b) => a === 'Claude Code' ? -1 : b === 'Claude Code' ? 1 : a.localeCompare(b));
+    const MOD = modelNames.map((m, i) => [m, m === 'Claude Code' ? C.coral : MCOL[(i % (MCOL.length - 1)) + 1]]);
+    const PROJ = [...new Set(raw.map(r => r.project))].sort().map(n => { const p = D.store.projects.find(x => x.name === n); return [n, D.projColor(p)]; });
+    const ACCTS = [...new Set(raw.map(r => r.account || 'API'))].map(a => { const acc = D.accounts().find(x => D.acctName(x) === a); return [a, acc ? acc.color : C.teal]; });
+    const mc = Object.fromEntries(MOD), pcm = Object.fromEntries(PROJ);
+    this._runs = raw.map(r => ({ id:'#' + r.id, tid:r.task_id, t:D.parseT(r.at), project:r.project, pc:pcm[r.project] || '#93A1B0', model:r.model, mc:mc[r.model] || C.blue, task:r.title || '(untitled)', tok:r.tokens, dur:(r.dur_ms || 0) / 60000, cost:r.cost || 0, acct:r.account || 'API' })).sort((x, y) => y.t - x.t);
+    const L = s.log || { when:'7d', models:[], projs:[], accts:[], view:'matrix', sort:'time', more:0 };
+    const setL = p => this.setState(st => ({ log:{ ...(st.log || L), ...p } }));
+    const now = new Date(); now.setHours(23, 59, 59, 0); const pd = x => { const [y, m, d] = (x || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : null; };
+    const cFrom = L.from || D.ymd(new Date(Date.now() - 5 * 864e5)), cTo = L.to || D.today();
+    let since, until = now, badRange = false;
+    if (L.when === 'custom') { let a = pd(cFrom) || new Date(Date.now() - 5 * 864e5), b = L.cmode === 'range' ? (pd(cTo) || now) : a; if (b < a) { badRange = true; [a, b] = [b, a]; } since = a; until = new Date(b.getFullYear(), b.getMonth(), b.getDate(), 23, 59, 59); }
+    else since = { today:new Date(new Date().toDateString()), '7d':new Date(now - 7 * 864e5), '30d':new Date(now - 30 * 864e5) }[L.when];
+    const runs = this._runs.filter(r => r.t >= since && r.t <= until && (!L.models.length || L.models.includes(r.model)) && (!L.projs.length || L.projs.includes(r.project)) && (!L.accts.length || L.accts.includes(r.acct)));
+    const tog = (k, v) => setL({ [k]: L[k].includes(v) ? L[k].filter(x => x !== v) : [...L[k], v], more:0 });
+    const pill = (on, c) => ({ bg: on ? tint(c || '#FF7B5C', 0.16) : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? tint(c || '#FF7B5C', 0.5) : 'rgba(255,255,255,0.08)' });
+    const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
+    const fmtDur = m => m >= 60 ? (m / 60).toFixed(1) + 'h' : m >= 1 ? Math.round(m) + 'm' : Math.round(m * 60) + 's';
+    const money = n => n < 0.01 && n > 0 ? '<' + D.cur() + '0.01' : D.cur() + n.toFixed(2);
+    const sum = (a, k) => a.reduce((x, r) => x + r[k], 0);
+    const mods = MOD.filter(m => !L.models.length || L.models.includes(m[0])); const projs = PROJ.filter(p => !L.projs.length || L.projs.includes(p[0]));
+    const cellMax = Math.max(1, ...projs.flatMap(p => mods.map(m => runs.filter(r => r.project === p[0] && r.model === m[0]).length)));
+    const pad = n => String(n).padStart(2, '0'); const DW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const whenTxt = t => (t.toDateString() === new Date().toDateString() ? 'Today' : DW[t.getDay()] + ' ' + t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes());
+    const SORTS = { time:(a, b) => b.t - a.t, cost:(a, b) => b.cost - a.cost || b.tok - a.tok, tok:(a, b) => b.tok - a.tok, dur:(a, b) => b.dur - a.dur };
+    const sorted = [...runs].sort(SORTS[L.sort]); const show = 14 + L.more * 20;
+    const agentMin = sum(runs.filter(r => r.model === 'Claude Code'), 'dur');
+    return {
+      logSummary: runs.length + ' runs · ' + projs.length + ' projects · ' + mods.length + ' models',
+      logViews:[['matrix', 'Project × model'], ['time', 'When'], ['runs', 'All runs']].map(([id, label]) => ({ label, pick:() => setL({ view:id }), bg: L.view === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: L.view === id ? '#FFFFFF' : '#93A1B0' })),
+      vMatrix: L.view === 'matrix' && runs.length > 0, vTime: L.view === 'time' && runs.length > 0, vRuns: L.view === 'runs' && runs.length > 0, logEmpty: !runs.length,
+      fWhen:[['today', 'Today'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['custom', 'Custom dates…']].map(([id, label]) => ({ label, dot:'', pick:() => setL({ when:id, more:0 }), ...pill(L.when === id) })),
+      fModel: MOD.map(([label, c]) => ({ label, dot:c, pick:() => tog('models', label), ...pill(L.models.includes(label), c) })),
+      fProj: PROJ.map(([label, c]) => ({ label, dot:c, pick:() => tog('projs', label), ...pill(L.projs.includes(label), c) })),
+      fAcct: ACCTS.map(([label, c]) => ({ label, dot:c, pick:() => tog('accts', label), ...pill(L.accts.includes(label), c) })),
+      isCustom: L.when === 'custom', isRange: L.cmode === 'range', cFrom, cTo,
+      cModes:[['day', 'On a day'], ['range', 'Between']].map(([id, label]) => ({ label, pick:() => setL({ cmode:id, more:0 }), bg: (L.cmode || 'day') === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: (L.cmode || 'day') === id ? '#FFFFFF' : '#93A1B0' })),
+      setFrom:e => setL({ from:e.target.value, more:0 }), setTo:e => setL({ to:e.target.value, more:0 }),
+      cHint: badRange ? 'Dates swapped — end was before start' : L.when === 'custom' ? (Math.round((until - since) / 864e5) || 1) + (L.cmode === 'range' ? ' days' : ' day') + ' · history goes back ' + ((this.data(s) || {}).days || 30) + ' days' : '', cHintC: badRange ? '#FFCB7A' : '#6B7A8A',
+      filtered: L.models.length + L.projs.length + L.accts.length > 0 || L.when !== '7d', resetF:() => setL({ when:'7d', models:[], projs:[], accts:[], more:0 }),
+      logKpis:[{ label:'RUNS', v:String(runs.length), c:'#E8EEF3' }, { label:'API COST', v:money(sum(runs, 'cost')), c:'#E8EEF3' }, { label:'TOKENS', v:fmtTok(sum(runs, 'tok')), c:C.teal }, { label:'AGENT TIME', v:fmtDur(agentMin), c:C.coral }],
+      mxCols: '180px repeat(' + mods.length + ', minmax(120px, 1fr)) 110px', mxMin: (180 + mods.length * 120 + 110) + 'px',
+      mxHead: mods.map(([label, c]) => ({ label, c })),
+      mxRows: projs.map(([label, c]) => { const pr = runs.filter(r => r.project === label);
+        return { label, c, total: pr.some(r => r.cost) ? money(sum(pr, 'cost')) : '—', runs: pr.length + ' runs',
+          cells: mods.map(([m, mc]) => { const xs = pr.filter(r => r.model === m); const n = xs.length; const a = n / cellMax;
+            return { cost: !n ? '—' : m === 'Claude Code' ? fmtDur(sum(xs, 'dur')) : money(sum(xs, 'cost')), sub: n ? n + ' runs · ' + fmtTok(sum(xs, 'tok')) : 'not used', fg: n ? '#E8EEF3' : '#4A5866',
+              bg: n ? tint(mc, 0.05 + a * 0.3) : 'transparent', cur: n ? 'pointer' : 'default', tip: n ? label + ' × ' + m + ' — last ' + whenTxt(xs[0].t) : '',
+              drill:() => n && setL({ view:'runs', projs:[label], models:[m], more:0 }) }; }) }; }),
+      hourLabels: Array.from({ length:24 }, (_, h) => h % 3 === 0 ? pad(h) : ''),
+      heat: mods.map(([label, c]) => { const counts = Array(24).fill(0); runs.filter(r => r.model === label).forEach(r => counts[r.t.getHours()]++); const mx = Math.max(1, ...counts);
+        return { label, c, cells: counts.map((n, h) => ({ bg: n ? tint(c, 0.12 + n / mx * 0.75) : 'rgba(255,255,255,0.03)', t: label + ' · ' + pad(h) + ':00 · ' + n + ' runs' })) }; }),
+      runHead:[['WHEN', 'time', 'left'], ['TASK', '', 'left'], ['PROJECT', '', 'left'], ['MODEL', '', 'left'], ['TOKENS', 'tok', 'right'], ['TIME', 'dur', 'right'], ['COST', 'cost', 'right']].map(([label, k, al]) => ({ label: label + (k && L.sort === k ? ' ↓' : ''), al, cur: k ? 'pointer' : 'default', fg: k && L.sort === k ? '#FFA48C' : '#6B7A8A', sort:() => k && setL({ sort:k }) })),
+      runs: sorted.slice(0, show).map(r => ({ ...r, open:() => D.openChat(D.taskById(r.tid) || r.tid), when:whenTxt(r.t), tok:fmtTok(r.tok), dur:fmtDur(r.dur), cost: r.model === 'Claude Code' ? 'plan' : money(r.cost), cc: r.model === 'Claude Code' ? '#6B7A8A' : '#E8EEF3' })),
+      runsMore: sorted.length > show, moreN: String(Math.min(20, sorted.length - show)), showMore:() => setL({ more:L.more + 1 })
+    };
+  }
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); if (this.props.routeId === 'budget') setTimeout(() => { const el = document.querySelector('[data-den-caps]'); el && el.scrollIntoView({ behavior:'smooth', block:'center' }); }, 600); }
+  componentWillUnmount() { clearTimeout(this.capT); }
+  // 30 days of runs, or 90 when a custom range reaches further back.
+  data(s) { const L = s.log || {}; const far = L.when === 'custom' && (L.from || '') < D.ymd(new Date(Date.now() - 29 * 864e5)); return D.need(far ? 'usage90' : 'usage30', far ? '/den/usage?days=90' : '/den/usage?days=30', 30000); }
+  state = { range:'30d', caps:{}, };
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : D.say(t, s, c); }
+  renderVals() {
+    const s = this.state; const u = D.need('usage30', '/den/usage?days=30', 30000) || { runs:[], by_day:[], today_by_hour:Array(24).fill(0), caps:{}, spend:{} };
+    const acc = D.accounts().length ? D.accounts() : [];
+    const ACC = acc.map(a => { const w5 = D.acctWin(a, 'five_hour'), wk = D.acctWin(a, 'seven_day'); return { id:a.id, name:D.acctName(a), plan: (a.plan ? a.plan[0].toUpperCase() + a.plan.slice(1) : 'Claude') + (a.auth_error ? ' · needs sign-in' : ''), color:a.color || '#E8825A', h5:D.pct(w5), wk:D.pct(wk), r5:D.resetLabel(w5 && w5.resets_at), rwk:D.resetLabel(wk && wk.resets_at, true), active:a.active }; });
+    const n = s.range === '7d' ? 7 : s.range === '30d' ? 30 : 1; const data = u.by_day.slice(-n).map(d => d.spend); const sum = data.reduce((a, b) => a + b, 0);
+    const series = s.range === 'today' ? u.today_by_hour : data; const smx = Math.max(0.0001, ...series);
+    const since = s.range === 'today' ? new Date(new Date().toDateString()) : new Date(Date.now() - n * 864e5);
+    const inRange = u.runs.filter(r => D.parseT(r.at) >= since);
+    const group = key => { const m = {}; inRange.forEach(r => { const k = r[key]; m[k] = m[k] || { cost:0, runs:0 }; m[k].cost += r.cost || 0; m[k].runs += 1; }); return Object.entries(m); };
+    const rows = (list, colorOf) => { const totalCost = list.reduce((a, [, v]) => a + v.cost, 0); const totalRuns = list.reduce((a, [, v]) => a + v.runs, 0);
+      return list.sort((a, b) => b[1].cost - a[1].cost || b[1].runs - a[1].runs).slice(0, 6).map(([label, v]) => ({ label, color:colorOf(label), cost: v.cost ? D.cur() + v.cost.toFixed(2) : v.runs + ' runs', share: Math.round((totalCost ? v.cost / totalCost : v.runs / Math.max(1, totalRuns)) * 100) + '%' })); };
+    const MCOL = [C.green, C.amber, '#8FE0B0', C.violet, C.blue, C.teal];
+    const today = u.spend.today_usd || 0, month = u.spend.month_usd || 0;
+    const peak = u.today_by_hour.indexOf(Math.max(...u.today_by_hour));
+    const caps = { day: s.caps.day ?? u.caps.daily ?? 0, month: s.caps.month ?? u.caps.monthly ?? 0 };
+    const other = ACC.filter(a => !a.active).sort((a, b) => a.h5 - b.h5)[0];
+    const agentQueued = D.queued().filter(t => t.lane === 'agent');
+    return {
+      ...this.logVals(s),
+      ...(() => { const L = this.props.limits || {}; const at = L.at || Math.max(0, ...acc.map(a => a.usage && a.usage.updated_at ? D.parseT(a.usage.updated_at).getTime() : 0)); const a = at ? Math.round((Date.now() - at) / 60000) : null;
+        return { limRefresh:() => L.refresh && L.refresh(), limLabel: L.busy ? 'Refreshing…' : 'Refresh limits', limSpin: L.busy ? 'denSpin .8s linear infinite' : 'none', limAgo: a == null ? 'not checked yet' : 'updated ' + (a < 1 ? 'just now' : a < 120 ? a + 'm ago' : D.ago(new Date(at).toISOString(), false)) + (L.auto ? ' · auto every ' + L.auto + 'm' : ''),
+        limAuto: [[0, 'Off'], [1, '1m'], [5, '5m'], [15, '15m']].map(([m, label]) => ({ label, pick:() => L.setAuto && L.setAuto(m), bg: (L.auto || 0) === m ? 'rgba(255,255,255,0.12)' : 'transparent', fg: (L.auto || 0) === m ? '#FFFFFF' : '#93A1B0' })) }; })(),
+      accts: ACC.map(a => ({ ...a, short:a.name.slice(0, 2).toUpperCase(), tint:tint(a.color, 0.16), on: a.active, off: !a.active, bd: a.active ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.07)',
+        make:() => D.act(() => D.api('/accounts/' + a.id + '/activate', { method:'POST', body:{} }), { ok:[a.name + ' is now the default', a.plan, a.color] }),
+        rings:[{ label:'SESSION · 5H', pct:a.h5 + '%', deg:a.h5 * 3.6 + 'deg', color:ucol(a.h5), reset:a.r5, left:(100 - a.h5) + '% left' }, { label:'WEEKLY', pct:a.wk + '%', deg:a.wk * 3.6 + 'deg', color:ucol(a.wk), reset:a.rwk, left:(100 - a.wk) + '% left' }] })),
+      passOn:() => { if (!other) return this.say('Only one account', 'Add another in Claude accounts to pass work on.', C.amber); if (!agentQueued.length) return this.say('Nothing queued to pass on', '', C.amber);
+        D.act(() => Promise.all(agentQueued.map(t => D.api('/tasks/' + t.id, { method:'PATCH', body:{ claude_account:other.id } }))), { ok:['Passed on to ' + other.name, agentQueued.map(t => '#' + t.id).slice(0, 4).join(', ') + ' now run on ' + other.name + '.', other.color] }); },
+      ranges:[['today', 'Today'], ['7d', '7 days'], ['30d', '30 days']].map(([id, label]) => ({ label, pick:() => this.setState({ range:id }), bg: s.range === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.range === id ? '#FFFFFF' : '#93A1B0' })),
+      total: s.range === 'today' ? D.cur() + today.toFixed(2) : D.cur() + sum.toFixed(2), totalSub: s.range === 'today' ? (today ? 'by hour · peak ' + D.pad2(peak) + ':00' : 'nothing spent yet today') : 'avg ' + D.cur() + (sum / n).toFixed(2) + '/day · API only',
+      bars: series.map((v, i) => ({ h: Math.max(2, v / smx * 100) + '%', c: i === series.length - 1 && s.range !== 'today' ? C.coral : 'rgba(255,123,92,0.32)', t: (s.range === 'today' ? i + ':00 · ' : (u.by_day.slice(-n)[i] || {}).date + ' · ') + D.cur() + v.toFixed(2) })),
+      breakdowns:[{ title:'By project', rows:rows(group('project'), l => D.projColor(D.store.projects.find(p => p.name === l))) }, { title:'By model', rows:rows(group('model'), l => l === 'Claude Code' ? C.coral : MCOL[l.length % MCOL.length]) }],
+      caps:[['day', 'Daily cap', today, 1, 50, 1, 'daily_budget_usd'], ['month', 'Monthly cap', month, 10, 300, 5, 'monthly_budget_usd']].map(([k, label, sp, min, max, step, field]) => { const cap = caps[k] || 0; const p = cap ? Math.min(100, Math.round(sp / cap * 100)) : 0;
+        return { label, spent:D.cur() + sp.toFixed(2), cap: cap ? String(cap) : 'no cap', min:String(min), max:String(max), step:String(step), pct:p + '%', color: p >= 100 ? C.err : p >= 80 ? C.amber : C.teal,
+          set:e => { const v = +e.target.value; this.setState(st => ({ caps:{ ...st.caps, [k]:v } })); clearTimeout(this.capT); this.capT = setTimeout(() => D.act(() => D.api('/settings', { method:'PATCH', body:{ [field]:v } }), { ok:[label + ' → $' + v, '', C.teal], reload:['usage30'] }), 700); } }; }),
+      capOpts:[['budget_warn', 'Warn me at 80%'], ['budget_pause', 'Pause API tasks at 100%']].map(([k, label]) => { const on = u.caps[k === 'budget_warn' ? 'warn' : 'pause'] !== false; return { label, track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle:() => D.act(() => D.api('/settings', { method:'PATCH', body:{ [k]: !on } }), { ok:[label + (on ? ' off' : ' on'), '', C.teal], reload:['usage30'] }) }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

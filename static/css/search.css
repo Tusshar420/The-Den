@@ -36,3 +36,14 @@
   .topbar--searching .tsearch input { font-size: 16px; }   /* 16px stops iOS zooming in on focus */
   .topbar--searching .spanel { left: 8px; right: 8px; width: auto; top: 100%; max-height: calc(100dvh - 120px); }
 }
+
+/* ================================================================ Spotlight (Alt+Space, views/search.js) */
+.spot { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-start; padding: 14vh 12px 0; }
+.spot__scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); backdrop-filter: blur(3px); animation: rise var(--t-fast) ease; }
+.spot__box { position: relative; width: min(640px, 100%); border-radius: var(--r-card-sm); background: var(--surface-2); border: 1px solid var(--line-menu); box-shadow: var(--sh-menu); overflow: hidden; animation: rise var(--t-fast) ease; }
+.spot__input { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 16px; color: var(--text-meta); border-bottom: 1px solid var(--line-strong); }
+.spot__input svg { flex: none; }
+.spot__input input { flex: 1; min-width: 0; height: 100%; border: none; background: none; outline: none; color: var(--text); font: 500 18px var(--font-ui); }
+.spot__list { max-height: min(56vh, 460px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
+.spot__list:empty { display: none; }
+.spot mark { padding: 0 2px; border-radius: 3px; background: var(--coral-tint-2); color: var(--coral-hover); }

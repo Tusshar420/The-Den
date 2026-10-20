@@ -69,7 +69,7 @@ class OctopusApi(test_e2e.E2E):
         self.assertEqual(set(ov), {"autonomy", "plan_review", "current", "queue", "approvals", "plans_waiting", "activity", "providers", "claude_window"})
         self.assertEqual((ov["autonomy"], ov["queue"]["waiting"]), ("execute", 1))
         agents = {a["id"]: a for a in self.http("GET", "/octopus/agents")}
-        self.assertEqual(set(agents), {"coding", "writing", "research", "creative", "general", "personal", "operator", "system"})
+        self.assertEqual(set(agents), {"coding", "writing", "research", "creative", "general", "voice", "personal", "operator", "system"})
         self.assertEqual([m["id"] for m in agents["coding"]["preferred_models"]], ["claude-code"])
         self.assertTrue(any(p["capability"] == "GIT_PUSH" and p["policy"] == "ask" for p in agents["coding"]["permissions"]))
         tools = {t["id"]: t for t in self.http("GET", "/octopus/tools")}

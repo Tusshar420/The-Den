@@ -1,11 +1,16 @@
 """Project notes: what the user tells Octopus about a project, and that every run for it gets them."""
 
+from pathlib import Path
+
 from fastapi import HTTPException
 
 import api
 import db
+import uploads
 from octopus import execution
 from tests.helpers import TestBase
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 
 class ProjectNotes(TestBase):
@@ -38,9 +43,28 @@ class ProjectNotes(TestBase):
         db.add_project_note(self.pid, "Ship by Friday\nno new deps", "requirement")
         text = db.project_notes_prompt(self.pid)
         self.assertLess(text.index("Guidelines:"), text.index("Requirements:"))
-        self.assertLess(text.index("Requirements:"), text.index("Notes:"))
         self.assertIn("- Tabs, not spaces", text)
         self.assertIn("- Ship by Friday\n  no new deps", text)
+        # Plain notes are the user's own (Den 2.0 Guidelines tab): runs never see them.
+        self.assertNotIn("Keep it simple", text)
+        self.assertNotIn("Notes:", text)
+
+    def test_switched_off_notes_are_left_out(self):
+        n = db.add_project_note(self.pid, "Tabs, not spaces", "guideline")
+        db.add_project_note(self.pid, "Ship by Friday", "requirement")
+        db.update_project_note(n["id"], active=False)
+        text = db.project_notes_prompt(self.pid)
+        self.assertNotIn("Tabs, not spaces", text)
+        self.assertIn("Ship by Friday", text)
+        db.update_project_note(n["id"], active=True)
+        self.assertIn("Tabs, not spaces", db.project_notes_prompt(self.pid))
+
+    def test_project_rules_from_settings(self):
+        db.update_project_settings(self.pid, run_tests=True)
+        text = db.project_notes_prompt(self.pid)
+        self.assertIn("Project rules:", text)
+        self.assertIn("Run the project's tests", text)
+        self.assertNotIn("formatter", text)
 
     def test_claude_code_gets_the_notes_with_the_agent_instructions_in_one_flag(self):
         db.add_project_note(self.pid, "Tabs, not spaces", "guideline")
@@ -48,8 +72,8 @@ class ProjectNotes(TestBase):
         self.assertEqual(args.count("--append-system-prompt"), 1)
         self.assertIn("Tabs, not spaces", args[args.index("--append-system-prompt") + 1])
 
-    def test_no_notes_means_no_extra_arguments(self):
-        self.assertEqual(execution.claude_args({"project_id": self.pid}), [])
+    def test_no_notes_means_only_the_house_rules(self):
+        self.assertEqual(execution.claude_args({"project_id": self.pid}), ["--append-system-prompt", execution.HOUSE_RULES])
 
 
 class NotesEndpoints(TestBase):
@@ -76,3 +100,43 @@ class NotesEndpoints(TestBase):
             with self.assertRaises(HTTPException) as cm:
                 call()
             self.assertEqual(cm.exception.status_code, code)
+
+
+class NotePictures(TestBase):
+    def setUp(self):
+        super().setUp()
+        old = uploads.UPLOAD_DIR
+        uploads.UPLOAD_DIR = Path(self._tmp.name) / "uploads"
+        self.addCleanup(lambda: setattr(uploads, "UPLOAD_DIR", old))
+        self.pid = db.add_project("shop", self._tmp.name)["id"]
+        self.img = uploads.save(PNG)["id"]
+
+    def test_a_note_keeps_its_pictures_and_can_be_just_a_picture(self):
+        n = api.create_note(self.pid, api.NoteIn(text="Match this layout", images=[self.img]))
+        self.assertEqual(n["images"], [self.img])
+        only = api.create_note(self.pid, api.NoteIn(images=[self.img]))
+        self.assertEqual((only["text"], only["images"]), ("", [self.img]))
+
+    def test_edit_replaces_or_clears_the_pictures(self):
+        n = api.create_note(self.pid, api.NoteIn(text="x", images=[self.img]))
+        self.assertEqual(api.update_note(n["id"], api.NoteUpdateIn(text="y"))["images"], [self.img])
+        self.assertIsNone(api.update_note(n["id"], api.NoteUpdateIn(images=[]))["images"])
+
+    def test_a_note_cant_lose_both_its_text_and_pictures(self):
+        n = api.create_note(self.pid, api.NoteIn(images=[self.img]))
+        with self.assertRaises(HTTPException) as cm:
+            api.update_note(n["id"], api.NoteUpdateIn(images=[]))
+        self.assertEqual(cm.exception.status_code, 400)
+
+    def test_unknown_pictures_are_refused(self):
+        with self.assertRaises(HTTPException) as cm:
+            api.create_note(self.pid, api.NoteIn(text="x", images=["0" * 32 + ".png"]))
+        self.assertEqual(cm.exception.status_code, 400)
+
+    def test_runs_are_told_where_the_pictures_are(self):
+        db.add_project_note(self.pid, "Match this layout", "guideline", images=[self.img])
+        db.add_project_note(self.pid, "", "requirement", images=[self.img])
+        text = db.project_notes_prompt(self.pid)
+        self.assertIn("- Match this layout\n  Pictures in this note", text)
+        self.assertIn("- Pictures in this note", text)
+        self.assertEqual(text.count(str(uploads.path_of(self.img))), 2)

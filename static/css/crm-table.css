@@ -1,0 +1,74 @@
+/* Projects as a CRM: the Table and Board views (views/crm-table.js). */
+
+.page--crmt { max-width: none; }
+.app--desk .page--crmt { max-width: 1500px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Toolbar */
+.crmt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.crmt-search { flex: 1 1 220px; min-width: 0; }
+.crmt-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.crmt-tools .toolbar__add { margin-left: 0; }
+.crmt-count { flex: 1 0 100%; font: 500 var(--fs-meta) var(--font-mono); color: var(--text-meta); }
+.crmt-note { padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--wait-line); background: var(--wait-tint); color: var(--text-3); font: 500 13px/1.4 var(--font-ui); }
+
+/* Filter / column / saved-view panels */
+.crmt-panel { display: flex; flex-direction: column; gap: 12px; }
+.crmt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.crmt-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; font: 600 10.5px var(--font-ui); letter-spacing: .07em; text-transform: uppercase; color: var(--text-meta); }
+.crmt-f .input { height: 44px; width: 100%; text-transform: none; letter-spacing: 0; }
+.crmt-panel__foot, .crmt-cols { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.crmt-cols .chip[disabled] { opacity: .6; }
+.crmt-saved { display: flex; flex-direction: column; gap: 6px; }
+.crmt-saved__row { display: flex; gap: 6px; }
+.crmt-saved__use { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: var(--r-btn); border: 1px solid var(--line); background: var(--surface-2); color: var(--text-3); font: 600 13.5px var(--font-ui); text-align: left; }
+.crmt-saved__use.is-on { border-color: var(--line-focus); color: var(--text); }
+.crmt-saved__kind { flex: none; font: 500 11px var(--font-mono); color: var(--text-faint); }
+.crmt-saved__x { width: 44px; border-radius: var(--r-btn); border: 1px solid var(--line); background: transparent; color: var(--text-meta); }
+.crmt-save { display: flex; gap: 8px; }
+.crmt-save .input { flex: 1; min-width: 0; height: 44px; }
+
+/* Table: scrolls sideways inside its card; the name column stays put */
+.crmt-scroll { overflow: auto; max-width: 100%; max-height: calc(100vh - 260px); overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding: 0; }
+.crmt-table { width: 100%; border-collapse: separate; border-spacing: 0; font: 500 13.5px/1.35 var(--font-ui); color: var(--text-3); }
+.crmt-table th, .crmt-table td { padding: 0 14px; height: 52px; white-space: nowrap; text-align: left; border-bottom: 1px solid var(--line-soft); background: var(--surface); }
+.crmt-table th { position: sticky; top: 0; z-index: 2; height: 44px; background: var(--surface-2); }
+.crmt-table .is-num { text-align: right; }
+.crmt-table .is-sticky { position: sticky; left: 0; z-index: 1; min-width: 170px; max-width: 240px; box-shadow: 1px 0 0 var(--line-soft); }
+.crmt-table th.is-sticky { z-index: 3; }
+.crmt-table tbody tr:hover td { background: var(--surface-2); }
+.crmt-table tbody tr:last-child td { border-bottom: 0; }
+.crmt-th { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--text-meta); font: 700 11px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; }
+.crmt-th.is-on { color: var(--text); }
+.crmt-th__arrow { width: 10px; color: var(--coral); }
+.crmt-name { display: flex; align-items: center; gap: 10px; max-width: 220px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text); font: 600 14px var(--font-ui); text-align: left; }
+.crmt-av { width: 26px; height: 26px; flex: none; font-size: 12px; border-radius: 8px; }
+.crmt-dim { color: var(--text-ghost); }
+.crmt-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 99px; font: 600 11.5px/1.5 var(--font-ui); color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.crmt-due { display: inline-flex; align-items: center; gap: 8px; }
+.crmt-prog { display: inline-flex; align-items: center; gap: 8px; font: 500 12px var(--font-mono); }
+.crmt-prog__bar { width: 54px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.crmt-prog__bar i { display: block; height: 100%; background: var(--run); }
+
+/* Board: one column per stage; swipes sideways on a phone */
+.crmt-board { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; padding: 2px 2px 14px; scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.crmt-col { flex: 0 0 min(82vw, 290px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-card-sm); border: 1px solid var(--line); background: var(--bg-sidebar); min-height: 160px; transition: border-color .12s, background .12s; }
+.app--desk .crmt-col { flex: 1 0 220px; }
+.crmt-col.is-over { border-color: var(--coral-line); background: var(--coral-tint); }
+.crmt-col__head { display: flex; align-items: center; gap: 8px; font: 700 13px var(--font-ui); color: var(--text); }
+.crmt-col__name { flex: 1; }
+.crmt-col__n { font: 600 11.5px var(--font-mono); color: var(--text-faint); }
+.crmt-col__sum { font: 600 12px var(--font-mono); color: var(--text-muted); padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); overflow-wrap: anywhere; }
+.crmt-col__cards { display: flex; flex-direction: column; gap: 8px; }
+.crmt-col__empty { padding: 18px 8px; text-align: center; font: 500 12.5px var(--font-ui); color: var(--text-ghost); border: 1px dashed var(--line); border-radius: var(--r-md); }
+.crmt-card { display: flex; flex-direction: column; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); cursor: grab; }
+.crmt-card.is-dragging { opacity: .45; }
+.crmt-card__main { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 11px 12px 8px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: inherit; min-width: 0; }
+.crmt-card__top { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.crmt-card__name { font: 600 14px var(--font-ui); }
+.crmt-card__client { font: 500 12px var(--font-ui); color: var(--text-meta); max-width: 100%; }
+.crmt-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.crmt-card__val { font: 600 12px var(--font-mono); color: var(--text-3); }
+.crmt-move { display: block; padding: 0 8px 8px; }
+.crmt-move select { width: 100%; height: 36px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--inset-deep); color: var(--text-meta); font: 500 12.5px var(--font-ui); padding: 0 8px; }
+@media (hover: hover) and (pointer: fine) { .crmt-move { display: none; } .crmt-card:hover .crmt-move, .crmt-card:focus-within .crmt-move { display: block; } }

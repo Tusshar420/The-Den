@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Den</title>
+<!-- The Den 2.1 crash screen. Plain HTML on purpose: it must show even when the app's scripts can't run.
+     DenHome's boot watchdog sends the browser here when the Den's own code fails while starting. -->
+<style>
+  html, body { margin:0; min-height:100%; background:#0A0E13; color:#E8EEF3; font-family:'Bricolage Grotesque', system-ui, -apple-system, sans-serif; }
+  @keyframes denRise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @keyframes octo-wig { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+  @keyframes octo-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  a { text-decoration:none; display:inline-flex; align-items:center; }
+</style></head>
+<body>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; align-items:center; justify-content:center; padding:40px 20px; background:radial-gradient(800px 500px at 50% 0%, rgba(255,123,92,0.08), transparent 60%), #0A0E13;">
+  <div style="display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; max-width:560px; animation:denRise .4s cubic-bezier(.2,.7,.3,1);">
+    
+    <svg width="120" height="120" viewBox="0 0 80 80" role="img" aria-label="Octopus" style="overflow:visible"><g><g><g style="transform-origin:18px 50px;animation:octo-wig 2.2s ease-in-out 0.00s infinite"><path d="M18 48 q -5 10 1 18 q 3 5 -4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g><g style="transform-origin:27px 50px;animation:octo-wig 2.2s ease-in-out 0.16s infinite"><path d="M27 48 q 5 10 -1 18 q -3 5 4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g><g style="transform-origin:36px 50px;animation:octo-wig 2.2s ease-in-out 0.32s infinite"><path d="M36 48 q -5 10 1 18 q 3 5 -4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g><g style="transform-origin:45px 50px;animation:octo-wig 2.2s ease-in-out 0.48s infinite"><path d="M45 48 q 5 10 -1 18 q -3 5 4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g><g style="transform-origin:54px 50px;animation:octo-wig 2.2s ease-in-out 0.64s infinite"><path d="M54 48 q -5 10 1 18 q 3 5 -4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g><g style="transform-origin:62px 50px;animation:octo-wig 2.2s ease-in-out 0.80s infinite"><path d="M62 48 q 5 10 -1 18 q -3 5 4 6" stroke="#FF7B5C" stroke-width="6.5" stroke-linecap="round" fill="none"/></g></g><path d="M13 40 C13 16 26 6 40 6 C54 6 67 16 67 40 C67 49 57 53 40 53 C23 53 13 49 13 40 Z" fill="#FF7B5C"/><ellipse cx="29" cy="17" rx="7" ry="4" fill="#fff" opacity=".2" transform="rotate(-20 29 17)"/><g style="transform-origin:40px 34px;animation:octo-blink 4.5s infinite"><ellipse cx="31" cy="34" rx="5.5" ry="6.5" fill="#FFF3EC"/><ellipse cx="49" cy="34" rx="5.5" ry="6.5" fill="#FFF3EC"/><circle cx="31" cy="34" r="2.2" fill="#0B1016"/><circle cx="49" cy="34" r="2.2" fill="#0B1016"/><path d="M25 25 l9 3 M55 25 l-9 3" stroke="#0B1016" stroke-width="2.4" stroke-linecap="round"/></g></g></svg>
+    <div style="font-size:30px; font-weight:750; letter-spacing:-0.01em;">Something tangled my arms.</div>
+    <div style="font-size:15px; line-height:1.6; color:#C2CDD8; text-wrap:pretty;">The Den hit an error while loading. The server is running and nothing was lost — the queue keeps working in the background.</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <a href="/dashboard" style="height:42px; padding:0 18px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; color:#1A0A05;">Reload the Den</a>
+      <a href="/dashboard?safe=1" style="height:42px; padding:0 18px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); cursor:pointer; font-family:inherit; font-size:14px; font-weight:650; color:#E8EEF3;">Open in safe mode</a>
+    </div>
+    <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+      <button id="copy" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#93A1B0;">Copy error details</button>
+      <button id="det" style="border:0; background:none; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#93A1B0;">Show technical details</button>
+    </div>
+    <div id="err" hidden style="width:100%; padding:12px; border-radius:12px; background:rgba(6,9,13,0.6); border:1px solid rgba(255,255,255,0.06); text-align:left; font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.65; color:#FFC7D0; white-space:pre-wrap; word-break:break-word;"></div>
+  </div>
+</div>
+<script>
+  // What the watchdog saved (this tab only). Shown as text, never as HTML.
+  var text = ''; try { text = sessionStorage.getItem('den.crash') || ''; } catch (e) {}
+  text = (text || 'No details were saved.') + '\n    ' + navigator.userAgent;
+  var box = document.getElementById('err'); box.textContent = text;
+  document.getElementById('det').onclick = function () { box.hidden = !box.hidden; this.textContent = box.hidden ? 'Show technical details' : 'Hide technical details'; };
+  document.getElementById('copy').onclick = function () { var b = this; try { navigator.clipboard.writeText(text).then(function () { b.textContent = 'Copied ✓'; }); } catch (e) {} };
+</script>
+</body></html>

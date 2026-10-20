@@ -3,7 +3,7 @@
 // a photo - so sending goes through the normal Ask flow. The list lives in the server's
 // `quick_buttons` setting, so it is the same on the phone.
 
-import { esc, spinner, toggle } from '../ui.js';
+import { esc, spinner, toggle, polishLabel, foldTitle, folded } from '../ui.js';
 
 export const quickButtons = c => (c.d.settings && c.d.settings.quick_buttons) || [];
 
@@ -21,9 +21,9 @@ export function quickSection(c) {
   const list = quickButtons(c);
   const editing = c.ui.quickEdit;
   const right = `<span class="qb-tools">${list.length ? `<button class="btn--text" data-action="quickEditToggle">${editing ? 'Done' : 'Edit'}</button>` : ''}<button class="btn--text" data-action="quickNew">+ Add</button></span>`;
-  return `<section class="section reveal" style="--i:60" data-key="quick">
-    <div class="section__head"><span class="section__title">Quick buttons</span>${right}</div>
-    ${list.length || !editing ? `<div class="qb-grid" role="group" aria-label="Quick buttons">${morningButton(editing)}${list.map(b => button(b, editing)).join('')}</div>` : ''}
+  return `<section class="section reveal" style="--i:150" data-key="quick">
+    <div class="section__head">${foldTitle(c, 'quick', 'Quick buttons')}${right}</div>
+    ${!folded(c, 'quick') && (list.length || !editing) ? `<div class="qb-grid" role="group" aria-label="Quick buttons">${morningButton(editing)}${list.map(b => button(b, editing)).join('')}</div>` : ''}
   </section>`;
 }
 
@@ -36,7 +36,7 @@ export function quickSheet(c, wrap) {
     <span class="pal-label">NAME</span>
     <div class="qb-name"><input id="quickIcon" class="input qb-name__icon" maxlength="8" placeholder="✨" data-input="quickNew.icon" aria-label="Emoji" value="${esc(q.icon)}">
       <input id="quickLabel" class="input" maxlength="40" placeholder="e.g. Sanskrit exam paper" data-input="quickNew.label" aria-label="Button name" value="${esc(q.label)}"></div>
-    <span class="pal-label">WHAT IT ASKS OCTOPUS</span>
+    ${polishLabel('WHAT IT ASKS OCTOPUS', 'quickPrompt', q.prompt)}
     <textarea id="quickPrompt" class="input edit-prompt" rows="6" maxlength="2000" data-input="quickNew.prompt" data-autogrow="300" aria-label="Prompt"
       placeholder="Convert the attached photo into typed text…">${esc(q.prompt)}</textarea>
     <div class="qb-pic"><span>Needs a picture<span class="meta">Opens the picture picker when tapped</span></span>${toggle(!!q.pic, 'quickNewPic', 'aria-label="Needs a picture"')}</div>

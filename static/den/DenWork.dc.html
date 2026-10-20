@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:14px; padding:4px 0 40px; min-width:0; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; align-items:flex-start;">
+      <sc-if value="{{ rvShowList }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:{{ rvListFlex }}; min-width:0; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; gap:4px;"><sc-for list="{{ rvFilters }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}<sc-if value="{{ c.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ c.n }}</span></sc-if></button></sc-for></div>
+          <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+            <sc-for list="{{ runs }}" as="r" hint-placeholder-count="4">
+              <button onClick="{{ r.pick }}" style="display:flex; flex-direction:column; gap:6px; padding:12px 14px; border:0; border-top:1px solid rgba(255,255,255,0.04); box-shadow:{{ r.line }}; background:{{ r.bg }}; cursor:pointer; text-align:left; color:#E8EEF3; font-family:inherit;">
+                <div style="display:flex; align-items:center; gap:8px; width:100%;"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ r.id }}</span><span style="flex:1;"></span><span style="flex:none; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ r.pbg }}; color:{{ r.pc }}; white-space:nowrap;">{{ r.pill }}</span></div>
+                <div style="font-size:13.5px; font-weight:650;">{{ r.title }}</div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:#93A1B0; width:100%;"><span style="width:6px; height:6px; border-radius:2px; background:{{ r.pcol }};"></span><span style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.proj }} · {{ r.when }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6FCF97;">+{{ r.add }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#FF8FA2;">−{{ r.del }}</span></div>
+              </button>
+            </sc-for>
+            <sc-if value="{{ rvEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:26px; text-align:center; font-size:13px; color:#93A1B0;">All caught up — nothing to review.</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ rvShowDetail }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:14px;">
+          <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}"><button onClick="{{ rvBack }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; align-self:flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg>All runs</button></sc-if>
+          <div style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+            <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+              <sc-if value="{{ rvDesk }}" hint-placeholder-val="{{ true }}"><button onClick="{{ rvToggleList }}" title="{{ rvListTitle }}" style="flex:none; width:36px; height:36px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ rvListIcon }}"></path></svg></button></sc-if>
+              <div style="flex:1 1 260px; min-width:0;"><div style="display:flex; align-items:center; gap:8px;"><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#6B7A8A;">{{ rv.id }}</span><span style="flex:none; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ rv.pbg }}; color:{{ rv.pc }}; white-space:nowrap;">{{ rv.pill }}</span></div><div style="font-size:20px; font-weight:750; margin-top:4px;">{{ rv.title }}</div><div style="font-size:12.5px; color:#93A1B0; margin-top:2px;">{{ rv.meta }}</div></div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;"><button onClick="{{ rvChat }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px;">Open chat</button><button onClick="{{ rvRevert }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px; border-color:rgba(255,84,112,0.3); color:#FF8FA2;">Revert run</button><button onClick="{{ rvReqToggle }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px;">Request changes</button><button onClick="{{ rvMark }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px; background:{{ rvMarkBg }}; color:{{ rvMarkFg }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg>{{ rvMarkLabel }}</button></div>
+            </div>
+            <div style="display:flex; gap:10px; padding:12px; border-radius:14px; background:rgba(165,139,255,0.06); border:1px solid rgba(165,139,255,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9B8FF" style="flex:none; margin-top:2px; stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg><div style="font-size:13.5px; line-height:1.6; color:#DCE4EB; text-wrap:pretty;">{{ rv.summary }}</div></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;"><sc-for list="{{ rv.checks }}" as="c" hint-placeholder-count="3"><span style="height:26px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:999px; background:{{ c.bg }}; font-size:12px; font-weight:600; color:{{ c.c }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ c.c }};"></span>{{ c.label }}</span></sc-for></div>
+            <sc-if value="{{ rvReq }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:8px;"><textarea value="{{ rvReqText }}" onChange="{{ rvOnReq }}" rows="3" placeholder="What should Octopus change? It will run again on the same branch." style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,123,92,0.35); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.55; outline:none;"></textarea><div style="display:flex; justify-content:flex-end; gap:6px;"><button onClick="{{ rvReqToggle }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Cancel</button><button onClick="{{ rvSendReq }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap;">Send to Octopus</button></div></div></sc-if>
+          </div>
+          <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.05);"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">Files changed · {{ rv.fileCount }}</h3><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#6FCF97;">+{{ rv.add }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#FF8FA2;">−{{ rv.del }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">⎇ {{ rv.branch }}</span></div>
+            <div style="display:flex; gap:4px; padding:8px 10px; overflow-x:auto; scrollbar-width:none; border-bottom:1px solid rgba(255,255,255,0.05);">
+              <sc-for list="{{ rvFiles }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:8px; padding:0 10px; border-radius:9px; cursor:pointer; font-family:inherit; border:1px solid {{ f.bd }}; background:{{ f.bg }}; color:{{ f.fg }};"><sc-if value="{{ f.seen }}" hint-placeholder-val="{{ false }}"><span style="color:#6FCF97;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px;">{{ f.name }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6FCF97;">+{{ f.add }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#FF8FA2;">−{{ f.del }}</span></button></sc-for>
+            </div>
+            <div style="padding:6px 14px; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0; background:rgba(255,255,255,0.02);">{{ rvPath }}</div>
+            <div style="overflow-x:auto; background:rgba(6,9,13,0.55);">
+              <div style="min-width:560px; padding:6px 0 10px;">
+                <sc-for list="{{ rvDiff }}" as="l" hint-placeholder-count="8"><div style="display:flex; font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:21px; background:{{ l.bg }};"><span style="flex:none; width:42px; padding-right:8px; text-align:right; color:#4A5866; user-select:none;">{{ l.a }}</span><span style="flex:none; width:42px; padding-right:8px; text-align:right; color:#4A5866; user-select:none;">{{ l.b }}</span><span style="flex:none; width:18px; text-align:center; color:{{ l.sc }}; user-select:none;">{{ l.sign }}</span><span style="flex:1; white-space:pre; color:{{ l.fg }}; padding-right:14px;">{{ l.text }}</span></div></sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isHidden }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); font-size:13px; color:#A3B0BE;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7c1.6 0 3-.4 4.3-1"></path></svg><span style="flex:1;">Hidden tasks don't show on Home or in the queue. They keep their chat and history until you delete them.</span></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"><sc-for list="{{ hdFilters }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}<sc-if value="{{ c.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ c.n }}</span></sc-if></button></sc-for><span style="flex:1;"></span><input value="{{ hq }}" onChange="{{ onHq }}" placeholder="Search hidden tasks" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:0 1 220px;"></div>
+    <sc-if value="{{ hdSel }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; background:rgba(255,123,92,0.08); border:1px solid rgba(255,123,92,0.3);"><span style="flex:1; font-size:13px; font-weight:650;">{{ hdSelN }} selected</span><button onClick="{{ hdUnhideSel }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap;">Unhide</button><button onClick="{{ hdDelSel }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; border-color:rgba(255,84,112,0.3); color:#FF8FA2;">Delete</button></div></sc-if>
+    <div style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+      <sc-for list="{{ hidden }}" as="h" hint-placeholder-count="5">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:60px; padding:8px 14px; border-top:1px solid rgba(255,255,255,0.04); background:{{ h.bg }};">
+          <button onClick="{{ h.sel }}" style="flex:none; width:18px; height:18px; padding:0; display:grid; place-items:center; border-radius:5px; border:1.5px solid {{ h.sBd }}; background:{{ h.sBg }}; cursor:pointer; color:#1A0A05;"><sc-if value="{{ h.on }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+          <div style="flex:2 1 220px; min-width:0;"><div style="font-size:13.5px; font-weight:650; color:#C2CDD8;">{{ h.title }}</div><div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#93A1B0;"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ h.id }}</span><span style="width:6px; height:6px; border-radius:2px; background:{{ h.pcol }};"></span>{{ h.proj }} · {{ h.when }}</div></div>
+          <span style="flex:none; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ h.pbg }}; color:{{ h.pc }}; white-space:nowrap;">{{ h.pill }}</span>
+          <div style="display:flex; gap:5px;"><button onClick="{{ h.unhide }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:30px;">Unhide</button><button onClick="{{ h.run }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:30px;">Run now</button><button onClick="{{ h.del }}" title="Delete" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:30px; width:30px; padding:0; color:#93A1B0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg></button></div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ hdEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:30px; text-align:center; font-size:13px; color:#93A1B0;">No hidden tasks.</div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+    <div data-tour="cal-bar" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <button onClick="{{ calToday }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px;">Today</button>
+      <div style="display:flex; gap:2px;"><button onClick="{{ calPrev }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px; width:36px; padding:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button><button onClick="{{ calNext }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:36px; width:36px; padding:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 6l6 6-6 6"></path></svg></button></div>
+      <span style="font-size:19px; font-weight:750; margin:0 6px;">{{ calTitle }}</span>
+      <span style="flex:1;"></span>
+      <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); overflow-x:auto; scrollbar-width:none; max-width:100%;"><sc-for list="{{ calViews }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="flex:none; height:32px; display:flex; align-items:center; gap:6px; padding:0 13px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}<sc-if value="{{ t.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ t.n }}</span></sc-if></button></sc-for></div>
+      <button onClick="{{ calNew }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:36px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 5v14M5 12h14"></path></svg>New</button>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ kindChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}<sc-if value="{{ c.n }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; opacity:.7;">{{ c.n }}</span></sc-if></button></sc-for></div>
+    <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+      <div style="flex:3 1 560px; min-width:0;">
+        <sc-if value="{{ vMonth }}" hint-placeholder-val="{{ true }}">
+          <div style="border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;">
+            <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr));"><sc-for list="{{ dowHead }}" as="d" hint-placeholder-count="7"><div style="padding:9px 10px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:{{ d.c }};">{{ d.l }}</div></sc-for></div>
+            <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr));">
+              <sc-for list="{{ month }}" as="c" hint-placeholder-count="35">
+                <div onClick="{{ c.pick }}" onDoubleClick="{{ c.quick }}" style="min-height:{{ cellH }}; display:flex; flex-direction:column; gap:3px; padding:6px; border-top:1px solid rgba(255,255,255,0.05); border-left:1px solid rgba(255,255,255,0.04); background:{{ c.bg }}; cursor:pointer; min-width:0;">
+                  <span style="align-self:flex-start; min-width:24px; height:24px; padding:0 5px; display:grid; place-items:center; border-radius:999px; font-size:12.5px; font-weight:{{ c.fw }}; background:{{ c.nbg }}; color:{{ c.fg }}; box-sizing:border-box;">{{ c.n }}</span>
+                  <sc-for list="{{ c.ev }}" as="e" hint-placeholder-count="1"><span title="{{ e.tip }}" style="display:flex; align-items:center; gap:4px; height:20px; padding:0 6px; border-radius:6px; background:{{ e.tint }}; font-size:11px; font-weight:600; color:#E8EEF3; white-space:nowrap; overflow:hidden; min-width:0;"><span style="flex:none; width:3px; height:12px; border-radius:2px; background:{{ e.c }};"></span><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10px; color:#C2CDD8;">{{ e.time }}</span><span style="overflow:hidden; text-overflow:ellipsis;">{{ e.t }}</span></span></sc-for>
+                  <sc-if value="{{ c.more }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px; font-weight:650; color:#93A1B0; padding-left:4px;">{{ c.more }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ vWeek }}" hint-placeholder-val="{{ false }}">
+          <div style="border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:auto; max-height:640px;">
+            <div style="display:grid; grid-template-columns:52px repeat(7, minmax(90px, 1fr)); min-width:700px;">
+              <div style="position:sticky; top:0; z-index:3; background:rgba(16,22,30,0.97);"></div>
+              <sc-for list="{{ weekDays }}" as="d" hint-placeholder-count="7"><button onClick="{{ d.pick }}" style="position:sticky; top:0; z-index:3; padding:8px; border:0; border-left:1px solid rgba(255,255,255,0.05); background:rgba(16,22,30,0.97); cursor:pointer; font-family:inherit; text-align:left;"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ d.dow }}</div><div style="font-size:18px; font-weight:750; color:{{ d.fg }};">{{ d.n }}</div></button></sc-for>
+              <div style="position:relative; height:{{ wkH }};"><sc-for list="{{ hours }}" as="h" hint-placeholder-count="13"><span style="position:absolute; top:{{ h.top }}; right:8px; font-family:'JetBrains Mono', monospace; font-size:10px; color:#5B6A7A; transform:translateY(-50%);">{{ h.l }}</span></sc-for></div>
+              <sc-for list="{{ weekDays }}" as="d" hint-placeholder-count="7">
+                <div onDoubleClick="{{ d.quick }}" style="position:relative; height:{{ wkH }}; border-left:1px solid rgba(255,255,255,0.05); background:{{ d.colBg }}; background-image:repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 48px);">
+                  <sc-if value="{{ d.nowLine }}" hint-placeholder-val="{{ false }}"><div style="position:absolute; left:0; right:0; top:{{ d.nowTop }}; height:2px; background:#FF7B5C; z-index:2;"><span style="position:absolute; left:-4px; top:-3px; width:8px; height:8px; border-radius:50%; background:#FF7B5C;"></span></div></sc-if>
+                  <sc-for list="{{ d.ev }}" as="e" hint-placeholder-count="1"><div title="{{ e.tip }}" style="position:absolute; left:4px; right:4px; top:{{ e.top }}; height:{{ e.h }}; padding:4px 7px; border-radius:8px; background:{{ e.tint }}; border-left:3px solid {{ e.c }}; overflow:hidden; box-sizing:border-box;"><div style="font-size:11.5px; font-weight:650; color:#E8EEF3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ e.t }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#C2CDD8;">{{ e.time }}</div></div></sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ vAgenda }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <sc-for list="{{ agenda }}" as="g" hint-placeholder-count="4">
+              <div style="display:flex; gap:14px; align-items:flex-start;">
+                <div style="flex:none; width:58px; text-align:center; padding-top:6px;"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:{{ g.c }};">{{ g.dow }}</div><div style="font-size:22px; font-weight:750; color:{{ g.fg }};">{{ g.n }}</div></div>
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); overflow:hidden;"><sc-for list="{{ g.ev }}" as="e" hint-placeholder-count="2"><div style="display:flex; align-items:center; gap:12px; min-height:50px; padding:8px 14px; border-top:1px solid rgba(255,255,255,0.04);"><span style="flex:none; width:3px; height:28px; border-radius:2px; background:{{ e.c }};"></span><span style="flex:none; width:90px; font-family:'JetBrains Mono', monospace; font-size:12px; color:#C2CDD8;">{{ e.span }}</span><span style="flex:1; min-width:0; font-size:13.5px; font-weight:650;">{{ e.t }}</span><sc-if value="{{ e.rep }}" hint-placeholder-val="{{ false }}"><span title="Repeats" style="color:#93A1B0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"></path></svg></span></sc-if><span style="flex:none; height:20px; padding:0 8px; display:inline-flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ e.pbg }}; color:{{ e.pc }}; white-space:nowrap;">{{ e.pill }}</span></div></sc-for></div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="flex:1 1 280px; min-width:0; display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04);">
+        <div><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ selDow }}</div><div style="font-size:20px; font-weight:750;">{{ selLabel }}</div></div>
+        <sc-for list="{{ dayEv }}" as="e" hint-placeholder-count="2"><div style="display:flex; gap:10px; padding:10px 12px; border-radius:13px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);"><span style="flex:none; width:3px; border-radius:2px; background:{{ e.c }};"></span><div style="flex:1; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ e.t }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ e.span }} · {{ e.kind }}{{ e.repTxt }}</div></div><sc-if value="{{ e.canNote }}" hint-placeholder-val="{{ false }}"><button onClick="{{ e.note }}" title="{{ e.noteTitle }}" style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;" style-hover="color:#FFA48C;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"></path></svg></button></sc-if><button onClick="{{ e.del }}" title="{{ e.delTitle }}" style="flex:none; width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;" style-hover="color:#FF8FA2;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div></sc-for>
+        <sc-if value="{{ dayEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#6B7A8A;">Nothing scheduled.</div></sc-if>
+        <div style="height:1px; background:rgba(255,255,255,0.06);"></div>
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">QUICK ADD</div>
+        <input ref="{{ qaRef }}" value="{{ qa.t }}" onChange="{{ qaSet.t }}" onKeyDown="{{ qaKey }}" placeholder="Title" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0;">
+        <div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04);"><sc-for list="{{ qaKinds }}" as="k" hint-placeholder-count="4"><button onClick="{{ k.pick }}" style="flex:1; height:28px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; background:{{ k.bg }}; color:{{ k.fg }};">{{ k.label }}</button></sc-for></div>
+        <div style="display:flex; gap:6px;"><input type="time" value="{{ qa.time }}" onChange="{{ qaSet.time }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; flex:1; font-family:'JetBrains Mono', monospace; font-size:12.5px; color-scheme:dark;"><select ref="{{ fixSel }}" data-v="{{ qa.rep }}" value="{{ qa.rep }}" onChange="{{ qaSet.rep }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; box-sizing:border-box; min-width:0; background:#141B24; cursor:pointer; color-scheme:dark; flex:1;"><option value="">Doesn't repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option></select></div>
+        <button onClick="{{ qaAdd }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:38px;">Add to {{ selShort }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBrief }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative; display:flex; flex-direction:column; gap:14px; padding:24px; border-radius:22px; overflow:hidden; background:linear-gradient(135deg, rgba(255,123,92,0.14), rgba(20,28,38,0.55) 55%); border:1px solid rgba(255,123,92,0.22); backdrop-filter:blur(22px);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A; color:#FFA48C;">{{ brDate }}</div>
+      <div style="font-size:clamp(24px, 3.4vw, 34px); font-weight:750; line-height:1.15; letter-spacing:-0.01em;">{{ brHello }}</div>
+      <div style="max-width:760px; font-size:15px; line-height:1.65; color:#DCE4EB; text-wrap:pretty;">{{ brSummary }}</div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <button onClick="{{ brPlay }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB; white-space:nowrap; height:40px; padding:0 14px; background:rgba(255,255,255,0.08);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ brPlayIcon }}"></path></svg>{{ brPlayLabel }}</button>
+        <div style="flex:0 1 200px; height:4px; border-radius:4px; background:rgba(255,255,255,0.1); overflow:hidden;"><div style="height:100%; width:{{ brProg }}; background:#FF7B5C; transition:width .25s linear;"></div></div>
+        <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ brTime }}</span>
+        <span style="flex:1;"></span>
+        <button onClick="{{ brStart }}" style="height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 13px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05; white-space:nowrap; height:40px; padding:0 16px; font-size:13.5px;">Start my day →</button>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; align-items:start;">
+      <sc-for list="{{ brCards }}" as="c" hint-placeholder-count="5">
+        <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px) saturate(150%); box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); border-color:{{ c.bd }};">
+          <div style="display:flex; align-items:center; gap:10px;"><span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ c.tint }}; color:{{ c.c }};"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ c.icon }}"></path></svg></span><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">{{ c.title }}</h3><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ c.count }}</span></div>
+          <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:10px; min-height:40px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.05);">
+              <span style="flex:none; width:7px; height:7px; border-radius:50%; background:{{ r.c }};"></span>
+              <div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:600; color:{{ r.fg }}; text-decoration:{{ r.deco }};">{{ r.t }}</div><sc-if value="{{ r.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px; color:#93A1B0;">{{ r.sub }}</div></sc-if></div>
+              <sc-if value="{{ r.bar }}" hint-placeholder-val="{{ false }}"><div style="flex:none; width:70px; height:5px; border-radius:5px; background:rgba(255,255,255,0.07); overflow:hidden;"><div style="height:100%; width:{{ r.bar }}; background:{{ r.c }};"></div></div></sc-if>
+              <sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="1"><button onClick="{{ b.run }}" style="flex:none; height:28px; padding:0 10px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:700; white-space:nowrap; background:{{ b.bg }}; color:{{ b.fg }}; border:1px solid {{ b.bd }};">{{ b.label }}</button></sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const D = window.Den;
+const G = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97', err:'#FF5470', mute:'#93A1B0' };
+const tn = (h, a) => { const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+const tabsOf = (cur, arr, set) => arr.map(([id, label, n]) => ({ label, n: n == null ? '' : String(n), pick:() => set(id), bg: cur === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: cur === id ? '#FFFFFF' : '#93A1B0' }));
+const chipsOf = (cur, arr, set, multi) => arr.map(([id, label, dot, n]) => { const on = multi ? cur.includes(id) : cur === id; const c = dot || '#FF7B5C'; return { label, dot: dot || '', n: n == null ? '' : String(n), pick:() => set(id), bg: on ? tn(c, 0.16) : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? tn(c, 0.5) : 'rgba(255,255,255,0.08)' }; });
+const pill = (label, c) => ({ pill:label, pc:c, pbg:tn(c, 0.13) });
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const dd = s => new Date(s + 'T00:00');
+const ymd = d => D.ymd(d);
+const fmtD = s => { if (!s) return '—'; const d = dd(s); return d.getDate() + ' ' + MON[d.getMonth()]; };
+const addD = (s, n) => { const d = dd(s); d.setDate(d.getDate() + n); return ymd(d); };
+const endT = (t, m) => { const [h, mi] = t.split(':').map(Number); const x = (h * 60 + mi + m) % 1440; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+const nav = (self, id) => { const go = self.props.onNav || D.go; go && go(id); };
+class Base extends DCLogic {
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.mounted && this.mounted(); }
+  say(t, s, c) { (this.props.say || D.say)(t, s || '', c || G.coral); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  inp = k => e => this.setState({ [k]:e.target.value });
+}
+
+// ---- review runs: the server's state -> the design's pill
+const RS = { review:['NEEDS REVIEW', G.amber], reviewed:['REVIEWED', G.green], changes:['CHANGES REQUESTED', G.violet], reverted:['REVERTED', '#FF8FA2'] };
+const VERDICT = { passed:G.green, failed:G.err, unverified:G.amber, none:G.mute };
+const DIFF_MAX = 1500;
+// /tasks/{id}/diff is one unified diff; split it per file with real line numbers.
+function parseDiff(text) {
+  const out = {}; let cur = null, head = false, a = 0, b = 0;
+  String(text || '').split('\n').forEach(l => {
+    if (l.startsWith('diff --git ')) { const m = / b\/(.+)$/.exec(l); cur = out[m ? m[1] : l] = []; head = true; return; }
+    if (!cur) return;
+    if (head && !l.startsWith('@@')) { if (l.startsWith('Binary files')) cur.push({ sg:'', text:'Binary file - no line diff' }); const m = /^\+\+\+ b\/(.+)$/.exec(l); if (m && !out[m[1]]) out[m[1]] = cur; return; }
+    if (l.startsWith('@@')) { head = false; const m = /@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(l); a = m ? +m[1] : 0; b = m ? +m[2] : 0; cur.push({ sg:'@', text:l }); return; }
+    if (l === '' || l.startsWith('\\')) return;
+    const sg = l[0];
+    if (sg === '+') cur.push({ sg:'+', text:l.slice(1), b:b++ });
+    else if (sg === '-') cur.push({ sg:'-', text:l.slice(1), a:a++ });
+    else cur.push({ sg:' ', text:l.slice(1), a:a++, b:b++ });
+  });
+  return out;
+}
+const diffRow = (sg, text, a, b) => { const add = sg === '+', del = sg === '-', hunk = sg === '@';
+  return { text, sign: add ? '+' : del ? '−' : '', a: a == null ? '' : String(a), b: b == null ? '' : String(b), bg: add ? 'rgba(111,207,151,0.09)' : del ? 'rgba(255,84,112,0.09)' : hunk ? 'rgba(127,178,255,0.06)' : 'transparent', sc: add ? '#6FCF97' : '#FF8FA2', fg: add ? '#C9F2DA' : del ? '#FFC7D0' : hunk ? '#7FB2FF' : '#C2CDD8' }; };
+const note = text => [diffRow('', text)];
+const whenL = iso => { const d = D.parseT(iso); if (!d) return ''; const t = new Date(); const y = new Date(t); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Today ' + D.clock(iso); if (d.toDateString() === y.toDateString()) return 'Yesterday ' + D.clock(iso);
+  return Date.now() - d.getTime() < 6 * 864e5 ? D.dayClock(iso) : d.getDate() + ' ' + MON[d.getMonth()] + ' ' + D.clock(iso); };
+const acctLabel = id => { if (!id) return ''; const a = D.accounts().find(x => x.id === id); return a ? D.acctName(a) : ''; };
+
+// ---- hidden tasks
+const HW = { hidden:['HIDDEN BY YOU', G.mute], muted:['RECIPE MUTED', G.violet], snoozed:['SNOOZED', G.amber] };
+
+// ---- calendar: the design's four kinds; the timeline's other kinds are shown as the nearest one
+const EK = { meeting:['Meeting', G.coral], deadline:['Deadline', G.err], reminder:['Reminder', G.amber], task:['Task', G.blue] };
+const GROUP = { meeting:'meeting', demo:'meeting', presentation:'meeting', deadline:'deadline', milestone:'deadline', reminder:'reminder', event:'reminder', task:'task' };
+const KLABEL = { meeting:'Meeting', demo:'Demo', presentation:'Presentation', deadline:'Deadline', milestone:'Milestone', reminder:'Reminder', event:'Event', task:'Task' };
+const dowM = d => (d.getDay() + 6) % 7;
+const monthLen = d => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+const monday = x => { const y = new Date(x); y.setDate(x.getDate() - dowM(x)); return y; };
+// timeline._hit: does a repeat rule, counted from its first day, fall on d?
+const hit = (r, first, d) => { const every = r.every || 1;
+  if (r.freq === 'days') return Math.round((d - first) / 864e5) % every === 0;
+  if (r.freq === 'weekdays') return dowM(d) < 5;
+  if (r.freq === 'weeks') return (r.on && r.on.length ? r.on : [dowM(first)]).includes(dowM(d)) && Math.round((monday(d) - monday(first)) / 864e5 / 7) % every === 0;
+  if (r.freq === 'months') { const md = (d.getFullYear() - first.getFullYear()) * 12 + d.getMonth() - first.getMonth(); if (md % every) return false;
+    if (!r.nth) return d.getDate() === Math.min(first.getDate(), monthLen(d));
+    if (dowM(d) !== (r.on && r.on.length ? r.on[0] : dowM(first))) return false;
+    return r.nth === -1 ? d.getDate() + 7 > monthLen(d) : Math.floor((d.getDate() - 1) / 7) + 1 === r.nth; }
+  return false; };
+const occurs = (e, day) => { if (!e.rule) return e.d === day; if (day < e.d || (e.until && day > e.until) || e.skip.includes(day)) return false; return hit(e.rule, dd(e.d), dd(day)); };
+const REP_RULE = { daily:() => ({ freq:'days', every:1 }), weekdays:() => ({ freq:'weekdays' }), weekly:day => ({ freq:'weeks', every:1, on:[dowM(dd(day))] }) };
+const fromTimeline = e => { const rule = e.repeat_rule || (e.repeat_days ? { freq:'days', every:e.repeat_days } : null);
+  return { id:e.id, src:'den', kindId:e.kind, pid:e.project_id, k:GROUP[e.kind] || 'reminder', label:KLABEL[e.kind] || e.kind_label || 'Event', t:e.title, d:e.start_date || e.first_date || e.date, time:e.time || '',
+    dur:e.duration || (e.kind === 'meeting' && e.time ? 60 : 0), rule, until:e.repeat_until || '', skip:e.skip_dates || (rule && rule.skip) || [], words:e.repeat || '', proj:e.project_name || '' }; };
+const fromGoogle = g => { const st = D.parseT(g.start), en = D.parseT(g.end);
+  return { id:'g:' + g.id, src:'google', k:'meeting', label:'Meeting', t:g.title || '(no title)', d: g.all_day ? String(g.start).slice(0, 10) : ymd(st), time: g.all_day ? '' : D.clock(g.start),
+    dur: g.all_day || !en ? 0 : Math.round((en - st) / 6e4), rule:null, until:'', skip:[], words:'', proj:'Google Calendar' }; };
+
+class Component extends Base {
+  state = { rf:'review', rsel:null, rvListShut: (() => { try { return localStorage.getItem('den.work.rvListShut') === '1'; } catch (e) { return false; } })(), fsel:0, seen:{}, req:false, reqText:'', rvPhone:false, rvOver:{}, hf:'all', hq:'', hsel:{}, gone:{}, view:'month', cur:D.today(), sel:D.today(), kinds:['meeting', 'deadline', 'reminder', 'task'], qa:{ t:'', k:'meeting', time:'10:00', rep:'' }, play:false, prog:0, done:{} };
+  qaRef = el => { this.qaEl = el; };
+  componentWillUnmount() { this.stopSpeech(); }
+  componentDidUpdate(prev) { if (prev.page === 'briefing' && this.props.page !== 'briefing') this.stopSpeech(); }
+
+  // ------------------------------------------------------------ review runs
+  diffOf(tid, raw) { if (this.dcache && this.dcache.tid === tid && this.dcache.raw === raw) return this.dcache.files;
+    const files = parseDiff(raw.diff); this.dcache = { tid, raw, files }; return files; }
+  override(tid, st) { this.setState(s => { const o = { ...s.rvOver }; if (st) o[tid] = st; else delete o[tid]; return { rvOver:o }; }); }
+  revert(rv) {
+    if (this.armRev !== rv.tid || Date.now() - this.armRevAt > 6000) { this.armRev = rv.tid; this.armRevAt = Date.now(); return this.say('Tap Revert run again to queue it', 'Octopus will undo ' + rv.id + ' in that chat. Commits and any push still ask you first.', G.amber); }
+    this.armRev = null; this.override(rv.tid, 'reverted');
+    D.act(() => D.api('/den/work/runs/' + rv.tid + '/revert', { method:'POST', body:{} }), { ok: r => ['Revert queued', rv.id + ' — as #' + r.task_id + ', needs approval for git', G.err], reload:['wkruns'] }).catch(() => this.override(rv.tid, null));
+  }
+  sendReq(rv) {
+    const text = this.state.reqText.trim(); if (!text) return;
+    this.override(rv.tid, 'changes'); this.setState({ req:false, reqText:'' });
+    D.act(() => D.api('/projects/' + rv.pid + '/tasks', { method:'POST', body:{ prompt:text, thread_id:rv.root } }), { ok:['Sent back to Octopus', rv.id + ' — it will run again in the same chat' + (rv.branch !== '—' ? ' on ' + rv.branch : ''), G.violet], reload:['wkruns'] })
+      .catch(() => { this.override(rv.tid, null); this.setState({ req:true, reqText:text }); });
+  }
+  mark(rv, next) {
+    const on = rv.st !== 'reviewed'; if (rv.st === 'reverted') return this.say('This run was reverted', 'Review the revert once it has run.', G.amber);
+    this.override(rv.tid, on ? 'reviewed' : 'review');
+    D.act(() => D.api('/den/work/runs/' + rv.tid + '/reviewed', { method:'POST', body:{ on } }), { ok: on ? ['Marked reviewed', rv.id + ' · ' + rv.title, G.green] : null, reload:['wkruns'], core:false }).catch(() => this.override(rv.tid, null));
+    if (on) this.setState({ rsel:next, fsel:0, req:false });
+  }
+  reviewVals(s, isPhone) {
+    const data = D.need('wkruns', '/den/work/runs', 20000);
+    const all = ((data && data.runs) || []).map(r => ({ id:'#' + r.id, tid:r.id, root:r.thread_id || r.id, pid:r.project_id, title:r.title || ('Task #' + r.id),
+      proj:r.project_name || D.projName(D.projectById(r.project_id)), pcol:D.projColor(D.projectById(r.project_id)), model:D.laneLabel({ lane:r.lane, model_id:r.model_id }),
+      acct:acctLabel(r.claude_account), dur:D.dur(r.duration_ms), when:whenL(r.finished_at), st:s.rvOver[r.id] || r.state, branch:r.branch || '—', tests:r.tests || '', verdict:r.verdict || 'none',
+      commits:r.commits || [], summary:D.plain(r.summary).trim() || 'The run didn’t leave a summary.', files:r.files || [] }));
+    this.allRuns = all;
+    const runs = all.filter(r => s.rf === 'all' || (s.rf === 'review' ? r.st === 'review' || r.st === 'changes' : r.st === s.rf));
+    const rv = all.find(r => r.tid === s.rsel && runs.includes(r)) || runs[0] || null;
+    const empty = { rvShowList:true, rvShowDetail:false, rvListFlex:'1 1 auto', rvEmpty:true, rvBack:() => {}, runs:[], rv:{ id:'', pill:'', pc:G.mute, pbg:'transparent', title:'', meta:'', summary:'', checks:[], fileCount:'0', add:'0', del:'0', branch:'' }, rvFiles:[], rvPath:'', rvDiff:[],
+      rvMarkLabel:'Mark reviewed', rvMarkBg:'#FF7B5C', rvMarkFg:'#1A0A05', rvMark:() => {}, rvRevert:() => {}, rvChat:() => {}, rvReq:false, rvReqToggle:() => {}, rvReqText:'', rvOnReq:() => {}, rvSendReq:() => {} };
+    const filters = chipsOf(s.rf, [['review', 'Needs review', G.amber, all.filter(r => r.st === 'review' || r.st === 'changes').length], ['reviewed', 'Reviewed', G.green], ['all', 'All']], id => this.setState({ rf:id, rsel:null, fsel:0, req:false }));
+    if (!rv) return { ...empty, rvFilters:filters };
+    const file = rv.files[Math.min(s.fsel, rv.files.length - 1)] || { path:'', add:0, del:0 };
+    const sum = k => rv.files.reduce((a, f) => a + (f[k] || 0), 0);
+    const raw = D.need('wkdiff:' + rv.tid, '/tasks/' + rv.tid + '/diff', 120000);
+    let diff;
+    if (raw === undefined) diff = note('Loading the diff…');
+    else if (!raw) diff = note('Couldn’t load the diff.');
+    else if (!raw.available) diff = note(raw.note || 'No diff for this run.');
+    else { const lines = this.diffOf(rv.tid, raw)[file.path];
+      if (!lines) diff = note(file.untracked || file.status === 'A' ? 'A new file that isn’t in git yet - there’s no line diff to show.' : raw.truncated ? 'The diff was too big to show this file.' : 'No line changes left for this file (binary, or changed back since).');
+      else { diff = lines.slice(0, DIFF_MAX).map(l => diffRow(l.sg, l.text, l.a, l.b)); if (lines.length > DIFF_MAX) diff.push(diffRow('@', '… ' + (lines.length - DIFF_MAX) + ' more lines')); } }
+    const nextRun = () => { const q = all.filter(r => r.tid !== rv.tid && r.st === 'review'); return q[0] ? q[0].tid : rv.tid; };
+    const viewed = rv.files.filter((f, i) => s.seen[rv.tid + ':' + i]).length;
+    return {
+      rvFilters:filters, rvShowList: isPhone ? !s.rvPhone : !s.rvListShut, rvDesk: !isPhone, rvListTitle: s.rvListShut ? 'Show the run list' : 'Hide the run list', rvListIcon: s.rvListShut ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6', rvToggleList:() => { const v = !s.rvListShut; try { localStorage.setItem('den.work.rvListShut', v ? '1' : '0'); } catch (e) {} this.setState({ rvListShut:v }); },  rvShowDetail: !isPhone || s.rvPhone, rvListFlex: isPhone ? '1 1 auto' : '0 0 330px', rvBack:() => this.setState({ rvPhone:false }), rvEmpty: !runs.length,
+      runs: runs.map(r => { const on = r.tid === rv.tid && !isPhone; const [pl, pc] = RS[r.st] || RS.review; return { ...r, ...pill(pl, pc), add:String(r.files.reduce((a, f) => a + f.add, 0)), del:String(r.files.reduce((a, f) => a + f.del, 0)), bg: on ? 'rgba(255,123,92,0.08)' : 'transparent', line: on ? 'inset 3px 0 0 #FF7B5C' : 'none', pick:() => this.setState({ rsel:r.tid, fsel:0, req:false, rvPhone:true }) }; }),
+      rv: { ...rv, ...pill(...(RS[rv.st] || RS.review)), meta:[rv.proj, rv.model, rv.acct, rv.dur, rv.when].filter(Boolean).join(' · '), fileCount:String(rv.files.length), add:String(sum('add')), del:String(sum('del')),
+        checks: [[rv.tests, VERDICT[rv.verdict] || G.mute], [rv.commits.length ? rv.commits.length + (rv.commits.length === 1 ? ' commit' : ' commits') : '', G.teal], [viewed + '/' + rv.files.length + ' files viewed', G.blue]].filter(c => c[0]).map(([label, c]) => ({ label, c, bg:tn(c, 0.1) })) },
+      rvFiles: rv.files.map((f, i) => { const on = f === file; return { name:(f.path || '').split('/').pop(), add:String(f.add), del:String(f.del), seen: !!s.seen[rv.tid + ':' + i], bg: on ? 'rgba(255,255,255,0.08)' : 'transparent', bd: on ? 'rgba(255,255,255,0.14)' : 'transparent', fg: on ? '#FFFFFF' : '#A3B0BE', pick:() => this.setState(st => ({ fsel:i, seen:{ ...st.seen, [rv.tid + ':' + i]:true } })) }; }),
+      rvPath:file.path, rvDiff:diff,
+      rvMarkLabel: rv.st === 'reviewed' ? 'Reviewed' : 'Mark reviewed', rvMarkBg: rv.st === 'reviewed' ? 'rgba(111,207,151,0.16)' : '#FF7B5C', rvMarkFg: rv.st === 'reviewed' ? '#6FCF97' : '#1A0A05',
+      rvMark:() => this.mark(rv, nextRun()), rvRevert:() => this.revert(rv),
+      rvChat:() => (this.props.openChat || D.openChat)(rv.tid),
+      rvReq:s.req, rvReqToggle:() => this.setState({ req:!s.req }), rvReqText:s.reqText, rvOnReq:this.inp('reqText'), rvSendReq:() => this.sendReq(rv),
+    };
+  }
+
+  // ------------------------------------------------------------ hidden tasks
+  gone(ids, on) { this.setState(st => { const g = { ...st.gone }; ids.forEach(i => { if (on) g[i] = true; else delete g[i]; }); return { gone:g, hsel:{} }; }); }
+  label(list) { return list.length > 1 ? list.length + ' tasks' : (list[0] || {}).title; }
+  unhide(list) { const ids = list.map(h => h.tid); this.gone(ids, true);
+    D.act(() => D.api('/tasks/hidden', { method:'POST', body:{ ids, hidden:false } }), { ok:['Unhidden — back in Up next', this.label(list), G.green], reload:['wkhidden', 'wkhidden0'] }).catch(() => this.gone(ids, false)); }
+  runNow(h) { this.gone([h.tid], true);
+    D.act(() => D.api('/den/work/hidden/' + h.tid + '/run', { method:'POST', body:{} }), { ok: r => [r.mode === 'again' ? 'Queued again' : r.mode === 'retry' ? 'Retrying now' : 'Running now', h.title + (r.mode === 'again' ? ' · as #' + r.task_id : ''), G.coral], reload:['wkhidden', 'wkhidden0'] })
+      .catch(() => this.gone([h.tid], false)); }
+  async del(list) { const ids = list.map(h => h.tid); this.gone(ids, true);
+    const res = await Promise.allSettled(ids.map(id => D.api('/tasks/' + id, { method:'DELETE' })));
+    const bad = ids.filter((id, i) => res[i].status === 'rejected');
+    if (bad.length) { this.gone(bad, false); this.say(bad.length === ids.length ? 'Couldn’t delete' : 'Some couldn’t be deleted', res.find(r => r.status === 'rejected').reason.message, G.err); }
+    if (bad.length < ids.length) this.say('Deleted → Recycle bin', this.label(list.filter(h => !bad.includes(h.tid))), G.err);
+    D.invalidate(['wkhidden', 'wkhidden0']); D.refresh().catch(() => {}); }
+  hiddenVals(s) {
+    const data = D.need('wkhidden', '/den/work/hidden', 15000);
+    let items = (data && data.items) || [];
+    if (data === null) {   // the work endpoints aren't loaded yet: hidden chats without the why
+      const fb = D.need('wkhidden0', '/tasks?hidden=true&limit=300', 15000) || [];
+      items = fb.filter(t => !t.thread_id).map(t => ({ id:t.id, title:t.title || D.firstLine(t.prompt, 80), project_id:t.project_id, project_name:t.project_name, status:t.status, why:'hidden', at:t.finished_at || t.started_at || t.created_at }));
+    }
+    const all = items.filter(h => !s.gone[h.id]).map(h => { const p = D.projectById(h.project_id); const until = h.until ? ymd(D.parseT(h.until)) : '';
+      return { id:'#' + h.id, tid:h.id, title:h.title || ('Task #' + h.id), proj:h.project_name || D.projName(p), pcol:D.projColor(p), why: HW[h.why] ? h.why : 'hidden', until,
+        when:(h.recipe ? h.recipe + ' is off · ' : '') + 'last active ' + D.ago(h.at, false) }; });
+    const hq = s.hq.toLowerCase(); const hid = all.filter(h => (s.hf === 'all' || h.why === s.hf) && (!hq || (h.title + h.proj).toLowerCase().includes(hq)));
+    const hsel = hid.filter(h => s.hsel[h.id]);
+    return {
+      hdFilters: chipsOf(s.hf, [['all', 'All', null, all.length], ...Object.entries(HW).map(([k, [l, c]]) => [k, l.charAt(0) + l.slice(1).toLowerCase(), c, all.filter(h => h.why === k).length])], id => this.setState({ hf:id })),
+      hq:s.hq, onHq:this.inp('hq'), hdSel: hsel.length > 0, hdSelN:String(hsel.length), hdUnhideSel:() => this.unhide(hsel), hdDelSel:() => this.del(hsel), hdEmpty: !hid.length,
+      hidden: hid.map(h => { const [pl, pc] = HW[h.why]; const on = !!s.hsel[h.id]; return { ...h, ...pill(h.until ? pl + ' · ' + fmtD(h.until).toUpperCase() : pl, pc), on, bg: on ? 'rgba(255,123,92,0.05)' : 'transparent', sBd: on ? '#FF7B5C' : 'rgba(255,255,255,0.25)', sBg: on ? '#FF7B5C' : 'transparent',
+        sel:() => this.setState(st => ({ hsel:{ ...st.hsel, [h.id]:!st.hsel[h.id] } })), unhide:() => this.unhide([h]), run:() => this.runNow(h), del:() => this.del([h]) }; }),
+    };
+  }
+
+  // ------------------------------------------------------------ calendar
+  calDel(e, day) {
+    if (e.src === 'google') return this.say('This one is in Google Calendar', 'Change or delete it there.', G.amber);
+    if (e.rule) return D.act(() => D.api('/den/work/calendar/' + e.id + '/skip', { method:'POST', body:{ date:day } }), { ok:['Skipped this one', e.t + ' · ' + fmtD(day), G.err], reload:['timeline'], core:false }).catch(() => {});
+    const key = e.id + '@' + day;
+    if (this.armDel !== key || Date.now() - this.armDelAt > 5000) { this.armDel = key; this.armDelAt = Date.now(); return this.say('Tap × again to delete it', e.t + ' · ' + fmtD(day), G.amber); }
+    this.armDel = null;
+    D.act(() => D.api('/timeline/' + e.id, { method:'DELETE' }), { ok: r => ['Deleted', e.t + (r && r.warning ? ' · ' + r.warning : ' · ' + fmtD(day)), G.err], reload:['timeline'], core:false }).catch(() => {});
+  }
+  qaAdd() {
+    const s = this.state, q = s.qa;
+    if (!q.t.trim()) return this.say('Add a title', '', G.amber);
+    if (q.rep && q.k === 'deadline') return this.say('Deadlines don’t repeat', 'Pick “Doesn’t repeat”, or make it a reminder.', G.amber);
+    const p = D.generalProject() || D.visibleProjects()[0]; if (!p) return this.say('No project to put it in', '', G.amber);
+    const body = { kind:q.k, title:q.t.trim(), date:s.sel, time: q.k === 'deadline' ? null : (q.time || null), repeat_rule: q.rep ? REP_RULE[q.rep](s.sel) : null };
+    if (q.k === 'meeting') body.duration = 60;
+    D.act(() => D.api('/projects/' + p.id + '/timeline', { method:'POST', body }), { ok:['Added to calendar', q.t.trim() + ' · ' + fmtD(s.sel) + (q.rep ? ' · ' + q.rep : ''), EK[q.k][1]], reload:['timeline'], core:false })
+      .then(() => this.setState(st => ({ qa:{ ...st.qa, t:'' } }))).catch(() => {});
+  }
+  calVals(s, isPhone) {
+    const TODAY = D.today();
+    const tl = D.need('timeline', '/timeline', 20000);
+    const gc = D.need('wkgcal', '/assistant/calendar/overview', 120000);
+    const ev = [...((tl && tl.events) || []).filter(e => e.status !== 'cancelled').map(fromTimeline), ...(gc ? [...(gc.today || []), ...(gc.upcoming || [])] : []).map(fromGoogle)];
+    const cur = dd(s.cur); const evOn = day => ev.filter(e => s.kinds.includes(e.k) && occurs(e, day)).sort((a, b) => (a.time || '00').localeCompare(b.time || '00'));
+    const deco = (e, day) => { const c = EK[e.k][1]; return { ...e, kind:e.label, c, tint:tn(c, 0.18), ...pill(e.label.toUpperCase(), c), time:e.time || '', span: e.time ? e.time + (e.dur ? '–' + endT(e.time, e.dur) : '') : 'All day', rep: !!e.rule,
+      repTxt: (e.rule ? ' · repeats ' + (e.words || 'on a schedule') : '') + (e.proj ? ' · ' + e.proj : ''), tip: e.t + (e.time ? ' · ' + e.time : ''),
+      delTitle: e.src === 'google' ? 'In Google Calendar' : e.rule ? 'Skip this one' : 'Delete', del:() => this.calDel(e, day),
+      canNote: e.src === 'den' && D.MEETING_KINDS.includes(e.kindId), noteTitle: e.src === 'den' && D.meetingNotes(e.id).length ? 'Open meeting notes' : 'Take meeting notes',
+      note:() => D.openMeetingNote({ id:e.id, title:e.t, project_id:e.pid }).catch(err => this.say('Couldn’t open the meeting notes', err.message, G.err)) }; };
+    const first = new Date(cur.getFullYear(), cur.getMonth(), 1); const lead = (first.getDay() + 6) % 7; const gstart = new Date(first); gstart.setDate(1 - lead);
+    const nCells = (lead + new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate()) > 35 ? 42 : 35;
+    const maxShow = isPhone ? 1 : 3;
+    const quick = day => () => { this.setState({ sel:day }); this.qaEl && this.qaEl.focus(); };
+    const month = Array.from({ length:nCells }, (_, i) => { const d = new Date(gstart); d.setDate(gstart.getDate() + i); const day = ymd(d); const inM = d.getMonth() === cur.getMonth(); const evs = evOn(day); const t = day === TODAY, on = day === s.sel;
+      return { n:String(d.getDate()), fw: t ? 750 : 550, nbg: t ? '#FF7B5C' : 'transparent', fg: t ? '#1A0A05' : inM ? '#E8EEF3' : '#4A5866', bg: on ? 'rgba(255,123,92,0.07)' : inM ? 'transparent' : 'rgba(0,0,0,0.12)', ev: evs.slice(0, maxShow).map(e => deco(e, day)), more: evs.length > maxShow ? '+' + (evs.length - maxShow) + ' more' : '',
+        pick:() => this.setState({ sel:day }), quick:quick(day) }; });
+    const wkStart = new Date(cur); wkStart.setDate(cur.getDate() - ((cur.getDay() + 6) % 7));
+    const H0 = 8, H1 = 20, PX = 48; const now = new Date(); const nowH = now.getHours() + now.getMinutes() / 60;
+    const weekDays = Array.from({ length:7 }, (_, i) => { const d = new Date(wkStart); d.setDate(wkStart.getDate() + i); const day = ymd(d); const t = day === TODAY;
+      return { dow:DOW[d.getDay()].toUpperCase(), n:String(d.getDate()), fg: t ? '#FF7B5C' : '#E8EEF3', colBg: day === s.sel ? 'rgba(255,123,92,0.04)' : 'transparent', nowLine: t && nowH >= H0 && nowH <= H1, nowTop: ((nowH - H0) * PX) + 'px', pick:() => this.setState({ sel:day }), quick:quick(day),
+        ev: evOn(day).map(e => { const x = deco(e, day); const [h, m] = (e.time || '08:00').split(':').map(Number); return { ...x, top: Math.max(0, Math.min((H1 - H0) * PX - 22, (h + m / 60 - H0) * PX)) + 'px', h: e.time ? Math.max(22, (e.dur || 30) / 60 * PX - 2) + 'px' : '22px', time: x.span }; }) }; });
+    const agenda = []; for (let i = 0; i < 30; i++) { const day = addD(s.cur < TODAY ? TODAY : s.cur, i); const evs = evOn(day); if (!evs.length) continue; const d = dd(day); agenda.push({ dow:DOW[d.getDay()].toUpperCase(), n:String(d.getDate()), c: day === TODAY ? '#FF7B5C' : '#6B7A8A', fg: day === TODAY ? '#FF7B5C' : '#E8EEF3', ev: evs.map(e => deco(e, day)) }); }
+    const shift = n => { const d = dd(s.cur); if (s.view === 'month') d.setMonth(d.getMonth() + n, 1); else d.setDate(d.getDate() + n * (s.view === 'week' ? 7 : 30)); this.setState({ cur:ymd(d) }); };
+    const wkEnd = new Date(wkStart); wkEnd.setDate(wkStart.getDate() + 6);
+    const sd = dd(s.sel); const dayEv = evOn(s.sel);
+    return {
+      calTitle: s.view === 'week' ? fmtD(ymd(wkStart)) + ' – ' + fmtD(ymd(wkEnd)) + ' ' + wkEnd.getFullYear() : MONTHS[cur.getMonth()] + ' ' + cur.getFullYear(),
+      calToday:() => this.setState({ cur:TODAY, sel:TODAY }), calPrev:() => shift(-1), calNext:() => shift(1), calNew:() => this.qaEl && this.qaEl.focus(),
+      calViews: tabsOf(s.view, [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']], id => this.setState({ view:id })),
+      kindChips: chipsOf(s.kinds, Object.entries(EK).map(([k, [l, c]]) => [k, l + 's', c]), id => this.setState(st => ({ kinds: st.kinds.includes(id) ? st.kinds.filter(x => x !== id) : [...st.kinds, id] })), true),
+      vMonth: s.view === 'month', vWeek: s.view === 'week', vAgenda: s.view === 'agenda', cellH: isPhone ? '64px' : '112px',
+      dowHead: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((l, i) => ({ l:l.toUpperCase(), c: i > 4 ? '#4A5866' : '#6B7A8A' })), month,
+      weekDays, wkH: ((H1 - H0) * PX) + 'px', hours: Array.from({ length:H1 - H0 + 1 }, (_, i) => ({ l: i === 0 ? '' : String(H0 + i).padStart(2, '0') + ':00', top:(i * PX) + 'px' })), agenda,
+      selDow: (DOW[sd.getDay()] + (s.sel === TODAY ? ' · TODAY' : '')).toUpperCase(), selLabel: sd.getDate() + ' ' + MON[sd.getMonth()] + ' ' + sd.getFullYear(), selShort: fmtD(s.sel),
+      dayEv: dayEv.map(e => deco(e, s.sel)), dayEmpty: !dayEv.length, qaRef:this.qaRef, qa:s.qa,
+      qaSet:{ t:e => this.setState({ qa:{ ...this.state.qa, t:e.target.value } }), time:e => this.setState({ qa:{ ...this.state.qa, time:e.target.value } }), rep:e => this.setState({ qa:{ ...this.state.qa, rep:e.target.value } }) },
+      qaKey:e => { if (e.key === 'Enter') this.qaAdd(); }, qaAdd:() => this.qaAdd(),
+      qaKinds: Object.entries(EK).map(([k, [label]]) => ({ label, pick:() => this.setState(st => ({ qa:{ ...st.qa, k, rep: k === 'deadline' ? '' : st.qa.rep } })), bg: s.qa.k === k ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.qa.k === k ? '#FFFFFF' : '#93A1B0' })),
+    };
+  }
+
+  // ------------------------------------------------------------ morning briefing
+  stopSpeech() { clearInterval(this.pt); if (this.utt && window.speechSynthesis) { this.utt.onend = null; speechSynthesis.cancel(); } this.utt = null; }
+  speak(text) {
+    const ss = window.speechSynthesis; const s = this.state;
+    if (!ss || typeof SpeechSynthesisUtterance === 'undefined') return this.say('This browser can’t read aloud', '', G.amber);
+    if (s.play) { ss.pause(); clearInterval(this.pt); return this.setState({ play:false }); }
+    if (this.utt && s.prog > 0 && s.prog < 1) { ss.resume(); this.setState({ play:true }); return this.tick(); }
+    this.stopSpeech();
+    const set = D.store.settings || {}; const u = new SpeechSynthesisUtterance(text);
+    const v = ss.getVoices().find(x => x.name === set.voice_tts_voice); if (v) u.voice = v; u.rate = +set.voice_rate || 1;
+    this.secs = Math.max(3, text.split(/\s+/).length / 2.6 / u.rate); this.chars = text.length || 1;
+    u.onboundary = e => { if (e.charIndex != null) this.setState(st => ({ prog:Math.max(st.prog, Math.min(0.99, e.charIndex / this.chars)) })); };
+    u.onend = u.onerror = () => { clearInterval(this.pt); this.utt = null; this.setState({ play:false, prog:1 }); };
+    this.utt = u; ss.cancel(); ss.speak(u); this.setState({ play:true, prog:0 }); this.tick();
+  }
+  tick() { clearInterval(this.pt); this.pt = setInterval(() => this.setState(st => (st.play ? { prog:Math.min(0.99, st.prog + 0.25 / (this.secs || 60)) } : null)), 250); }
+  decide(a, approved, id) {
+    D.act(() => D.api('/approvals/' + a.id + '/decide', { method:'POST', body:{ approved } }), { ok: approved ? ['Approved ✓', 'Octopus is carrying on.', G.green] : ['Denied', 'Octopus won’t run this and will work around it.', G.err], fail:'Couldn’t send your answer' })
+      .then(() => this.setState(st => ({ done:{ ...st.done, [id]:true } }))).catch(() => {});
+  }
+  doneAfter(id, p, ok) { D.act(p, { ok }).then(() => this.setState(st => ({ done:{ ...st.done, [id]:true } }))).catch(() => {}); }
+  briefVals(s) {
+    const b = D.need('briefing', '/briefing', 60000);
+    const B = b || {}; const now = new Date(); const TODAY = D.today();
+    const owner = ((D.store.settings || {}).owner_name || '').trim() || 'Tushar';
+    const btn = (label, run, primary) => ({ label, run, bg: primary ? '#FF7B5C' : 'rgba(255,255,255,0.05)', fg: primary ? '#1A0A05' : '#DCE4EB', bd: primary ? '#FF7B5C' : 'rgba(255,255,255,0.1)' });
+    const doneRow = id => !!s.done[id];
+    const row = (id, t, sub, c, btns, bar) => ({ t, sub: sub || '', c, bar: bar || '', fg: doneRow(id) ? '#6B7A8A' : '#E8EEF3', deco: doneRow(id) ? 'line-through' : 'none', btns: doneRow(id) ? [] : (btns || []) });
+    const go = id => () => nav(this, id);
+    // Needs you: approvals, mail waiting on you, follow-ups past their date, overdue calendar items
+    const aps = D.pendingApprovals();
+    const inbox = D.need('inbox', '/den/inbox', 90000); const mail = ((inbox && inbox.items) || []).filter(m => m.kind === 'email' && m.needs).slice(0, 2);
+    const fu = D.need('wkfu', '/followups?status=open', 120000); const late = (Array.isArray(fu) ? fu : []).filter(f => f.due_date && f.due_date < TODAY);
+    const needs = [
+      ...aps.slice(0, 3).map(a => { const id = 'ap' + a.id; return row(id, D.firstLine(D.commandOf(a), 70) || a.tool_name, '#' + a.task_id + ' · asked ' + D.clock(a.created_at) + (a.risk ? ' · ' + a.risk + ' risk' : ''), G.amber,
+        [btn('Deny', () => this.decide(a, false, id)), btn('Approve', () => this.decide(a, true, id), true)]); }),
+      ...mail.map(m => row('em' + m.id, m.from + ': “' + D.firstLine(m.subject, 60) + '”', 'Email · ' + D.dayClock(m.at), G.blue, [btn('Reply', go('email'))])),
+      ...(late.length ? [row('fu', late.length + (late.length === 1 ? ' follow-up overdue' : ' follow-ups overdue'), late.slice(0, 3).map(f => f.contact_name || f.title).join(', '), '#FF8FA2', [btn('Open', go('crm'))])] : []),
+      ...((B.overdue || []).length ? [row('od', B.overdue.length + ' overdue on the calendar', B.overdue.slice(0, 2).map(e => e.title).join(', '), G.err, [btn('Open', go('calendar'))])] : []),
+    ];
+    // While you slept: what finished since 20:00 yesterday, one line per chat
+    const since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 20);
+    const runsBy = {}; ((D.need('wkruns', '/den/work/runs', 20000) || {}).runs || []).forEach(r => { runsBy[r.thread_id || r.id] = r; });
+    const seenChat = {}; const slept = D.finished().filter(t => !t.hidden && D.parseT(t.finished_at) >= since).filter(t => { const r = t.thread_id || t.id; if (seenChat[r]) return false; seenChat[r] = 1; return true; });
+    const done = slept.filter(t => t.status !== 'error').length, failed = slept.filter(t => t.status === 'error');
+    const sleptRows = slept.slice(0, 6).map(t => { const id = 'o' + t.id; const root = t.thread_id || t.id; const title = '#' + t.id + ' ' + D.taskTitle(D.taskById(root) || t);
+      if (t.status === 'error') return row(id, title, 'Failed · ' + D.firstLine(t.error_message || 'no reason given', 60), G.err, [btn('Retry', () => this.doneAfter(id, () => D.api('/tasks/' + t.id + '/requeue', { method:'POST', body:{ front:true } }), ['Retrying', title, G.coral]))]);
+      const rv = runsBy[root];
+      if (t.status === 'needs_review' || (rv && rv.state === 'review')) return row(id, title, 'Done · ready for review', G.green, [btn('Review', go('review'))]);
+      return row(id, title, 'Done · ' + [D.laneLabel(t), D.dur(t.duration_ms)].filter(Boolean).join(' · '), G.green); });
+    // Today: the Den's calendar, Google meetings and reminders, then what's due in the next few days
+    const items = [];
+    (B.meetings || []).forEach(m => items.push({ k: m.all_day ? '00' : D.clock(m.start), r: row('m' + m.id, (m.all_day ? 'All day' : D.clock(m.start)) + '  ' + m.title, 'Meeting' + (m.location ? ' · ' + m.location : ' · Google Calendar'), G.coral) }));
+    (B.today || []).forEach(e => items.push({ k:e.time || '00', r: row('t' + e.id, (e.time || 'Today') + '  ' + e.title, (KLABEL[e.kind] || e.kind_label) + (e.project_name ? ' · ' + e.project_name : ''), EK[GROUP[e.kind] || 'reminder'][1]) }));
+    (B.reminders || []).forEach(r => items.push({ k:r.time || '99', r: row('r' + r.id, (r.time || '') + '  ' + r.text, 'Reminder', G.amber) }));
+    items.sort((a, z) => a.k.localeCompare(z.k));
+    const soon = (B.upcoming || []).filter(e => e.due_kind && e.days_left <= 3).slice(0, 2);
+    const todayRows = [...items.map(x => x.r), ...soon.map(e => row('u' + e.id, DOW[dd(e.date).getDay()] + '  ' + e.title, (KLABEL[e.kind] || e.kind_label) + ' · ' + e.when, EK[GROUP[e.kind] || 'deadline'][1]))];
+    // Limits
+    const accts = D.accounts(); const sum = D.store.summary || {};
+    const lim = accts.map(a => { const w5 = D.acctWin(a, 'five_hour'), wk = D.acctWin(a, 'seven_day'); const p = D.pct(w5);
+      return row('l' + a.id, D.acctName(a) + ' · session ' + p + '%', 'Weekly ' + D.pct(wk) + '%' + (wk && wk.resets_at ? ' · resets ' + D.resetLabel(wk.resets_at, true) : ''), D.usageColor(p), null, Math.max(2, p) + '%'); });
+    const cap = sum.monthly_budget_usd, spent = sum.month_usd || 0;
+    if (sum.month_usd != null) lim.push(row('lb', 'API ' + (cap ? 'budget ' + D.money(spent) + ' / ' + D.money(cap) : 'spend ' + D.money(spent)), MONTHS[now.getMonth()] + ' so far', G.blue, null, cap ? Math.max(2, Math.min(100, Math.round(spent / cap * 100))) + '%' : ''));
+    const resets = accts.map(a => D.acctWin(a, 'five_hour')).filter(w => w && w.resets_at).map(w => w.resets_at).sort()[0];
+    // Suggested first moves: things one click can start
+    const moves = [];
+    if (failed[0]) { const t = failed[0]; moves.push(row('s1', 'Retry #' + t.id + ' ' + D.taskTitle(t), 'It failed overnight' + (t.error_message ? ': ' + D.firstLine(t.error_message, 50) : ''), G.violet, [btn('Queue', () => this.doneAfter('s1', () => D.api('/tasks/' + t.id + '/requeue', { method:'POST', body:{ front:true } }), ['Queued #' + t.id + ' again', D.taskTitle(t), G.coral]), true)])); }
+    const toReview = Object.values(runsBy).filter(r => r.state === 'review').length;
+    if (toReview) moves.push(row('s2', 'Review ' + toReview + (toReview === 1 ? ' finished run' : ' finished runs'), 'The diffs are ready', G.violet, [btn('Review', go('review'), true)]));
+    (B.at_risk || []).slice(0, 1).forEach(p => moves.push(row('s3', 'Plan what’s left in ' + p.name, p.reason, G.violet, [btn('Plan', () => this.doneAfter('s3', () => D.api('/octopus', { method:'POST', body:{ text:'Look at what is still open in ' + p.name + ' and plan the work to get it back on track: ' + p.reason, project_id:p.project_id } }), ['Octopus is planning', p.name, G.violet]), true)])));
+    // The summary at the top, which Read aloud reads
+    const timed = items.filter(x => x.k !== '00' && x.k !== '99').slice(0, 2).map(x => x.r.t.replace(/^(\S+)\s+(.*)$/, '$2 at $1'));
+    const sent = [];
+    if (!b) sent.push(b === null ? 'The briefing couldn’t be loaded just now.' : 'Getting your briefing ready…');
+    else {
+      sent.push(slept.length ? 'Octopus finished ' + done + (done === 1 ? ' task' : ' tasks') + ' overnight' + (failed.length ? ' and ' + failed.length + ' failed' + (failed[0].error_message ? ' (' + D.firstLine(failed[0].error_message, 50) + ')' : '') : '') + '.' : 'Quiet night — nothing ran.');
+      if (aps.length) sent.push(aps.length === 1 ? 'One approval is waiting for you.' : aps.length + ' approvals are waiting for you.');
+      if (timed.length) sent.push('You have ' + timed.join(' and ') + '.');
+      else if (!items.length) sent.push('Nothing is scheduled today.');
+      if (soon[0]) sent.push(soon[0].title + ' is due ' + soon[0].when.replace(/\s*\(.*\)$/, '') + '.');
+      if ((B.overdue || []).length) sent.push(B.overdue.length + (B.overdue.length === 1 ? ' item is' : ' items are') + ' overdue.');
+      const hot = accts.filter(a => D.pct(D.acctWin(a, 'five_hour')) >= 80);
+      if (accts.length) sent.push(hot.length ? D.acctName(hot[0]) + ' is at ' + D.pct(D.acctWin(hot[0], 'five_hour')) + '% of its session.' : (accts.length > 1 ? 'Your Claude accounts have' : 'Your Claude account has') + ' plenty of room today.');
+    }
+    const summary = sent.join(' ');
+    const total = this.secs && (s.play || s.prog > 0) ? this.secs : Math.max(3, summary.split(/\s+/).length / 2.6 / (+(D.store.settings || {}).voice_rate || 1));
+    const mmss = x => Math.floor(x / 60) + ':' + String(Math.floor(x % 60)).padStart(2, '0');
+    const card = (title, icon, c, count, bd, rows, emptyT, emptyS) => ({ title, icon, c, count, bd, rows: rows.length ? rows : [row('none' + title, emptyT, emptyS, G.mute)] });
+    return {
+      brHello: (B.greeting && B.greeting !== 'Hello' ? B.greeting : now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening') + ', ' + owner + '.',
+      brDate: [WEEKDAYS[now.getDay()], now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear(), D.pad2(now.getHours()) + ':' + D.pad2(now.getMinutes())].join(' · ').toUpperCase(),
+      brSummary: summary,
+      brPlay:() => this.speak(summary),
+      brPlayIcon: s.play ? 'M8 5v14M16 5v14' : 'M7 5l12 7-12 7z', brPlayLabel: s.play ? 'Pause' : s.prog > 0 && s.prog < 1 ? 'Resume' : 'Read aloud', brProg: Math.round(s.prog * 100) + '%', brTime: mmss(s.prog * total) + ' / ' + mmss(total),
+      brStart:() => { this.stopSpeech(); this.setState({ play:false }); nav(this, 'home'); },
+      brCards: [
+        card('Needs you', 'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', G.amber, String(needs.length), needs.length ? 'rgba(255,181,71,0.3)' : 'rgba(255,255,255,0.06)', needs, 'Nothing needs you', 'No approvals, mail or follow-ups waiting.'),
+        card('While you slept', 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z', G.violet, slept.length + (slept.length === 1 ? ' run' : ' runs'), 'rgba(255,255,255,0.06)', sleptRows, 'Nothing ran overnight', ''),
+        card('Today', 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', G.coral, String(items.length), 'rgba(255,255,255,0.06)', todayRows, 'Nothing scheduled today', B.calendar_error ? 'Google Calendar: ' + B.calendar_error : ''),
+        card('Limits', 'M12 21a9 9 0 1 1 9-9M12 12l4-4', G.teal, resets ? 'resets ' + D.clock(resets) : '', 'rgba(255,255,255,0.06)', lim, 'No usage yet', ''),
+        card('Suggested first moves', 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', G.violet, 'Octopus', 'rgba(165,139,255,0.25)', moves, 'Nothing to suggest', 'You’re clear to start on whatever you like.'),
+      ].map(c => ({ ...c, tint:tn(c.c, 0.14) })),
+    };
+  }
+
+  renderVals() {
+    const s = this.state; const page = this.props.page || 'briefing'; const isPhone = !!this.props.isPhone;
+    const off = {};
+    return {
+      isReview: page === 'review', isHidden: page === 'hidden', isCal: page === 'calendar', isBrief: page === 'briefing', isPhone, fixSel:this.fixSel,
+      ...(page === 'review' ? this.reviewVals(s, isPhone) : off),
+      ...(page === 'hidden' ? this.hiddenVals(s) : off),
+      ...(page === 'calendar' ? this.calVals(s, isPhone) : off),
+      ...(page === 'briefing' ? this.briefVals(s) : off),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; gap:14px; align-items:stretch; max-width:1480px; margin:0 auto; min-height:calc(100vh - 220px); font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:{{ listFlex }}; min-width:0; display:flex; flex-direction:column; gap:10px;">
+      <div style="height:42px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:13px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search mail, chats, approvals…" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+      </div>
+      <div data-tour="inbox-tabs" style="display:flex; gap:4px; overflow-x:auto;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.pick }}" style="flex:none; height:32px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12.5px; font-weight:600; background:{{ t.bg }}; color:{{ t.fg }}; border:1px solid {{ t.bd }};">{{ t.label }}<sc-if value="{{ t.count }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ t.cc }};">{{ t.count }}</span></sc-if></button>
+        </sc-for>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <sc-for list="{{ items }}" as="m" hint-placeholder-count="6">
+          <button onClick="{{ m.pick }}" style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border:0; border-bottom:1px solid rgba(255,255,255,0.04); border-left:3px solid {{ m.edge }}; cursor:pointer; text-align:left; background:{{ m.bg }}; color:#E8EEF3;">
+            <span style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:{{ m.tint }}; color:{{ m.tone }}; font-size:13px; font-weight:750;"><sc-if value="{{ m.octo }}" hint-placeholder-val="{{ false }}"><dc-import name="DenOcto" mood="{{ m.mood }}" size="26" hint-size="26px,26px"></dc-import></sc-if><sc-if value="{{ m.notOcto }}" hint-placeholder-val="{{ true }}">{{ m.av }}</sc-if></span>
+            <span style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+              <span style="display:flex; align-items:baseline; gap:8px;"><span style="flex:1; min-width:0; font-size:13.5px; font-weight:{{ m.fw }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.from }}</span><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ m.when }}</span></span>
+              <span style="font-size:13px; font-weight:{{ m.fw }}; color:#DCE4EB; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.subject }}</span>
+              <span style="display:flex; align-items:center; gap:6px;"><span style="flex:none; height:17px; padding:0 6px; display:flex; align-items:center; border-radius:5px; font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; background:{{ m.tint }}; color:{{ m.tone }};">{{ m.kindLabel }}</span><span style="flex:1; min-width:0; font-size:12px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.preview }}</span></span>
+            </span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1; padding:40px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center;">
+            <div style="font-size:15px; font-weight:700;">Inbox zero</div>
+            <div style="font-size:13px; color:#93A1B0; max-width:260px;">Nothing here. Octopus will drop new mail, chat replies and approvals in this list.</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); overflow:hidden;">
+      <div style="display:flex; align-items:flex-start; gap:12px; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><button onClick="{{ toggleList }}" title="{{ listTitle }}" style="flex:none; width:36px; height:36px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ listIcon }}"></path></svg></button></sc-if>
+        <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ false }}"><button onClick="{{ back }}" style="flex:none; width:36px; height:36px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button></sc-if>
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;">
+          <span style="align-self:flex-start; height:20px; padding:0 7px; display:flex; align-items:center; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; letter-spacing:.06em; background:{{ cur.tint }}; color:{{ cur.tone }};">{{ cur.kindLabel }}</span>
+          <h2 style="margin:0; font-size:19px; font-weight:750; line-height:1.3; text-wrap:pretty;">{{ cur.subject }}</h2>
+          <div style="font-size:12.5px; color:#93A1B0;">{{ cur.from }} <span style="color:#4A5866;">·</span> {{ cur.addr }} <span style="color:#4A5866;">·</span> {{ cur.when }}</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button onClick="{{ archive }}" title="Archive  E" style="width:36px; height:36px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"></path></svg></button>
+          <button onClick="{{ snooze }}" title="Snooze till tomorrow" style="width:36px; height:36px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16M12 9v4l2.5 2"></path></svg></button>
+        </div>
+      </div>
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:14px;">
+        <sc-if value="{{ cur.isApproval }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:16px; background:rgba(255,181,71,0.06); border:1px solid rgba(255,181,71,0.25);">
+            <div style="font-size:13.5px; color:#DCE4EB; line-height:1.6;">{{ cur.body }}</div>
+            <div style="padding:10px 12px; border-radius:11px; background:rgba(6,9,13,0.6); font-family:'JetBrains Mono', monospace; font-size:12.5px; color:#DCE4EB;">{{ cur.code }}</div>
+            <sc-if value="{{ cur.pending }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; gap:8px;"><button onClick="{{ deny }}" style="height:40px; padding:0 16px; border-radius:12px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:13.5px; font-weight:650; color:#FF8FA2;">Deny</button><button onClick="{{ approve }}" style="height:40px; padding:0 18px; border-radius:12px; border:0; background:#FF7B5C; cursor:pointer; font-size:13.5px; font-weight:700; color:#1A0A05;">Approve</button></div>
+            </sc-if>
+            <sc-if value="{{ cur.decided }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; font-weight:650; color:{{ cur.decColor }};">{{ cur.decText }}</div></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ cur.notApproval }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:14.5px; line-height:1.7; color:#DCE4EB; white-space:pre-wrap; max-width:680px;">{{ cur.body }}</div>
+          <sc-if value="{{ cur.aiSummary }}" hint-placeholder-val="{{ false }}">
+            <div style="max-width:680px; display:flex; gap:10px; padding:12px 14px; border-radius:14px; background:rgba(165,139,255,0.07); border:1px solid rgba(165,139,255,0.25);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9B8FF" style="flex:none; margin-top:2px; stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg>
+              <div style="font-size:13px; line-height:1.6; color:#DCE4EB;"><b style="color:#C9B8FF;">Octopus:</b> {{ cur.aiSummary }}</div>
+            </div>
+          </sc-if>
+        </sc-if>
+      </div>
+      <sc-if value="{{ cur.canReply }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:8px; padding:12px 14px 14px; border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <sc-for list="{{ quickReplies }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.use }}" style="height:30px; padding:0 11px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); cursor:pointer; font-size:12px; font-weight:600; color:#C2CDD8;">{{ r.label }}</button></sc-for>
+            <button onClick="{{ draft }}" style="height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; border:1px solid rgba(165,139,255,0.35); background:rgba(165,139,255,0.08); cursor:pointer; font-size:12px; font-weight:650; color:#C9B8FF;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linejoin:round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path></svg>Draft with Octopus</button>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:8px; padding:6px 6px 6px 14px; border-radius:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+            <textarea value="{{ reply }}" onChange="{{ onReply }}" rows="2" placeholder="{{ cur.replyHint }}" style="flex:1; min-width:0; resize:none; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px; line-height:1.5; padding:6px 0;"></textarea>
+            <button onClick="{{ send }}" style="flex:none; height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13px; font-weight:700;">Send<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+const KIND = { email:['EMAIL', C.blue], chat:['CHAT', C.teal], approval:['APPROVAL', C.amber], review:['REVIEW', C.violet] };
+const TABS = ['All', 'Needs you', 'Email', 'Chats', 'Approvals'];
+const QR = { email:['Thanks, will do', 'Sounds good', 'Let me check and revert'], chat:['Thanks', 'Go ahead', 'Ask me later'], review:['Looks good', 'Try again', 'Explain what changed'] };
+const enc = encodeURIComponent;
+
+class Component extends DCLogic {
+  state = { tab:'All', q:'', sel:null, phoneOpen:false, listShut: (() => { try { return localStorage.getItem('den.inbox.listShut') === '1'; } catch (e) { return false; } })(), reply:'', decided:{}, gone:{}, drafting:false };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.asked = {};
+    this.onKey = e => { const t = e.target; if (e.metaKey || e.ctrlKey || e.altKey || (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable))) return;
+      if (!/^#\/email\b/.test(location.hash || '')) return;
+      if (e.key === 'e' && this.curM) { e.preventDefault(); this.archive(this.curM); } };
+    window.addEventListener('keydown', this.onKey); }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : D.say(t, s, c); }
+  hide(m) { this.setState(st => ({ gone:{ ...st.gone, [m.key]:true }, phoneOpen:false, sel: st.sel === m.key ? null : st.sel, reply:'' })); }
+  archive(m) { this.hide(m); D.act(() => D.api('/den/inbox/' + enc(m.key) + '/archive', { method:'POST', body:{} }), { ok:['Archived', m.subject, C.blue], reload:['inbox'], core:false }); }
+  snooze(m) { this.hide(m); D.act(() => D.api('/den/inbox/' + enc(m.key) + '/snooze', { method:'POST', body:{} }), { ok:['Snoozed till tomorrow 09:00', m.subject, C.violet], reload:['inbox'], core:false }); }
+  read(m) {
+    if (m.kind === 'chat') D.api('/messages/' + m.id + '/read', { method:'POST', body:{} }).catch(() => {});
+    else if (m.kind === 'review') D.api('/den/inbox/' + enc(m.key) + '/read', { method:'POST', body:{} }).catch(() => {});
+  }
+  approvalItem(a) {
+    const t = D.taskById(a.task_id); const p = D.projectById(a.project_id || (t && t.project_id));
+    const cmd = D.commandOf(a); const title = a.task_title || D.taskTitle(t) || ('Task #' + a.task_id);
+    return { key:'a:' + a.id, kind:'approval', id:a.id, from:'Octopus · ' + (p ? p.name : 'General'), addr:'#' + a.task_id, subject: title, preview: D.firstLine(cmd, 120), at:a.created_at,
+      unread:true, needs:true, code:cmd, approval:a,
+      body:'Octopus paused #' + a.task_id + (title ? ' (' + D.firstLine(title, 70) + ')' : '') + ' and needs your OK to use ' + (a.tool_name || 'a protected tool') + '.' };
+  }
+  renderVals() {
+    const s = this.state; const isPhone = !!this.props.isPhone; const ql = s.q.trim().toLowerCase();
+    const data = D.need('inbox', '/den/inbox', 20000) || { items:[], mail:{ connected:true }, hidden_approvals:[] };
+    const hiddenAp = new Set((data.hidden_approvals || []).map(String));
+    const pend = D.pendingApprovals().filter(a => !hiddenAp.has(String(a.id))).map(a => this.approvalItem(a));
+    // A decided approval stays on screen (with its outcome) until you move on.
+    Object.values(s.decided).forEach(d => { if (!pend.some(m => m.key === d.m.key)) pend.push(d.m); });
+    const all = [...pend, ...(data.items || [])].filter(m => !s.gone[m.key]).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    const match = t => m => t === 'All' || (t === 'Needs you' && m.needs && !s.decided[m.key]) || (t === 'Email' && m.kind === 'email') || (t === 'Chats' && (m.kind === 'chat' || m.kind === 'review')) || (t === 'Approvals' && m.kind === 'approval');
+    const list = all.filter(match(s.tab)).filter(m => !ql || [m.from, m.addr, m.subject, m.preview, m.body].join(' ').toLowerCase().includes(ql));
+    const deco = m => { const [kl, tone] = KIND[m.kind]; return { ...m, when: D.ago(m.at), kindLabel:kl, tone, tint:tint(tone, 0.13), av:(String(m.from).trim()[0] || '?').toUpperCase(), octo: String(m.from).startsWith('Octopus'), notOcto: !String(m.from).startsWith('Octopus'), mood: m.kind === 'approval' ? 'wait' : m.kind === 'review' && m.status === 'error' ? 'error' : 'idle' }; };
+    const curM = list.find(m => m.key === s.sel) || (isPhone ? null : list[0]) || null;
+    this.curM = curM;
+    const items = list.map(m => { const on = curM && m.key === curM.key; return { ...deco(m), fw: m.unread ? 700 : 500, bg: on ? 'rgba(255,123,92,0.08)' : 'transparent', edge: on ? '#FF7B5C' : m.unread ? KIND[m.kind][1] : 'transparent',
+      pick:() => { this.setState({ sel:m.key, phoneOpen:true, reply:'' }); if (m.unread) this.read(m); } }; });
+
+    // The open item's full text: the message itself, or the chat's thread.
+    let body = curM ? curM.body || curM.preview || '' : ''; let ai = ''; let detail = null;
+    if (curM && curM.kind === 'email') {
+      detail = D.need('inbox-mail:' + curM.id, '/den/inbox/mail/' + enc(curM.id), 600000);
+      if (detail) { body = detail.body || body; ai = detail.summary || curM.summary || '';
+        if (!ai && body.length > 280 && !this.asked[curM.id]) { this.asked[curM.id] = true;
+          D.api('/den/inbox/mail/' + enc(curM.id) + '/summary', { method:'POST', body:{} }).then(() => D.invalidate('inbox-mail:' + curM.id)).catch(() => {}); } }
+      else body = curM.preview || 'Loading…';
+    } else if (curM && (curM.kind === 'chat' || curM.kind === 'review')) {
+      const th = D.need('thread:' + curM.id, '/tasks/' + curM.id + '/thread', 8000); const tasks = (th && th.tasks) || [];
+      const last = tasks[tasks.length - 1];
+      if (last) { body = D.plain(last.result_summary || last.error_message || last.prompt || body);
+        if (curM.kind === 'review' && last.result_summary && last.error_message) ai = 'Needs a look: ' + D.firstLine(last.error_message, 160); }
+    }
+    const dec = curM && s.decided[curM.key];
+    const first = curM ? String(curM.from).split(/[ ·<@]/)[0] : '';
+    const cur = curM ? { ...deco(curM), body, isApproval: curM.kind === 'approval', notApproval: curM.kind !== 'approval', pending: !dec, decided: !!dec,
+      decText: dec && dec.ok ? '✓ Approved — Octopus is carrying on.' : '✕ Denied — Octopus will work around it.', decColor: dec && dec.ok ? C.green : '#FF8FA2',
+      aiSummary: ai, canReply: curM.kind !== 'approval', replyHint: curM.kind === 'email' ? 'Reply to ' + first + '…' : 'Reply to Octopus…' }
+      : { kindLabel:'INBOX', tone:'#93A1B0', tint:'rgba(255,255,255,0.05)', subject: all.length ? 'Pick something on the left' : 'You\'re all caught up', from:'Octopus', addr:'', when:'',
+        body: data.mail && data.mail.connected === false ? 'Email isn\'t connected yet, so only chats, reviews and approvals land here. Connect Gmail in Connections to see your mail too.' : (data.mail && data.mail.error ? 'Mail couldn\'t be loaded: ' + data.mail.error : ''),
+        isApproval:false, notApproval:true, pending:false, decided:false, aiSummary:'', canReply:false, replyHint:'' };
+    const cnt = t => all.filter(match(t)).length;
+    const decide = ok => { if (!curM || !curM.approval) return; const m = curM;
+      D.act(() => D.api('/approvals/' + m.id + '/decide', { method:'POST', body:{ approved:ok } }), { ok: ok ? ['Approved ✓', D.firstLine(m.code, 60), C.green] : ['Denied', 'Octopus will work around it', C.err] })
+        .then(() => this.setState(st => ({ decided:{ ...st.decided, [m.key]:{ ok, m } } }))).catch(() => {}); };
+    return {
+      isPhone, isDesk: !isPhone, showList: isPhone ? !s.phoneOpen : !s.listShut, listTitle: s.listShut ? 'Show the message list' : 'Hide the message list', listIcon: s.listShut ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6', toggleList:() => { const v = !s.listShut; try { localStorage.setItem('den.inbox.listShut', v ? '1' : '0'); } catch (e) {} this.setState({ listShut:v }); }, showDetail: !isPhone || s.phoneOpen, listFlex: '0 0 380px', back:() => this.setState({ phoneOpen:false }),
+      q:s.q, onQ:e => this.setState({ q:e.target.value }),
+      tabs:TABS.map(t => ({ label:t, count: cnt(t) ? String(cnt(t)) : '', pick:() => this.setState({ tab:t }), bg: s.tab === t ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: s.tab === t ? '#FFA48C' : '#A3B0BE', bd: s.tab === t ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.07)', cc: s.tab === t ? '#FFA48C' : '#6B7A8A' })),
+      items, empty: items.length === 0, cur,
+      approve:() => decide(true), deny:() => decide(false),
+      archive:() => curM && this.archive(curM), snooze:() => curM && this.snooze(curM),
+      quickReplies: curM && QR[curM.kind] ? QR[curM.kind].map(label => ({ label, use:() => this.setState({ reply:label }) })) : [],
+      draft:() => { if (!curM || s.drafting) return; this.setState({ drafting:true }); this.say('Octopus is drafting…', curM.subject, C.violet);
+        const job = curM.kind === 'email' ? D.api('/den/inbox/mail/' + enc(curM.id) + '/draft', { method:'POST', body:{} })
+          : D.api('/octopus/polish', { method:'POST', body:{ text: s.reply.trim() || ('Reply to this: ' + body.slice(0, 1500)) } });
+        job.then(r => this.setState({ reply: r.text || '', drafting:false })).catch(e => { this.setState({ drafting:false }); this.say('Couldn\'t draft', e.message, C.err); }); },
+      reply:s.reply, onReply:e => this.setState({ reply:e.target.value }),
+      send:() => { const text = s.reply.trim(); if (!text || !curM) return; const m = curM;
+        if (m.kind === 'email') D.act(() => D.api('/den/inbox/mail/' + enc(m.id) + '/reply', { method:'POST', body:{ body:text } }), { ok:r => ['Sent to ' + ((r && r.to) || [m.addr]).join(', '), D.firstLine(text, 50), C.green], reload:['inbox', 'inbox-mail:' + m.id], core:false }).then(() => this.setState({ reply:'' })).catch(() => {});
+        else { const t = D.taskById(m.id); const pid = m.project_id || (t && t.project_id) || (D.generalProject() || {}).id;
+          D.act(() => D.api('/projects/' + pid + '/tasks', { method:'POST', body:{ prompt:text, thread_id:m.id } }), { ok:['Sent to Octopus', D.firstLine(text, 50), C.green], reload:['thread:' + m.id, 'inbox'] }).then(() => this.setState({ reply:'' })).catch(() => {}); } }
+    };
+  }
+}
+</script>
+</body>
+</html>

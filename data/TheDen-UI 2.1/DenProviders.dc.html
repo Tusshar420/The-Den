@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1280px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); align-self:flex-start;">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+  </div>
+
+  <sc-if value="{{ isProv }}" hint-placeholder-val="{{ true }}">
+    <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
+      <sc-for list="{{ provs }}" as="p" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid {{ p.bd }}; backdrop-filter:blur(22px);">
+          <div style="display:flex; align-items:center; gap:10px;"><span style="width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:{{ p.tint }}; color:{{ p.color }}; font-size:14px; font-weight:750;">{{ p.init }}</span><div style="flex:1;"><div style="font-size:16px; font-weight:700;">{{ p.name }}</div><div style="font-size:12px; color:#93A1B0;">{{ p.models }}</div></div><span style="height:24px; display:flex; align-items:center; gap:6px; padding:0 9px; border-radius:7px; background:{{ p.stBg }}; color:{{ p.stFg }}; font-family:'JetBrains Mono', monospace; font-size:10.5px; font-weight:600;"><span style="width:6px; height:6px; border-radius:50%; background:{{ p.stFg }};"></span>{{ p.status }}</span></div>
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+            <sc-for list="{{ p.metrics }}" as="m" hint-placeholder-count="3"><div style="padding:10px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:600; color:{{ m.c }};">{{ m.v }}</div><div style="font-size:11px; color:#93A1B0;">{{ m.l }}</div></div></sc-for>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:2px; height:28px;"><sc-for list="{{ p.spark }}" as="s" hint-placeholder-count="24"><div style="flex:1; height:{{ s.h }}; border-radius:2px; background:{{ s.c }};"></div></sc-for></div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">KEYS · FAILOVER ORDER</span>
+            <sc-for list="{{ p.keys }}" as="k" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);"><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ k.n }}</span><span style="width:6px; height:6px; border-radius:50%; background:{{ k.dot }};"></span><span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12px; color:#DCE4EB; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ k.label }}</span><button onClick="{{ k.up }}" title="Use first" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
+            </sc-for>
+          </div>
+          <div style="display:flex; gap:6px;"><button onClick="{{ p.test }}" style="flex:1; height:36px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ p.testLabel }}</button><button onClick="{{ p.addKey }}" style="height:36px; padding:0 12px; border-radius:11px; border:1px dashed rgba(255,255,255,0.16); background:transparent; cursor:pointer; font-size:12.5px; font-weight:600; color:#C2CDD8;">+ Key</button></div>
+        </div>
+      </sc-for>
+    </section>
+    <section style="display:flex; flex-direction:column; gap:10px; padding:16px 18px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center;"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">If a provider fails</h3></div>
+      <sc-for list="{{ failover }}" as="o" hint-placeholder-count="3"><div style="display:flex; align-items:center; gap:10px;"><div style="flex:1;"><div style="font-size:13.5px; font-weight:600;">{{ o.label }}</div><div style="font-size:12px; color:#93A1B0;">{{ o.hint }}</div></div><button onClick="{{ o.toggle }}" style="width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ o.track }}; display:flex; justify-content:{{ o.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></div></sc-for>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isRoute }}" hint-placeholder-val="{{ false }}">
+    <section style="display:flex; flex-direction:column; gap:10px; padding:16px 18px; border-radius:20px; background:rgba(69,224,200,0.05); border:1px solid rgba(69,224,200,0.22);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#45E0C8;">TEST A PROMPT</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;"><input value="{{ test }}" onChange="{{ onTest }}" placeholder="Try: translate chapter 5 into Hindi" style="flex:1 1 280px; min-width:0; height:42px; padding:0 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:15px; outline:none;"></div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:13.5px;"><span style="color:#93A1B0;">Routes to</span><span style="height:28px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px; background:{{ match.bg }}; color:{{ match.fg }}; font-weight:700;"><span style="width:7px; height:7px; border-radius:50%; background:{{ match.fg }};"></span>{{ match.model }}</span><span style="color:#93A1B0;">via</span><span style="font-family:'JetBrains Mono', monospace; font-size:12px; color:#DCE4EB;">{{ match.rule }}</span><span style="flex:1;"></span><span style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ match.cost }}</span></div>
+    </section>
+    <section style="display:flex; flex-direction:column; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:8px; padding:14px 16px;"><h3 style="margin:0; font-size:15px; font-weight:700; flex:1;">Rules · checked top to bottom</h3><button onClick="{{ addRule }}" style="height:32px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:12.5px; font-weight:700;">+ Rule</button></div>
+      <sc-for list="{{ rules }}" as="r" hint-placeholder-count="5">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; border-top:1px solid rgba(255,255,255,0.04); background:{{ r.bg }}; opacity:{{ r.op }};">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A; width:16px;">{{ r.n }}</span>
+          <span style="font-size:12.5px; color:#93A1B0;">If</span>
+          <select ref="{{ fixSel }}" data-v="{{ r.when }}" value="{{ r.when }}" onChange="{{ r.onWhen }}" style="height:32px; padding:0 8px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#DCE4EB; font-family:inherit; font-size:12.5px;"><sc-for list="{{ whenOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+          <input value="{{ r.kw }}" onChange="{{ r.onKw }}" placeholder="keywords" style="flex:1 1 140px; min-width:0; height:32px; padding:0 10px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.4); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; outline:none;">
+          <span style="font-size:12.5px; color:#93A1B0;">→</span>
+          <select ref="{{ fixSel }}" data-v="{{ r.model }}" value="{{ r.model }}" onChange="{{ r.onModel }}" style="height:32px; padding:0 8px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:#141B24; color:#DCE4EB; font-family:inherit; font-size:12.5px;"><sc-for list="{{ modelOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+          <button onClick="{{ r.up }}" title="Move up" style="width:28px; height:28px; display:grid; place-items:center; border-radius:8px; border:0; background:transparent; cursor:pointer; color:#93A1B0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+          <button onClick="{{ r.toggle }}" style="width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button>
+        </div>
+      </sc-for>
+      <div style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.04); font-size:12.5px; color:#93A1B0;">Otherwise → <b style="color:#E8EEF3;">Auto</b> (cheapest model that can do it)</div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ isModels }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+      <div style="flex:1 1 320px; min-width:0; max-width:460px; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MODELS · {{ mCount }}</span><button onClick="{{ mAddOpen }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:12.5px; font-weight:700;">+ Add AI</button></div>
+        <sc-for list="{{ mList }}" as="m" hint-placeholder-count="5">
+          <div onClick="{{ m.pick }}" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:16px; cursor:pointer; background:{{ m.bg }}; border:1px solid {{ m.bd }}; opacity:{{ m.op }};">
+            <span style="flex:none; width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:{{ m.tint }}; color:{{ m.color }}; font-size:13px; font-weight:750;">{{ m.init }}</span>
+            <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px;"><span style="font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.name }}</span><sc-if value="{{ m.isDefault }}" hint-placeholder-val="{{ false }}"><span style="height:17px; padding:0 6px; display:flex; align-items:center; border-radius:5px; background:rgba(255,123,92,0.14); color:#FFA48C; font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:600;">DEFAULT</span></sc-if></div><div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ m.provider }} · {{ m.kind }}</div></div>
+            <button onClick="{{ m.toggle }}" title="Enable" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ m.track }}; display:flex; justify-content:{{ m.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ mAdding }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,123,92,0.3);">
+          <div style="display:flex; align-items:center;"><h3 style="margin:0; flex:1; font-size:17px; font-weight:750;">Add an AI</h3><button onClick="{{ mAddClose }}" style="width:32px; height:32px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;">×</button></div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PROVIDER</span><div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:6px;"><sc-for list="{{ provPick }}" as="p" hint-placeholder-count="6"><button onClick="{{ p.pick }}" style="display:flex; align-items:center; gap:8px; height:44px; padding:0 12px; border-radius:12px; cursor:pointer; text-align:left; font-size:13px; font-weight:650; background:{{ p.bg }}; color:{{ p.fg }}; border:1px solid {{ p.bd }};"><span style="width:8px; height:8px; border-radius:50%; background:{{ p.c }};"></span>{{ p.label }}</button></sc-for></div></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MODEL ID</span><input value="{{ na.model }}" onChange="{{ na.setModel }}" placeholder="{{ na.modelHint }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; font-family:'JetBrains Mono', monospace; font-size:12.5px;"></div>
+            <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">DISPLAY NAME</span><input value="{{ na.name }}" onChange="{{ na.setName }}" placeholder="Shown in pickers" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none;"></div>
+          </div>
+          <sc-if value="{{ na.needsUrl }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">BASE URL</span><input value="{{ na.url }}" onChange="{{ na.setUrl }}" placeholder="http://localhost:11434/v1" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; font-family:'JetBrains Mono', monospace; font-size:12.5px;"></div></sc-if>
+          <sc-if value="{{ na.needsKey }}" hint-placeholder-val="{{ true }}"><div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">API KEY</span><input type="password" value="{{ na.key }}" onChange="{{ na.setKey }}" placeholder="Stored in the macOS keychain" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; font-family:'JetBrains Mono', monospace; font-size:12.5px;"></div></sc-if>
+          <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">WHAT CAN IT DO</span><div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ naCaps }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.pick }}" style="height:30px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};">{{ c.label }}</button></sc-for></div></div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:4px;">
+            <button onClick="{{ naTest }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(69,224,200,0.35); background:rgba(69,224,200,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#9FEFE2;">{{ naTestLabel }}</button>
+            <span style="flex:1;"></span>
+            <button onClick="{{ mAddClose }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:13px; font-weight:600; color:#DCE4EB;">Cancel</button>
+            <button onClick="{{ naSave }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; cursor:pointer; font-size:13px; font-weight:700; color:#1A0A05;">Add AI</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ mEditing }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:2 1 460px; min-width:0; display:flex; flex-direction:column; gap:14px; padding:18px; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07);">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span style="flex:none; width:44px; height:44px; display:grid; place-items:center; border-radius:13px; background:{{ mc.tint }}; color:{{ mc.color }}; font-size:16px; font-weight:750;">{{ mc.init }}</span>
+            <div style="flex:1; min-width:0;"><input value="{{ mc.name }}" onChange="{{ mSet.name }}" style="width:100%; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:19px; font-weight:750; padding:0;"><div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;">{{ mc.provider }} · {{ mc.model }}</div></div>
+            <button onClick="{{ mDefault }}" style="height:34px; padding:0 12px; border-radius:10px; border:1px solid {{ mc.defBd }}; background:{{ mc.defBg }}; cursor:pointer; font-size:12.5px; font-weight:650; color:{{ mc.defFg }};">{{ mc.defLabel }}</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px;"><sc-for list="{{ mc.stats }}" as="x" hint-placeholder-count="4"><div style="padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);"><div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ x.l }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:600; margin-top:3px; color:{{ x.c }};">{{ x.v }}</div></div></sc-for></div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">USE IT FOR</span><div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ mRoles }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.pick }}" style="height:30px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ r.bg }}; color:{{ r.fg }}; border:1px solid {{ r.bd }};">{{ r.label }}</button></sc-for></div></div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">CAPABILITIES</span><div style="display:flex; gap:4px; flex-wrap:wrap;"><sc-for list="{{ mCaps }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.pick }}" style="height:30px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};">{{ c.label }}</button></sc-for></div></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+            <sc-for list="{{ mSliders }}" as="sl" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:6px;"><div style="display:flex; align-items:baseline;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ sl.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; color:#FFA48C;">{{ sl.shown }}</span></div><input type="range" min="{{ sl.min }}" max="{{ sl.max }}" step="{{ sl.step }}" value="{{ sl.v }}" onChange="{{ sl.set }}" style="accent-color:#FF7B5C;"><span style="font-size:11.5px; color:#6B7A8A;">{{ sl.hint }}</span></div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">SYSTEM PROMPT ADD-ON</span><textarea value="{{ mc.sys }}" onChange="{{ mSet.sys }}" rows="3" placeholder="Extra instructions sent with every request to this model" style="resize:vertical; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; line-height:1.55; outline:none;"></textarea></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">COST · INPUT / 1M TOKENS</span><input type="number" step="0.01" value="{{ mc.cin }}" onChange="{{ mSet.cin }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; font-family:'JetBrains Mono', monospace;;"></div>
+            <div style="display:flex; flex-direction:column; gap:6px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">COST · OUTPUT / 1M TOKENS</span><input type="number" step="0.01" value="{{ mc.cout }}" onChange="{{ mSet.cout }}" style="height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none; font-family:'JetBrains Mono', monospace;;"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+            <button onClick="{{ mTest }}" style="height:36px; padding:0 13px; border-radius:11px; border:1px solid rgba(69,224,200,0.35); background:rgba(69,224,200,0.08); cursor:pointer; font-size:12.5px; font-weight:650; color:#9FEFE2;">{{ mTestLabel }}</button>
+            <span style="flex:1;"></span>
+            <button onClick="{{ mRemove }}" style="height:36px; padding:0 13px; border-radius:11px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12.5px; font-weight:650; color:#FF8FA2;">Remove</button>
+            <button onClick="{{ mSave }}" style="height:36px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; cursor:pointer; font-size:12.5px; font-weight:700; color:#1A0A05;">Save</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const MC = { 'Claude Code':C.coral, 'GPT-5':C.green, 'GPT-5 mini':'#8FE0B0', 'Gemini 2.5':C.amber, Auto:C.teal };
+const R0 = [
+  { when:'is a coding task', kw:'fix, build, refactor, test', model:'Claude Code', on:1 },
+  { when:'mentions', kw:'translate, hindi, sanskrit', model:'GPT-5 mini', on:1 },
+  { when:'has an image', kw:'', model:'Gemini 2.5', on:1 },
+  { when:'mentions', kw:'summarize, summary, tl;dr', model:'Gemini 2.5', on:1 },
+  { when:'is long (> 4k words)', kw:'', model:'GPT-5', on:0 }
+];
+class Component extends DCLogic {
+  modelVals(s) {
+    const PV = { Anthropic:[C.coral, 0, 'claude-sonnet-4-5'], OpenAI:[C.green, 0, 'gpt-5'], Google:[C.amber, 0, 'gemini-2.5-pro'], Mistral:['#FF8A3D', 0, 'mistral-large-latest'], 'Local (Ollama)':[C.violet, 1, 'llama3.1:8b'], 'OpenAI-compatible':[C.blue, 1, 'my-model'] };
+    const CAPS = ['Code', 'Chat', 'Vision', 'Long context', 'Tools', 'Voice'];
+    const ROLES = ['Coding tasks', 'Answers', 'Summaries', 'Translation', 'Images', 'Fallback'];
+    const M0 = [
+      { id:'cc', name:'Claude Code', provider:'Anthropic', model:'claude-code (agent)', kind:'Agent · plan', on:1, caps:['Code', 'Tools', 'Long context'], roles:['Coding tasks'], temp:0.2, maxTok:32000, ctx:200, sys:'Follow the project guidelines. Run tests before marking done.', cin:0, cout:0, runs:612, lat:'1.2s', err:'0.2%' },
+      { id:'g5', name:'GPT-5', provider:'OpenAI', model:'gpt-5', kind:'API', on:1, caps:['Chat', 'Code', 'Tools', 'Vision'], roles:['Answers', 'Fallback'], temp:0.5, maxTok:8000, ctx:256, sys:'', cin:1.25, cout:10, runs:188, lat:'0.9s', err:'0.4%' },
+      { id:'g5m', name:'GPT-5 mini', provider:'OpenAI', model:'gpt-5-mini', kind:'API', on:1, caps:['Chat'], roles:['Translation', 'Summaries'], temp:0.3, maxTok:4000, ctx:128, sys:'Be brief.', cin:0.25, cout:2, runs:403, lat:'0.6s', err:'0.1%' },
+      { id:'gm', name:'Gemini 2.5', provider:'Google', model:'gemini-2.5-pro', kind:'API', on:1, caps:['Chat', 'Vision', 'Long context'], roles:['Images', 'Summaries'], temp:0.4, maxTok:8000, ctx:1000, sys:'', cin:1.25, cout:5, runs:251, lat:'4.8s', err:'3.1%' },
+      { id:'wh', name:'Whisper', provider:'OpenAI', model:'whisper-1', kind:'Speech to text', on:1, caps:['Voice'], roles:[], temp:0, maxTok:0, ctx:0, sys:'', cin:0, cout:0, runs:96, lat:'1.4s', err:'0%' },
+      { id:'ll', name:'Llama 3.1 (local)', provider:'Local (Ollama)', model:'llama3.1:8b', kind:'Local · free', on:0, caps:['Chat'], roles:['Fallback'], temp:0.6, maxTok:4000, ctx:128, sys:'', cin:0, cout:0, runs:0, lat:'—', err:'—' }
+    ];
+    const ms = s.models || M0; const def = s.mDef || 'cc'; const sel = ms.find(m => m.id === (s.mSel || ms[0].id)) || ms[0];
+    const setM = (id, p) => this.setState(st => ({ models:(st.models || M0).map(m => m.id === id ? { ...m, ...p } : m) }));
+    const pill = on => ({ bg: on ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: on ? '#FFFFFF' : '#A3B0BE', bd: on ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.08)' });
+    const tg = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+    const NA = s.na || { provider:'OpenAI', model:'', name:'', url:'', key:'', caps:['Chat'] };
+    const setNA = p => this.setState(st => ({ na:{ ...(st.na || NA), ...p } }));
+    const [pc, local] = PV[NA.provider];
+    return {
+      mCount:String(ms.length), mAdding: !!s.mAdd, mEditing: !s.mAdd,
+      mList: ms.map(m => { const c = (PV[m.provider] || ['#C2CDD8'])[0]; const on = m.id === sel.id && !s.mAdd; return { ...m, init:m.name[0], color:c, tint:tint(c, 0.16), isDefault: m.id === def, op: m.on ? '1' : '0.55', bg: on ? 'rgba(255,123,92,0.08)' : 'rgba(20,28,38,0.45)', bd: on ? 'rgba(255,123,92,0.3)' : 'rgba(255,255,255,0.06)',
+        track: m.on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: m.on ? 'flex-end' : 'flex-start', pick:() => this.setState({ mSel:m.id, mAdd:false, mTesting:null }),
+        toggle:e => { e.stopPropagation(); setM(m.id, { on: m.on ? 0 : 1 }); this.say(m.on ? m.name + ' turned off' : m.name + ' turned on', m.on ? 'Routing skips it' : 'Available to routing', m.on ? '#93A1B0' : C.green); } }; }),
+      mc: (() => { const c = (PV[sel.provider] || ['#C2CDD8'])[0]; const isD = sel.id === def; return { ...sel, init:sel.name[0], color:c, tint:tint(c, 0.16), cin:String(sel.cin), cout:String(sel.cout), defLabel: isD ? '★ Default model' : 'Make default', defBg: isD ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', defFg: isD ? '#FFA48C' : '#DCE4EB', defBd: isD ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)',
+        stats:[{ l:'RUNS · 30D', v:String(sel.runs), c:'#E8EEF3' }, { l:'LATENCY', v:sel.lat, c:'#E8EEF3' }, { l:'ERRORS', v:sel.err, c: parseFloat(sel.err) > 2 ? C.amber : '#E8EEF3' }, { l:'CONTEXT', v: sel.ctx ? (sel.ctx >= 1000 ? sel.ctx / 1000 + 'M' : sel.ctx + 'k') : '—', c:'#E8EEF3' }] }; })(),
+      mSet:{ name:e => setM(sel.id, { name:e.target.value }), sys:e => setM(sel.id, { sys:e.target.value }), cin:e => setM(sel.id, { cin:+e.target.value }), cout:e => setM(sel.id, { cout:+e.target.value }) },
+      mRoles: ROLES.map(r => ({ label:r, pick:() => setM(sel.id, { roles:tg(sel.roles, r) }), ...pill(sel.roles.includes(r)) })),
+      mCaps: CAPS.map(r => ({ label:r, pick:() => setM(sel.id, { caps:tg(sel.caps, r) }), ...pill(sel.caps.includes(r)) })),
+      mSliders: [['temp', 'TEMPERATURE', 0, 1, 0.1, v => v.toFixed(1), 'Lower = more focused, higher = more creative'], ['maxTok', 'MAX OUTPUT TOKENS', 500, 64000, 500, v => (v / 1000).toFixed(1) + 'k', 'Longest reply it may write'], ['ctx', 'CONTEXT WINDOW (K)', 8, 1000, 8, v => v >= 1000 ? '1M' : v + 'k', 'How much it reads at once']].map(([k, label, min, max, step, fm, hint]) => ({ label, hint, min:String(min), max:String(max), step:String(step), v:String(sel[k]), shown:fm(+sel[k]), set:e => setM(sel.id, { [k]:+e.target.value }) })),
+      mDefault:() => { this.setState({ mDef:sel.id }); this.say(sel.name + ' is the default', 'Used when no routing rule matches', C.coral); },
+      mTestLabel: s.mTesting === sel.id ? 'Testing…' : s.mTested === sel.id ? '✓ Replied in ' + sel.lat : 'Send test prompt',
+      mTest:() => { this.setState({ mTesting:sel.id, mTested:null }); setTimeout(() => this.setState({ mTesting:null, mTested:sel.id }), 900); },
+      mSave:() => this.say('Saved', sel.name + ' settings', C.green),
+      mRemove:() => { if (sel.id === def) return this.say('Pick another default first', '', C.amber); this.setState(st => ({ models:(st.models || M0).filter(m => m.id !== sel.id), mSel:null })); this.say('Removed', sel.name, C.err); },
+      mAddOpen:() => this.setState({ mAdd:true, na:null, naT:null }), mAddClose:() => this.setState({ mAdd:false }),
+      provPick: Object.entries(PV).map(([label, [c]]) => ({ label, c, pick:() => setNA({ provider:label }), ...pill(NA.provider === label) })),
+      na:{ ...NA, modelHint:'e.g. ' + PV[NA.provider][2], needsUrl: !!local, needsKey: NA.provider !== 'Local (Ollama)', setModel:e => setNA({ model:e.target.value }), setName:e => setNA({ name:e.target.value }), setUrl:e => setNA({ url:e.target.value }), setKey:e => setNA({ key:e.target.value }) },
+      naCaps: CAPS.map(r => ({ label:r, pick:() => setNA({ caps:tg(NA.caps, r) }), ...pill(NA.caps.includes(r)) })),
+      naTestLabel: s.naT === 'run' ? 'Connecting…' : s.naT === 'ok' ? '✓ Connected' : 'Test connection',
+      naTest:() => { if (!NA.model.trim()) return this.say('Add a model ID first', '', C.amber); this.setState({ naT:'run' }); setTimeout(() => this.setState({ naT:'ok' }), 900); },
+      naSave:() => { if (!NA.model.trim()) return this.say('Add a model ID first', '', C.amber); const id = 'm' + Date.now(); const m = { id, name: NA.name.trim() || NA.model.trim(), provider:NA.provider, model:NA.model.trim(), kind: local ? 'Local · free' : 'API', on:1, caps:NA.caps, roles:[], temp:0.4, maxTok:4000, ctx:128, sys:'', cin:0, cout:0, runs:0, lat:'—', err:'—' };
+        this.setState(st => ({ models:[...(st.models || M0), m], mSel:id, mAdd:false })); this.say('Added ' + m.name, 'Now pick what to use it for — or add a routing rule', pc); }
+    };
+  }
+  componentDidMount() { this.props.onReady && this.props.onReady(); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+  state = { tab:null, keys:{ an:['LA · claude max', 'Tushar · claude pro'], oa:['sk-…a91f · main'], go:['AIza…7Qe · key 1', 'AIza…k2M · key 2'] }, testing:{}, fo:{ retry:1, other:1, notify:1 }, rules:R0, test:'translate chapter 5 notes into Hindi' };
+  say(t, s, c) { this.props.say && this.props.say(t, s, c); }
+  renderVals() {
+    const s = this.state; const tab = s.tab || this.props.tab || 'providers';
+    const P = [
+      { id:'an', name:'Anthropic', models:'Claude Code · 2 accounts', color:C.coral, st:'ok', lat:'1.2s', err:'0.2%', today:(window.denCur || '$') + '0.00', sub:'plan' },
+      { id:'oa', name:'OpenAI', models:'GPT-5 · GPT-5 mini · Whisper', color:C.green, st:'ok', lat:'0.9s', err:'0.4%', today:(window.denCur || '$') + '0.42' },
+      { id:'go', name:'Google', models:'Gemini 2.5 Pro / Flash', color:C.amber, st:'slow', lat:'4.8s', err:'3.1%', today:(window.denCur || '$') + '1.20' }
+    ];
+    const rnd = (seed, i) => ((Math.sin(seed * 9.1 + i * 3.7) + 1) / 2);
+    const provs = P.map((p, pi) => { const slow = p.st === 'slow'; const t = s.testing[p.id];
+      return { ...p, init:p.name[0], tint:tint(p.color, 0.16), status: slow ? 'SLOW' : 'HEALTHY', stFg: slow ? C.amber : C.green, stBg: tint(slow ? C.amber : C.green, 0.12), bd: slow ? 'rgba(255,181,71,0.3)' : 'rgba(255,255,255,0.07)',
+        metrics:[{ v:p.lat, l:'p50 latency', c: slow ? C.amber : '#E8EEF3' }, { v:p.err, l:'errors · 24h', c: slow ? C.amber : '#E8EEF3' }, { v:p.today, l:'spent today', c:'#E8EEF3' }],
+        spark: Array.from({ length:24 }, (_, i) => { const v = rnd(pi + 1, i); const bad = slow && i > 17; return { h: (20 + v * 80) + '%', c: bad ? C.amber : tint(p.color, 0.4) }; }),
+        keys: s.keys[p.id].map((label, i) => ({ n:String(i + 1), label, dot: slow && i === 0 ? C.amber : C.green, up:() => { if (!i) return; const a = [...s.keys[p.id]]; a.unshift(a.splice(i, 1)[0]); this.setState(st => ({ keys:{ ...st.keys, [p.id]:a } })); this.say(label + ' is now first', p.name, p.color); } })),
+        testLabel: t ? t : 'Run health check',
+        test:() => { this.setState(st => ({ testing:{ ...st.testing, [p.id]:'Checking…' } })); setTimeout(() => { this.setState(st => ({ testing:{ ...st.testing, [p.id]: slow ? '⚠ 4.6s · key 1 slow' : '✓ ' + p.lat + ' · all keys ok' } })); }, 900); },
+        addKey:() => this.say('Add a ' + p.name + ' key', 'Paste it — stored in the macOS keychain.', p.color) }; });
+    const ql = s.test.toLowerCase(); let hit = null;
+    s.rules.forEach((r, i) => { if (hit || !r.on) return; const kws = r.kw.split(',').map(x => x.trim()).filter(Boolean);
+      if ((r.when === 'mentions' && kws.some(k => ql.includes(k))) || (r.when === 'is a coding task' && /fix|build|refactor|test|bug|code/.test(ql)) || (r.when === 'has an image' && /image|screenshot|photo/.test(ql))) hit = { r, i }; });
+    const model = hit ? hit.r.model : 'Auto';
+    const edit = (i, patch) => this.setState(st => ({ rules:st.rules.map((r, j) => j === i ? { ...r, ...patch } : r) }));
+    return {
+      fixSel: this.fixSel,
+      tabs:[['providers', 'Providers'], ['models', 'Models'], ['routing', 'Routing']].map(([id, label]) => ({ label, pick:() => this.setState({ tab:id }), bg: tab === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: tab === id ? '#FFFFFF' : '#93A1B0' })),
+      isProv: tab === 'providers', isRoute: tab === 'routing', isModels: tab === 'models', ...this.modelVals(s), provs,
+      failover:[['retry', 'Retry once on the next key', 'Same provider, next key in order'], ['other', 'Fall back to another provider', 'Answer-only tasks move to the next healthy model'], ['notify', 'Tell me when it happens', 'A quiet notification, not a push']].map(([k, label, hint]) => ({ label, hint, track: s.fo[k] ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: s.fo[k] ? 'flex-end' : 'flex-start', toggle:() => this.setState(st => ({ fo:{ ...st.fo, [k]: st.fo[k] ? 0 : 1 } })) })),
+      test:s.test, onTest:e => this.setState({ test:e.target.value }),
+      match:{ model, rule: hit ? 'rule ' + (hit.i + 1) + ' · ' + hit.r.when + (hit.r.kw ? ' “' + hit.r.kw.split(',')[0].trim() + '”' : '') : 'no rule matched → Auto', fg:MC[model], bg:tint(MC[model], 0.14), cost: model === 'Claude Code' ? 'plan · $0' : model === 'GPT-5 mini' ? '~$0.003' : model === 'GPT-5' ? '~$0.04' : '~$0.01' },
+      whenOpts:['mentions', 'is a coding task', 'has an image', 'is long (> 4k words)', 'is from a project'], modelOpts:Object.keys(MC),
+      rules: s.rules.map((r, i) => ({ ...r, n:String(i + 1), bg: hit && hit.i === i ? 'rgba(69,224,200,0.06)' : 'transparent', op: r.on ? '1' : '0.5', track: r.on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: r.on ? 'flex-end' : 'flex-start',
+        onWhen:e => edit(i, { when:e.target.value }), onKw:e => edit(i, { kw:e.target.value }), onModel:e => edit(i, { model:e.target.value }), toggle:() => edit(i, { on: r.on ? 0 : 1 }),
+        up:() => { if (!i) return; const a = [...s.rules]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; this.setState({ rules:a }); } })),
+      addRule:() => this.setState(st => ({ rules:[...st.rules, { when:'mentions', kw:'', model:'Auto', on:1 }] }))
+    };
+  }
+}
+</script>
+</body>
+</html>

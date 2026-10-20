@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; flex-direction:column; gap:16px; max-width:1180px; margin:0 auto; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}<sc-if value="{{ t.count }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#93A1B0;">{{ t.count }}</span></sc-if></button></sc-for>
+    </div>
+    <sc-if value="{{ isSet }}" hint-placeholder-val="{{ true }}">
+      <div data-tour="settings-search" style="flex:1 1 240px; min-width:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#93A1B0" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Search settings — try “timeout” or “shortcut”" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px;">
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isSet }}" hint-placeholder-val="{{ true }}">
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+      <section data-tour="settings-groups" style="display:flex; flex-direction:column; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <div style="padding:14px 16px 8px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">{{ g.name }}</div>
+        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-height:56px; padding:10px 16px; border-top:1px solid rgba(255,255,255,0.04); background:{{ r.bg }};">
+            <div style="flex:1 1 220px; min-width:0;"><div style="font-size:14px; font-weight:600;">{{ r.label }}</div><div style="font-size:12px; color:#93A1B0;">{{ r.hint }}</div></div>
+            <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.toggle }}" style="flex:none; width:40px; height:24px; padding:2px; border-radius:999px; border:0; cursor:pointer; background:{{ r.track }}; display:flex; justify-content:{{ r.align }};"><span style="width:20px; height:20px; border-radius:50%; background:#E8EEF3;"></span></button></sc-if>
+            <sc-if value="{{ r.isSeg }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:3px; padding:3px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);"><sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="height:28px; padding:0 11px; border-radius:8px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:{{ o.bg }}; color:{{ o.fg }};">{{ o.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ r.isKey }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.rebind }}" style="flex:none; min-width:64px; height:32px; padding:0 12px; border-radius:9px; cursor:pointer; font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; background:{{ r.kbg }}; color:{{ r.kfg }}; border:1px solid {{ r.kbd }};">{{ r.key }}</button></sc-if>
+            <sc-if value="{{ r.isText }}" hint-placeholder-val="{{ false }}"><input value="{{ r.val }}" onChange="{{ r.set }}" onBlur="{{ r.commit }}" onKeyDown="{{ r.key2 }}" placeholder="{{ r.ph }}" style="flex:0 1 260px; min-width:0; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:{{ r.mono }}; font-size:13px; outline:none;"></sc-if>
+            <sc-if value="{{ r.isBtns }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:6px; flex-wrap:wrap;"><sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="2"><button onClick="{{ b.run }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid {{ b.bd }}; background:{{ b.bg }}; cursor:pointer; font-size:12.5px; font-weight:650; color:{{ b.fg }};">{{ b.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ r.hasItems }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1 1 100%; display:flex; flex-direction:column; gap:4px;">
+                <sc-for list="{{ r.items }}" as="it" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                    <div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:650; color:#E8EEF3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ it.label }}</div><sc-if value="{{ it.sub }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px; color:#93A1B0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ it.sub }}</div></sc-if></div>
+                    <sc-for list="{{ it.acts }}" as="a" hint-placeholder-count="1"><button onClick="{{ a.run }}" style="flex:none; height:28px; padding:0 10px; border-radius:8px; border:1px solid {{ a.bd }}; background:rgba(255,255,255,0.03); cursor:pointer; font-size:12px; font-weight:650; color:{{ a.fg }};">{{ a.label }}</button></sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+    </sc-for>
+    <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}"><div style="padding:36px; border-radius:20px; border:1px dashed rgba(255,255,255,0.1); text-align:center; font-size:13.5px; color:#93A1B0;">No setting matches “{{ q }}”.</div></sc-if>
+  </sc-if>
+
+  <sc-if value="{{ isBin }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+      <div style="flex:1 1 380px; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:8px; padding:12px 14px;"><span style="flex:1; font-size:12.5px; color:#93A1B0;">Items are deleted for good after 30 days.</span><sc-if value="{{ hasBin }}" hint-placeholder-val="{{ true }}"><button onClick="{{ emptyBin }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12px; font-weight:650; color:#FF8FA2;">Empty bin</button></sc-if></div>
+        <sc-for list="{{ bin }}" as="b" hint-placeholder-count="5">
+          <button onClick="{{ b.pick }}" style="display:flex; align-items:center; gap:12px; min-height:58px; padding:8px 14px; border:0; border-top:1px solid rgba(255,255,255,0.04); cursor:pointer; text-align:left; background:{{ b.bg }}; color:#E8EEF3;">
+            <span style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:{{ b.tint }}; color:{{ b.tone }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ b.icon }}"></path></svg></span>
+            <span style="flex:1; min-width:0;"><span style="display:block; font-size:13.5px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ b.title }}</span><span style="display:block; font-size:11.5px; color:#93A1B0;">{{ b.type }} · deleted {{ b.when }}</span></span>
+            <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:{{ b.expC }};">{{ b.exp }}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{ binEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:40px 16px; text-align:center; display:flex; flex-direction:column; gap:6px; align-items:center;"><div style="font-size:15px; font-weight:700;">Bin is empty</div><div style="font-size:12.5px; color:#93A1B0;">Cancelled tasks, deleted notes and archived projects land here.</div></div></sc-if>
+      </div>
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1 1 340px; min-width:0; display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PREVIEW · {{ sel.type }}</div>
+          <div style="font-size:18px; font-weight:750;">{{ sel.title }}</div>
+          <div style="padding:14px; border-radius:14px; background:rgba(6,9,13,0.5); border:1px solid rgba(255,255,255,0.05); font-size:13px; line-height:1.7; color:#C2CDD8; white-space:pre-wrap;">{{ sel.preview }}</div>
+          <div style="font-size:12.5px; color:#93A1B0;">Restores to <b style="color:#E8EEF3;">{{ sel.dest }}</b></div>
+          <div style="display:flex; gap:8px;"><button onClick="{{ restore }}" style="flex:1; height:40px; border-radius:12px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13.5px; font-weight:700;">Restore</button><button onClick="{{ purge }}" style="height:40px; padding:0 14px; border-radius:12px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:13px; font-weight:650; color:#FF8FA2;">Delete forever</button></div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = { coral:'#FF7B5C', amber:'#FFB547', teal:'#45E0C8', err:'#FF5470', blue:'#7FB2FF', violet:'#A58BFF', green:'#6FCF97' };
+const tint = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const D = window.Den;
+const BT = { Task:['M5 12l5 5 9-10', C.coral], Note:['M6 3h9l4 4v14H6zM14 3v5h5', C.violet], Project:['M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', C.blue], Recipe:['M13 2L4 14h7l-1 8 9-12h-7z', C.amber], Chat:['M4 5h16v11H8l-4 4z', C.teal] };
+const KEYS = ['Command palette', 'New task', 'Approve next', 'Deny next', 'Focus view', 'Toggle sidebar'];
+const TIMEOUTS = [['10m', 10], ['30m', 30], ['1h', 60], ['2h', 120]];
+const STUCKS = [['5m', 5], ['10m', 10], ['20m', 20], ['30m', 30]];
+const REMINDS = [['5m', 5], ['10m', 10], ['20m', 20], ['30m', 30], ['1h', 60]];
+const b64 = s => { const pad = '='.repeat((4 - s.length % 4) % 4); const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...raw].map(c => c.charCodeAt(0))); };
+
+class Component extends DCLogic {
+  state = { tab:null, q:'', rebinding:null, sel:null, drafts:{} };
+  say(t, s, c) { this.props.say ? this.props.say(t, s, c) : D.say(t, s, c); }
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady();
+    this.kd = e => { const r = this.state.rebinding; if (r === null) return; e.preventDefault(); e.stopPropagation(); if (e.key === 'Escape') return this.setState({ rebinding:null });
+      const k = (e.metaKey ? '⌘' : '') + (e.altKey ? '⌥' : '') + (e.shiftKey && e.key.length > 1 ? '⇧' : '') + (e.key.length === 1 ? e.key.toUpperCase() : e.key);
+      const keys = { ...(D.prefs().shortcuts || {}) }; const cur = n => keys[n] || D.SHORTCUT_DEFAULTS[n];
+      const clash = KEYS.find(n => n !== r && cur(n) === k);
+      keys[r] = k; if (clash) keys[clash] = '—';
+      D.setPref('shortcuts', keys); this.setState({ rebinding:null });
+      this.say(clash ? 'Swapped with “' + clash + '”' : 'Shortcut saved', r + ' → ' + k, clash ? C.amber : C.green); };
+    window.addEventListener('keydown', this.kd, true);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.kd, true); }
+  saveSetting(body, ok) { return D.act(() => D.api('/settings', { method:'PATCH', body }), { ok: ok || ['Saved', Object.keys(body).join(', ').replace(/_/g, ' '), C.green], fail:'Couldn’t save that' }); }
+  draft(k, v) { this.setState(st => ({ drafts:{ ...st.drafts, [k]:v } })); }
+  async pushSubscribe() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return this.say('This browser can’t take push', 'On iPhone, add the Den to the Home Screen first.', C.amber);
+      const perm = await Notification.requestPermission(); if (perm !== 'granted') return this.say('Notifications are blocked', 'Allow them for this site in the browser settings.', C.amber);
+      const reg = await navigator.serviceWorker.register('/sw.js'); const pk = await D.api('/push/key'); const key = pk.publicKey || pk.key;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64(key) });
+      await D.api('/push/subscribe', { method:'POST', body:sub.toJSON() }); D.refresh(); this.say('This device gets notifications', 'Approvals come with Approve / Deny buttons.', C.green);
+    } catch (e) { this.say('Couldn’t turn on notifications', e.message, C.err); }
+  }
+  download(path, name) { fetch(path, { headers:{ 'X-API-Key':D.key() } }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); }).then(b => { const u = URL.createObjectURL(b); const a = Object.assign(document.createElement('a'), { href:u, download:name }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 10000); }).catch(e => this.say('Download failed', e.message, C.err)); }
+  renderVals() {
+    const s = this.state; const tab = s.tab || this.props.tab || 'settings'; const ql = s.q.trim().toLowerCase();
+    const set = D.store.settings || {}; const P = D.prefs(); const dr = s.drafts;
+    const row = (label, hint, extra) => ({ label, hint, isToggle:false, isSeg:false, isKey:false, isText:false, isBtns:false, hasItems:false, opts:[], btns:[], items:[], ...extra });
+    const tog = (label, hint, on, flip) => row(label, hint, { isToggle:true, track: on ? '#FF7B5C' : 'rgba(255,255,255,0.12)', align: on ? 'flex-end' : 'flex-start', toggle:flip });
+    const seg = (label, hint, cur, vals, pick) => row(label, hint, { isSeg:true, opts: vals.map(v => { const [lab, val] = Array.isArray(v) ? v : [v, v]; return { label:lab, pick:() => pick(val, lab), bg: cur === val ? 'rgba(255,255,255,0.1)' : 'transparent', fg: cur === val ? '#FFFFFF' : '#93A1B0' }; }) });
+    const text = (label, hint, key, value, ph, commit, mono) => row(label, hint, { isText:true, val: dr[key] ?? (value ?? ''), ph, mono: mono ? "'JetBrains Mono', monospace" : 'inherit', set:e => this.draft(key, e.target.value),
+      commit:() => { if (dr[key] === undefined || dr[key] === (value ?? '')) return; commit(dr[key]); this.setState(st => { const d = { ...st.drafts }; delete d[key]; return { drafts:d }; }); }, key2:e => { if (e.key === 'Enter') e.target.blur(); } });
+    const btns = (label, hint, list) => row(label, hint, { isBtns:true, btns: list.map(([lab, run, kind]) => ({ label:lab, run, bg: kind === 'p' ? '#FF7B5C' : kind === 'd' ? 'rgba(255,84,112,0.08)' : 'rgba(255,255,255,0.04)', fg: kind === 'p' ? '#1A0A05' : kind === 'd' ? '#FF8FA2' : '#DCE4EB', bd: kind === 'p' ? 'transparent' : kind === 'd' ? 'rgba(255,84,112,0.35)' : 'rgba(255,255,255,0.08)' })) });
+    const items = (r, list) => ({ ...r, hasItems: list.length > 0, items:list.map(it => ({ sub:'', acts:[], ...it, acts:(it.acts || []).map(([lab, run, kind]) => ({ label:lab, run, fg: kind === 'd' ? '#FF8FA2' : '#DCE4EB', bd: kind === 'd' ? 'rgba(255,84,112,0.3)' : 'rgba(255,255,255,0.08)' })) })) });
+    const cur = this.props.theme || 'Dark';
+    const qb = set.quick_buttons || [];
+    const saveQb = list => this.saveSetting({ quick_buttons:list }, ['Quick buttons saved', list.length + ' on Home', C.green]);
+    const restoreInfo = s.restoreInfo;
+    const G = [
+      { name:'GENERAL', rows:[seg('Open to', 'First page when you open the Den', P.startPage || 'home', [['Home', 'home'], ['Projects', 'projects'], ['Inbox', 'email']], v => D.setPref('startPage', v)),
+        seg('Task timeout', 'Paused time doesn’t count', (TIMEOUTS.find(t => t[1] === (set.task_timeout_min || 60)) || TIMEOUTS[2])[1], TIMEOUTS, (v, lab) => this.saveSetting({ task_timeout_min:v }, ['Task timeout → ' + lab, 'From the next task', C.green])),
+        seg('Flag as stuck after', 'No output from Claude Code for this long', (STUCKS.find(t => t[1] === (set.stuck_after_min || 10)) || STUCKS[1])[1], STUCKS, (v, lab) => this.saveSetting({ stuck_after_min:v }, ['Stuck after → ' + lab, 'Shown red on the dashboard', C.green]))] },
+      { name:'WORKSPACES', rows:[(() => {
+        // Working areas in this Den (Work, Personal, a client…). A project belongs to one; the top-left menu shows one at a time.
+        const list = D.areas(); const err = e => this.say('Couldn’t change it', e.message, C.err);
+        const counts = Object.fromEntries(list.map(a => [a.id, D.allVisibleProjects().filter(p => !p.is_general && (p.category || 'personal') === a.id).length]));
+        const rename = a => { const v = window.prompt('Name for this workspace:', a.name); if (v == null || !v.trim() || v.trim() === a.name) return;
+          D.act(() => D.api('/den/areas/' + encodeURIComponent(a.id), { method:'PATCH', body:{ name:v.trim() } }), { ok:['Renamed', v.trim(), C.green], reload:['areas'], core:false }).catch(() => {}); };
+        const remove = a => { const others = list.filter(x => x.id !== a.id); if (!others.length) return this.say('Keep at least one workspace', '', C.amber);
+          let to = others[0];
+          if (counts[a.id]) { const v = window.prompt('Move its ' + counts[a.id] + ' project(s) to which workspace?\\n' + others.map(x => '• ' + x.name).join('\\n'), others[0].name); if (v == null) return;
+            to = others.find(x => x.name.toLowerCase() === v.trim().toLowerCase()); if (!to) return this.say('No workspace called ' + v.trim(), 'Nothing was changed', C.amber); }
+          else if (!window.confirm('Delete the workspace “' + a.name + '”? It has no projects.')) return;
+          if (D.area() === a.id) D.setArea('all');
+          D.act(() => D.api('/den/areas/' + encodeURIComponent(a.id) + '?move_to=' + encodeURIComponent(to.id), { method:'DELETE' }), { ok:r => ['Workspace deleted', (r && r.moved ? r.moved + ' project(s) moved to ' : 'Nothing to move · ') + to.name, C.err], reload:['areas'] }).catch(() => {}); };
+        return items(row('Your workspaces', 'Separate working areas in this Den — pick one from the top-left menu (⌃1–9). Move a project between them from its Overview.'),
+          list.map(a => ({ label:a.name + (D.area() === a.id ? ' · showing now' : ''), sub:counts[a.id] + (counts[a.id] === 1 ? ' project' : ' projects'),
+            acts:[['Show', () => { D.setArea(a.id); this.say('Showing ' + a.name, '', a.color || C.coral); }], ['Rename', () => rename(a)], ['Delete', () => remove(a), 'd']] })));
+      })(), btns('Add a workspace', 'Its own projects, chats and to-dos; Octopus, accounts and settings stay shared', [['Add workspace…', () => {
+        const name = (window.prompt('Name for the new workspace (e.g. Cmentor):') || '').trim(); if (!name) return;
+        D.act(() => D.api('/den/areas', { method:'POST', body:{ name } }), { ok:a => ['Workspace added', a.name, a.color || C.green], reload:['areas'], core:false }).catch(() => {}); }, 'p']])] },
+      { name:'MONEY', rows:[seg('Currency', 'Used for deals, budgets, API costs and reports across the whole Den. Symbol only — amounts are not converted.', D.currency(), [['$ USD', 'USD'], ['₹ INR', 'INR'], ['€ EUR', 'EUR'], ['£ GBP', 'GBP'], ['AED', 'AED'], ['A$ AUD', 'AUD']], (v, lab) => { D.setPref('currency', v); D.cur(); this.say('Currency → ' + lab, 'Symbol only — amounts are not converted', C.green); })] },
+      { name:'APPEARANCE', rows:[row('Theme', 'Auto follows your device · ⇧T toggles', { isSeg:true, opts:['Dark', 'Light', 'Auto'].map(o => ({ label:o, pick:() => this.props.setTheme && this.props.setTheme(o), bg: cur === o ? 'rgba(255,255,255,0.1)' : 'transparent', fg: cur === o ? '#FFFFFF' : '#93A1B0' })) }),
+        seg('Density', 'Row height and spacing', P.vmode === 'compact' ? 'Compact' : 'Comfortable', ['Compact', 'Comfortable'], v => D.setPref('vmode', v === 'Compact' ? 'compact' : 'standard')),
+        tog('Glass effects', 'Turn off for older phones — faster scrolling', P.glass !== false, () => D.setPref('glass', P.glass === false)),
+        tog('Animations', 'Respects reduce-motion either way', P.motion !== false, () => D.setPref('motion', P.motion === false))] },
+      { name:'SAFETY', rows:[tog('Ask before protected commands', set.autonomy === 'autonomous' ? 'Off: only deploys, force-push, deleting, production and email still ask' : 'git push, rm -rf, deploys, payments', set.autonomy !== 'autonomous', () => this.saveSetting({ autonomy: set.autonomy === 'autonomous' ? 'execute' : 'autonomous' })),
+        tog('Auto-deny approvals while asleep', 'After 5 minutes with no answer', set.sleep_auto_deny !== false, () => this.saveSetting({ sleep_auto_deny: set.sleep_auto_deny === false }))] },
+      { name:'NOTIFICATIONS', rows:[tog('Quiet hours 23:00–08:00', 'Only failures and approvals come through', !!set.quiet_hours, () => this.saveSetting({ quiet_hours: !set.quiet_hours })),
+        tog('Sounds', 'A soft chime when a task finishes', !!P.sound, () => D.setPref('sound', !P.sound)),
+        tog('Ping me when a pause ends', 'Once a usage limit resets', !!set.notify_on_resume, () => this.saveSetting({ notify_on_resume: !set.notify_on_resume })),
+        tog('Weekly usage warnings', 'When the weekly limit is going too fast', set.notify_weekly_pace !== false, () => this.saveSetting({ notify_weekly_pace: !set.notify_weekly_pace })),
+        tog('Calendar alerts', 'Deadlines, milestones, meetings', set.notify_timeline !== false, () => this.saveSetting({ notify_timeline: !set.notify_timeline })),
+        btns('This device', set.webpush_subscriptions ? set.webpush_subscriptions + ' device' + (set.webpush_subscriptions > 1 ? 's' : '') + ' get push notifications' : 'No device gets push notifications yet', [['Turn on here', () => this.pushSubscribe(), 'p'], ['Send a test', () => D.act(() => D.api('/notify/test', { method:'POST', body:{} }), { ok:['Test sent', 'Check your phone', C.green] })]])] },
+      { name:'MORNING BRIEFING', rows:[tog('Push the briefing', 'Today, overdue, meetings and approvals — once a day', set.briefing_push !== false, () => this.saveSetting({ briefing_push: !set.briefing_push })),
+        text('Time', 'Local time, HH:MM', 'briefing_time', set.briefing_time, '08:30', v => this.saveSetting({ briefing_time:v }, ['Briefing at ' + v, '', C.amber]), true)] },
+      { name:'EMAIL', rows:[text('Send the Den’s emails to', 'Reports, invites, alerts', 'email_to', set.email_to, 'you@example.com', v => this.saveSetting({ email_to:v }), true),
+        tog('Remind me about waiting approvals', 'One email per approval nobody has answered, with Approve / Deny buttons', !(set.email_events_off || []).includes('approval_reminder'), () => { const off = set.email_events_off || []; const on = off.includes('approval_reminder');
+          D.act(() => D.api('/email', { method:'PATCH', body:{ off: on ? off.filter(k => k !== 'approval_reminder') : [...off, 'approval_reminder'] } }), { ok:[on ? 'Approval reminders on' : 'Approval reminders off', '', on ? C.green : C.amber], fail:'Couldn’t save that' }); }),
+        seg('Remind after', 'How long an approval waits before the email', ((D.need('mod-apprem', '/modules/approval_reminder', 60000) || {}).config || {}).minutes || 10, REMINDS, (v, lab) => D.act(() => D.api('/modules/approval_reminder/config', { method:'PATCH', body:{ config:{ minutes:v } } }), { ok:['Approval reminder after ' + lab, 'One email per approval', C.green], fail:'Couldn’t save that', reload:['mod-apprem'] })),
+        btns('Test', 'Sends one email now', [['Send a test email', () => D.act(() => D.api('/email/test', { method:'POST', body:{} }), { ok:['Test email sent', set.email_to || '', C.green] })]])] },
+      { name:'BUDGET', rows:[text('Daily API cap', 'USD · empty = no daily cap', 'daily', set.daily_budget_usd, 'no cap', v => this.saveSetting({ daily_budget_usd: v === '' ? null : +v }), true),
+        text('Monthly API cap', 'USD · API tasks pause at 100%', 'monthly', set.monthly_budget_usd, '100', v => this.saveSetting({ monthly_budget_usd: +v || 0 }), true)] },
+      { name:'QUICK BUTTONS', rows:[items(row('On Home', 'One-tap prompts. Tap ✕ to remove, add new ones below.'), qb.map((b, i) => ({ label:b.label, sub:D.firstLine(b.prompt, 90) + (b.pic ? ' · asks for a picture' : ''), acts:[['↑', () => { if (!i) return; const l = [...qb]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; saveQb(l); }], ['✕', () => saveQb(qb.filter((x, j) => j !== i)), 'd']] }))),
+        text('New button — label', 'e.g. “Summarize”', 'qbLabel', '', 'Label', () => {}),
+        text('New button — prompt', 'What it asks Octopus', 'qbPrompt', '', 'Summarize this in a few points:', () => {}),
+        btns('', '', [['Add button', () => { const label = (dr.qbLabel || '').trim(), prompt = (dr.qbPrompt || '').trim(); if (!label || !prompt) return this.say('Label and prompt, please', '', C.amber); saveQb([...qb, { id:'q-' + Date.now().toString(36), icon:'✨', label, prompt, pic:false }]); this.setState(st => { const d = { ...st.drafts }; delete d.qbLabel; delete d.qbPrompt; return { drafts:d }; }); }, 'p']])] },
+      { name:'SHORTCUTS', rows: KEYS.map(label => { const rb = s.rebinding === label; const key = D.keyFor(label); return row(label, rb ? 'Press the new key… (Esc to cancel)' : 'Click to rebind', { isKey:true, key: rb ? '…' : key,
+        kbg: rb ? 'rgba(255,123,92,0.16)' : 'rgba(255,255,255,0.05)', kfg: rb ? '#FFA48C' : '#DCE4EB', kbd: rb ? 'rgba(255,123,92,0.5)' : 'rgba(255,255,255,0.1)', rebind:() => this.setState({ rebinding: rb ? null : label }) }); }) }
+    ];
+    const groups = G.map(g => ({ ...g, rows: g.rows.filter(r => !ql || (g.name + r.label + r.hint + (r.items || []).map(i => i.label).join(' ')).toLowerCase().includes(ql)).map(r => ({ ...r, bg: ql ? 'rgba(255,123,92,0.04)' : 'transparent' })) })).filter(g => g.rows.length);
+    // Recycle bin
+    const binData = tab === 'bin' ? D.need('bin', '/den/bin', 10000) : D.need('bin', '/den/bin', 60000);
+    const bin = (binData && binData.items) || [];
+    const key = b => b.kind + ':' + b.id; const selB = bin.find(b => key(b) === s.sel) || bin[0];
+    const reload = ['bin', 'pad', 'recipes', 'schedules', 'projStates'];
+    return {
+      tabs:[['settings', 'Settings', ''], ['bin', 'Recycle bin', String(bin.length || '')]].map(([id, label, count]) => ({ label, count, pick:() => { this.setState({ tab:id }); D.go(id); }, bg: tab === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: tab === id ? '#FFFFFF' : '#93A1B0' })),
+      isSet: tab === 'settings', isBin: tab === 'bin', q:s.q, onQ:e => this.setState({ q:e.target.value }), groups, noMatch: !groups.length,
+      bin: bin.map(b => { const [icon, tone] = BT[b.type] || BT.Task; return { title:b.title, type:b.type, when:D.ago(b.deleted_at, false), icon, tone, tint:tint(tone, 0.13), exp:b.days_left + 'd left', expC: b.days_left <= 3 ? '#FF8FA2' : '#6B7A8A', bg: selB && key(b) === key(selB) ? 'rgba(255,123,92,0.08)' : 'transparent', pick:() => this.setState({ sel:key(b) }) }; }),
+      binEmpty: !!binData && !bin.length, hasBin: bin.length > 0, hasSel: !!selB, sel: selB ? { type:selB.type.toUpperCase(), title:selB.title, preview:selB.preview, dest:selB.dest } : { type:'', title:'', preview:'', dest:'' },
+      restore:() => selB && D.act(() => D.api('/den/bin/' + selB.kind + '/' + selB.id + '/restore', { method:'POST', body:{} }), { ok:['Restored', selB.title + ' → ' + selB.dest, C.green], reload }).then(() => this.setState({ sel:null })),
+      purge:() => { if (!selB) return; if (this.state.confirmPurge !== key(selB)) { this.setState({ confirmPurge:key(selB) }); return this.say('Tap Delete forever again', 'This can’t be undone.', C.err); }
+        this.setState({ confirmPurge:null }); D.act(() => D.api('/den/bin/' + selB.kind + '/' + selB.id, { method:'DELETE' }), { ok:['Deleted forever', selB.title, C.err], reload }).then(() => this.setState({ sel:null })); },
+      emptyBin:() => { if (!this.state.confirmEmpty) { this.setState({ confirmEmpty:true }); setTimeout(() => this.setState({ confirmEmpty:false }), 5000); return this.say('Tap Empty bin again', 'Everything here is erased for good.', C.err); }
+        this.setState({ confirmEmpty:false }); D.act(() => D.api('/den/bin', { method:'DELETE' }), { ok:['Bin emptied', 'Can’t be undone.', C.err], reload }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

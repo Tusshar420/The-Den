@@ -37,14 +37,94 @@ def registry() -> dict[str, Any]:
     if _cache["mtime"] != mtime:
         _cache["data"] = json.loads(REGISTRY_PATH.read_text())
         _cache["mtime"] = mtime
-    # "Enabled" can also be flipped from the AI Providers page; that lives in the
-    # settings table so models.json never has to be rewritten by the app.
+    # "Enabled" can also be flipped from the AI Providers page, and models can be
+    # added there too; both live in the settings table so models.json never has
+    # to be rewritten by the app.
     overrides = db.get_setting("model_overrides", {}) or {}
-    if not overrides:
+    custom = db.get_setting("custom_models", []) or []
+    if not overrides and not custom:
         return _cache["data"]
-    return {**_cache["data"], "models": [
-        {**m, "enabled": overrides[m["id"]]["enabled"]} if isinstance(overrides.get(m["id"], {}).get("enabled"), bool) else m
-        for m in _cache["data"].get("models", [])]}
+    return _with_dashboard_changes(_cache["data"], overrides, custom)
+
+
+def _with_dashboard_changes(base: dict[str, Any], overrides: dict[str, Any], custom: list[dict[str, Any]]) -> dict[str, Any]:
+    """models.json plus the models added on the AI Providers page (each joins the
+    categories in its "use_for", ahead of Claude Code when that is the last
+    resort) and the on/off switches. A models.json id always wins a clash."""
+    taken = {m["id"] for m in base.get("models", [])}
+    added = [{**m, "custom": True} for m in custom if m.get("id") and m["id"] not in taken]
+
+    def changed(m: dict[str, Any]) -> dict[str, Any]:
+        o = overrides.get(m["id"]) or {}
+        m = {**m, "enabled": o["enabled"]} if isinstance(o.get("enabled"), bool) else m
+        if o.get("label"):                       # renamed on the AI Providers page
+            m = {**m, "label": o["label"]}
+        if isinstance(o.get("use_for"), list):    # "What to use it for" on a built-in model
+            m = {**m, "use_for": o["use_for"]}
+        if isinstance(o.get("price_per_mtok"), dict):
+            m = {**m, "price_per_mtok": o["price_per_mtok"]}
+        if isinstance(o.get("context_tokens"), int) and o["context_tokens"] > 0:
+            m = {**m, "context_tokens": o["context_tokens"]}
+        return m
+    models = [changed(m) for m in base.get("models", []) + added]
+    out = {**base, "models": models}
+    extra = [m for m in models if m.get("custom") or isinstance((overrides.get(m["id"]) or {}).get("use_for"), list)]
+    if extra:
+        cats = {name: dict(cat) for name, cat in base.get("routing", {}).get("categories", {}).items()}
+        for m in extra:
+            for name in m.get("use_for") or []:
+                if name not in cats:
+                    continue
+                ids = list(cats[name].get("candidates") or [])
+                if m["id"] not in ids:
+                    at = len(ids) - 1 if len(ids) > 1 and ids[-1] == "claude-code" else len(ids)
+                    ids.insert(at, m["id"])
+                cats[name]["candidates"] = ids
+        out["routing"] = {**base.get("routing", {}), "categories": cats}
+    return out
+
+
+# Routing rules from the AI Providers page (settings["routing_rules"]), checked top to
+# bottom before Octopus picks a model itself: {when, kw, model, on}. `when` is one of
+# RULE_WHENS; kw is comma-separated words (for "mentions" / "is from a project").
+RULE_WHENS = ("mentions", "is a coding task", "has an image", "is long (> 4k words)", "is from a project")
+CODING_CATEGORIES = ("coding", "salesforce", "system")
+
+
+def matching_rule(text: str, project_name: Optional[str] = None, category: Optional[str] = None,
+                  has_images: bool = False) -> Optional[tuple[int, dict[str, Any]]]:
+    """(index, rule) of the first switched-on rule this request fits, else None."""
+    low = (text or "").lower()
+    for i, r in enumerate(db.get_setting("routing_rules") or []):
+        if not r.get("on", True) or not r.get("model"):
+            continue
+        kws = [k.strip().lower() for k in str(r.get("kw") or "").split(",") if k.strip()]
+        when = r.get("when")
+        if (when == "mentions" and kws and any(k in low for k in kws)) \
+                or (when == "is a coding task" and category in CODING_CATEGORIES) \
+                or (when == "has an image" and has_images) \
+                or (when == "is long (> 4k words)" and len(low.split()) > 4000) \
+                or (when == "is from a project" and project_name and (not kws or any(k in project_name.lower() for k in kws))):
+            return i, r
+    return None
+
+
+def rule_model(text: str, project_name: Optional[str], category: Optional[str], has_images: bool = False) -> Optional[tuple[str, str]]:
+    """(model id, why) when a routing rule or the default model decides this request."""
+    hit = matching_rule(text, project_name, category, has_images)
+    if hit:
+        i, r = hit
+        if r["model"] != "auto":
+            m = get_model(r["model"])
+            if m and availability(m)[0]:
+                return m["id"], f"routing rule {i + 1} ({r['when']}{' ' + r['kw'] if r.get('kw') else ''})"
+        return None
+    default = db.get_setting("default_model")
+    if default and default != "auto" and category not in CODING_CATEGORIES and category not in ("assistant", "control", "project", "image"):
+        m = get_model(default)
+        if m and availability(m)[0] and lane_for(m) == "api":
+            return m["id"], f"your default model ({m.get('label', m['id'])})"
+    return None
 
 
 def get_model(model_id: Optional[str]) -> Optional[dict[str, Any]]:
@@ -117,6 +197,13 @@ SIMPLE_MAX_CHARS = 160
 IMAGE_RE = re.compile(
     r"\b(generate|create|make|draw|design|paint|render|produce|illustrate)\b[^.\n]{0,40}\b"
     r"(image|picture|photo|illustration|logo|icon|wallpaper|artwork|poster|sketch|portrait|avatar)s?\b", re.IGNORECASE)
+# "polish this: create an image of..." is about the words, not a request to make the picture.
+EDIT_TEXT_RE = re.compile(
+    r"^\W*(polish|rewrite|rephrase|reword|proofread|paraphrase|translate|"
+    r"(edit|correct)(?!\s+(the |this |my |that )?(image|picture|photo|pic)s?\b)|"
+    r"fix (the |my |this )?(grammar|spelling|wording|typos?|text|sentence|prompt)|"
+    r"improve (the |my |this )?(wording|writing|text|sentence|prompt)|make (this|it) (sound |read )?(better|nicer|clearer|shorter|more \w+))\b",
+    re.IGNORECASE)
 SALESFORCE_RE = re.compile(r"\b(apex|lwc|sfdx|soql|salesforce|sf project|visualforce|flows?\b.*\borg|scratch org)\b", re.IGNORECASE)
 SYSTEM_RE = re.compile(
     r"\b(disk space|free up (space|storage)|storage (is )?full|my mac\b|this mac\b|macbook|homebrew|brew (install|update|upgrade)|"
@@ -131,6 +218,8 @@ RESEARCH_RE = re.compile(
 
 
 def _rules_classify(text: str, has_project: bool) -> tuple[str, str]:
+    if EDIT_TEXT_RE.search(text):
+        return "writing", "asks to polish some text"
     if IMAGE_RE.search(text):
         return "image", "asks for a picture"
     if SALESFORCE_RE.search(text):
@@ -179,6 +268,8 @@ def _llm_classify(text: str, project_name: Optional[str]) -> Optional[tuple[str,
     except providers.ProviderError as e:
         log.warning("Classifier call failed, falling back to rules: %s", e)
         return None
+    db.log_usage("classifier", model_cfg["id"], result.input_tokens, result.output_tokens,
+                 providers.estimate_cost(model_cfg, result.input_tokens, result.output_tokens))
 
     m = re.search(r"\{.*\}", result.text, re.DOTALL)
     try:
@@ -211,6 +302,9 @@ def classify(text: str, project_name: Optional[str] = None, in_thread: bool = Fa
         if pa.matched:
             return {"category": "assistant", "reason": pa.route_note(), "routed_by": "rules", "intent": pa.to_dict()}
 
+    # Polishing text that merely mentions a picture is writing, not an image request.
+    if EDIT_TEXT_RE.search(text):
+        return {"category": "writing", "reason": "asks to polish some text", "routed_by": "rules"}
     # A clear-cut image request needs no classifier call.
     if IMAGE_RE.search(text):
         return {"category": "image", "reason": "asks for a picture", "routed_by": "rules"}
@@ -236,6 +330,10 @@ def route(text: str, project_name: Optional[str] = None, force_model: Optional[s
 
     from octopus import plan
     found = classify(text, project_name)
+    ruled = rule_model(text, project_name, found["category"])
+    if ruled:
+        m = get_model(ruled[0])
+        return {"category": found["category"], "model_id": m["id"], "lane": lane_for(m), "routed_by": "rule", "reason": ruled[1]}
     choice = plan.choose_model(found["category"], text)
     if not choice["model"]:
         raise ValueError(f"No available model for '{found['category']}': " + "; ".join(choice["skipped"]))

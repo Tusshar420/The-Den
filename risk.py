@@ -37,7 +37,7 @@ RUNNERS = {
 # covers the exact command that was approved.
 EXACT_ONLY = {
     "rm", "sudo", "dd", "mkfs", "chmod", "chown", "kill", "killall", "curl", "wget", "ssh", "scp",
-    "rsync", "mv", "sh", "bash", "zsh", "eval", "xargs", "find", "launchctl", "osascript",
+    "rsync", "mv", "sh", "bash", "zsh", "eval", "xargs", "find", "launchctl", "osascript", "security",
 }
 
 
@@ -117,6 +117,8 @@ HIGH = [
     (r"\bprod(uction)?\b", "production", "Mentions production"),
     (r"\bdrop\s+(table|database)\b", "drop", "Drops a database table"),
     (r"\b(chmod|chown)\s+-R\b", "permissions", "Changes permissions recursively"),
+    # The Den's own secrets (vault, project credentials, OAuth tokens) are keyed from the login Keychain.
+    (r"\bsecurity\s+(find-|dump-|export|delete-|unlock-|set-key-partition)", "keychain", "Reads or changes the Keychain, where the Den's secret keys live"),
 ]
 MEDIUM = [
     (r"\b(curl|wget|ssh|scp|rsync|ftp|nc)\b", "network", "Talks to the network"),
@@ -128,6 +130,10 @@ MEDIUM = [
     (r"\bdocker\b", "docker", "Runs Docker"),
     (r"\bkill(all)?\b", "processes", "Stops running processes"),
     (r"\bgit\s+(checkout|restore|clean|rebase|merge|stash)\b", "git", "Rewrites the working tree"),
+    # find ~, du -sh $HOME, grep -r foo /Users/x, rg foo ~/Library ... (but not ~/Library/Caches/x or ~/proj)
+    (r"(\b(find|du|tree|rg|fd|mdfind)|\bgrep\s+-\w*[rR]\w*|\bls\s+-\w*R\w*)\s+([^|;&]*\s)?[\"']?((~|\$HOME|\$\{HOME\}|/Users/[^/\s\"']+)/?"
+     r"(Library/?)?|/)[\"']?(?=[\s;|&)]|$)", "home-scan",
+     "Searches the whole home folder or disk, which reaches other apps' private data and sets off a macOS privacy prompt"),
 ]
 TOOL_NOTES = {
     "WebFetch": ("network", "Fetches a web page"),

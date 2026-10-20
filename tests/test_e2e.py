@@ -198,7 +198,7 @@ class Api(E2E):
         st = self.http("GET", "/assistant/status")
         google = next(c for c in st["connections"] if c["id"] == "google")
         self.assertEqual((google["status"], google["account"], google["cost"]), ("connected", ME, "free"))
-        self.assertEqual(sorted(google["services_granted"]), ["calendar", "email"])
+        self.assertEqual(sorted(google["services_granted"]), ["calendar", "drive", "email"])
         self.assertTrue(st["planner"]["available"])
 
     def test_reminders_are_listed_and_cancellable(self):

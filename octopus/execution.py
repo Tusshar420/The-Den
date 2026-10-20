@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 import db
+import documents
+import phases
+import timeline
 import uploads
 from octopus import registry
 
@@ -32,6 +35,30 @@ TEST_COMMAND_RE = re.compile(
     r"go test|cargo test|rspec|phpunit|mvn test|gradle test|make test|sf apex run test|sfdx force:apex:test:run)\b")
 GIT_TIMEOUT = 15
 DIFF_MAX_BYTES = 200_000
+# Given to every run. A search that walks the home folder reaches other apps'
+# private data in ~/Library/Containers, and macOS stops the unattended run with
+# an "access data from other apps" prompt on the Mac's screen.
+HOUSE_RULES = ("Never search the whole home folder, the whole disk or ~/Library (no `find ~`, `find /`, "
+               "`grep -r ~`, `du ~` and the like) - it sets off a macOS privacy prompt that stops this unattended "
+               "run. Search the project folder or the one specific folder you need (e.g. ~/.npm, "
+               "~/Library/Caches/ms-playwright) instead.\n"
+               "If you have to stop and ask the owner something before you can finish the task (a choice, a missing "
+               "detail, a go-ahead), end your reply with the line [WAITING FOR YOU] so the Den knows the task isn't done. "
+               "Don't add it when the work is finished and you're only offering optional next steps.")
+
+WAIT_MARKER = "[WAITING FOR YOU]"
+_ASKS_RE = re.compile(r"\?[\s*_`)\]\"'”’]*$")
+
+
+def split_waiting(text: Optional[str]) -> tuple:
+    """(the reply without the marker, whether it waits on the owner). The marker HOUSE_RULES asks for
+    is the signal; as a backstop, a reply whose last paragraph ends on a question also counts."""
+    text = text or ""
+    if WAIT_MARKER.lower() in text.lower():
+        cleaned = re.sub(re.escape(WAIT_MARKER), "", text, flags=re.IGNORECASE).rstrip()
+        return cleaned, True
+    last = [p for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    return text, bool(last) and bool(_ASKS_RE.search(last[-1].strip()))
 
 
 # -------------------------------------------------------- what Claude Code gets
@@ -39,15 +66,20 @@ DIFF_MAX_BYTES = 200_000
 def claude_args(task: dict[str, Any]) -> list[str]:
     """Extra Claude Code arguments for a task Octopus planned: the agent's
     instructions, and the tools it was NOT given switched off. A task with no
-    recorded tools (queued the old way) gets none of this and runs as before.
-    A task with pictures also gets read access to the upload folder."""
+    recorded tools (queued the old way) keeps every tool, and every task gets
+    HOUSE_RULES.
+    A task with pictures also gets read access to the upload folder, and one
+    that may read files is told about the project's documents and may open them."""
     args: list[str] = []
     agent = registry.get_agent(task.get("agent_id"))
-    # One flag for both: the agent's instructions, then what the user has noted about the project.
-    appended = [s for s in ((agent or {}).get("instructions"), db.project_notes_prompt(task.get("project_id"))) if s]
-    if appended:
-        args += ["--append-system-prompt", "\n\n".join(appended)]
     granted = task.get("tools")
+    may_read = not isinstance(granted, list) or "filesystem" in granted
+    docs = documents.prompt_for_agent(task.get("project_id")) if may_read else ""
+    # One flag for all: the agent's instructions, the project's notes, timeline, phases and documents.
+    appended = [s for s in ((agent or {}).get("instructions"), db.project_notes_prompt(task.get("project_id")),
+                            timeline.prompt_for(task.get("project_id")), phases.prompt_for(task.get("project_id")),
+                            docs, HOUSE_RULES) if s]
+    args += ["--append-system-prompt", "\n\n".join(appended)]
     if isinstance(granted, list):
         allowed = {name for t in granted for name in CLAUDE_TOOLS.get(t, [])}
         if task.get("images"):
@@ -55,10 +87,12 @@ def claude_args(task: dict[str, Any]) -> list[str]:
         denied = sorted({name for names in CLAUDE_TOOLS.values() for name in names} - allowed)
         if denied:
             args += ["--disallowedTools", ",".join(denied)]
-    if task.get("images"):
-        # Pictures live outside the project folder; let it read that one folder. Last, because
-        # --add-dir takes a list.
-        args += ["--add-dir", str(uploads.UPLOAD_DIR)]
+    # Pictures and documents live outside the project folder; let it read just those folders.
+    # Last, because --add-dir takes a list.
+    extra_dirs = ([str(uploads.UPLOAD_DIR)] if task.get("images") else []) + \
+                 ([str(documents.folder_of(task["project_id"]))] if docs else [])
+    if extra_dirs:
+        args += ["--add-dir", *extra_dirs]
     return args
 
 

@@ -2,9 +2,12 @@
 // listing each project's tasks as titles only. General is always pinned first.
 
 import { QUICK_FILTERS, statusOf, taskName } from '../format.js';
-import { projectColor, queuedTasks, SCOPES, projectStatus } from '../data.js';
-import { esc, icon, scopeSwitch, bulkBar } from '../ui.js';
+import { projectColor, projectFill, queuedTasks, SCOPES, projectStatus, crmOnly } from '../data.js';
+import { esc, icon, scopeSwitch, bulkBar, emptyState } from '../ui.js';
 import { octopusSVG } from '../octopus.js';
+import { dueBadge } from './overview.js';
+import { crmt } from '../crm-table.js';
+import { viewSwitch, tableView, boardView } from './crm-table.js';
 
 const ACTIVE = ['approval', 'running', 'rate_limited', 'needs_review', 'error'];
 const SORTS = [['activity', 'Most active'], ['recent', 'Recently used'], ['queued', 'Most queued'], ['name', 'Name A–Z'], ['newest', 'Newest on top']];
@@ -29,6 +32,7 @@ export function projectRows(c) {
     const running = pt.some(t => t.status === 'running');
     let status = !p.active ? 'paused' : needN ? `${needN} need${needN === 1 ? 's' : ''} you` : running ? 'running now' : qn ? qn + ' queued' : 'quiet';
     if (p.is_general && status === 'quiet') status = 'answers only · pinned';
+    if (crmOnly(p) && status === 'quiet') status = 'record only';
     const nameHit = !q || p.name.toLowerCase().includes(q) || (p.path || '').toLowerCase().includes(q);
     let items = itemsFor(p.id, cur.statuses);
     if (!nameHit) items = items.filter(t => (taskName(t) + ' ' + t.prompt).toLowerCase().includes(q));
@@ -53,11 +57,11 @@ function rowHTML(r, i, w) {
   const p = r.p;
       const avatar = p.is_general
         ? `<span class="avatar avatar--general">${octopusSVG('idle')}</span>`
-        : `<span class="avatar" style="background:${projectColor(p)};opacity:${p.active ? 1 : 0.55}">${esc(p.name.charAt(0).toUpperCase())}</span>`;
+        : `<span class="avatar" style="background:${projectFill(p)};opacity:${p.active ? 1 : 0.55}">${p.image ? '' : esc(p.name.charAt(0).toUpperCase())}</span>`;
       return `<div class="prow" data-key="p${p.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
         <div class="prow__head">
           <button class="prow__main" data-action="openProject" data-id="${p.id}">${avatar}
-            <span class="prow__text"><span class="prow__name truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span><span class="prow__status" style="--c:${r.color}">${p.is_general ? '' : `<span class="pstat" style="--c:${projectStatus(p)[2]}">${projectStatus(p)[1]}</span> · `}${esc(r.status)}</span></span></button>
+            <span class="prow__text"><span class="prow__name truncate" style="opacity:${p.active ? 1 : 0.55}">${esc(p.name)}</span><span class="prow__meta">${p.is_general ? '' : `<span class="prow__stage" style="--c:${projectStatus(p)[2]}">${projectStatus(p)[1]}</span><span class="prow__sep" aria-hidden="true">·</span>`}<span class="prow__status" style="--c:${r.color}">${esc(r.status)}</span>${crmOnly(p) ? '<span class="crm-badge" title="No folder: a CRM record Octopus can\'t run tasks in">CRM only</span>' : ''}</span>${dueBadge(p) ? `<span class="prow__due">${dueBadge(p)}</span>` : ''}</span></span></button>
           <button class="prow__toggle" aria-expanded="${r.open}" aria-label="Show queue" data-action="plToggle" data-id="${p.id}" data-open="${r.open}">${r.items.length || ''}${chev}</button>
         </div>
         ${r.open ? `<div class="prow__items">${r.items.length ? r.items.map(t => {
@@ -71,15 +75,20 @@ function rowHTML(r, i, w) {
 
 // General first, then Work and Personal under their own headings (one plain list when a side is picked).
 function sections(rows, scope) {
-  if (scope !== 'all') return [['', rows]];
-  const part = f => rows.filter(f);
+  const arch = rows.filter(r => r.p.status === 'archived'), live = rows.filter(r => r.p.status !== 'archived');
+  const tail = arch.length ? [['ARCHIVED', arch]] : [];
+  if (scope !== 'all') return [['', live], ...tail].filter(([, l]) => l.length);
+  const part = f => live.filter(f);
   return [['', part(r => r.p.is_general)], ['WORK', part(r => !r.p.is_general && r.p.category === 'work')],
-    ['PERSONAL', part(r => !r.p.is_general && r.p.category !== 'work')]].filter(([, l]) => l.length);
+    ['PERSONAL', part(r => !r.p.is_general && r.p.category !== 'work')], ...tail].filter(([, l]) => l.length);
 }
 
 export function projects(c) {
   const { d, w, ui } = c;
   const pl = ui.projectsList;
+  const view = crmt().view;
+  if (view === 'table') return tableView(c);
+  if (view === 'board') return boardView(c);
   const chips = QUICK_FILTERS.map(f => {
     const n = f.statuses ? d.tasks.filter(t => !t.dismissed && f.statuses.includes(w.uiStatus(t))).length : '';
     return `<button class="chip${pl.quick === f.key ? ' is-on' : ''}" data-action="plQuick" data-key="qf-${f.key}" data-q="${f.key}">${f.dot ? `<span class="dot" style="--c:${f.dot};width:7px;height:7px"></span>` : ''}${f.label}<span class="chip__count">${n}</span></button>`;
@@ -98,18 +107,20 @@ export function projects(c) {
   const rows = projectRows(c);
   const hasProj = d.projects.length > 0;
   return `<div class="page page--narrow page--projects" data-key="page-projects">
+    ${viewSwitch(crmt())}
     ${c.desk ? '' : scopeSwitch(ui.scope, 'setScope', SCOPES)}
     <div class="chip-row" data-noswipe>${chips}</div>
     <div class="toolbar">
       <button class="toolbar__btn${pl.menu === 'sort' || pl.sort !== 'activity' ? ' is-active' : ''}" data-action="plMenu" data-menu="sort">${icon('sort', 16)}${sortLabel}</button>
       <button class="toolbar__btn${pl.menu === 'filter' || filterN ? ' is-active' : ''}" data-action="plMenu" data-menu="filter">${icon('filter', 16)}Filter${filterN ? `<span class="filter-badge">${filterN}</span>` : ''}</button>
       <button class="toolbar__btn toolbar__btn--icon${pl.searchOpen ? ' is-on' : ''}" data-action="plSearch" aria-label="Search">${icon('search', 16, { strokeWidth: 1.8 })}</button>
-      <button class="toolbar__add" data-action="openSheet" data-sheet="addProject"><span>+</span>Add</button>
+      <button class="toolbar__add" data-action="openSheet" data-sheet="addProject"><span>+</span>New project</button>
       ${menu}
     </div>
     ${pl.searchOpen ? `<div class="search">${icon('search', 16, { strokeWidth: 1.8 })}<input id="plSearch" type="search" placeholder="Search projects and tasks" value="${esc(pl.q)}" data-input="pl.q" aria-label="Search projects and tasks"><button class="search__x" data-action="plSearchClose" aria-label="Close search">✕</button></div>` : ''}
     ${pl.quick === 'queue' ? bulkBar(rows.flatMap(r => r.items), 'bulk-projects') : ''}
     ${rows.length ? sections(rows, ui.scope).map(([label, list]) => `${label ? `<div class="plist-head">${label}</div>` : ''}<div class="list">${list.map((r, i) => rowHTML(r, i, w)).join('')}</div>`).join('')
-    : `<div class="empty"><span>${hasProj ? 'No projects match.' : 'No projects yet.'}</span><button class="btn btn--sm" data-action="${hasProj ? 'plClear' : 'openSheet'}" data-sheet="addProject">${hasProj ? 'Clear filters' : 'Add project'}</button></div>`}
+    : (hasProj ? `<div class="empty"><span>No projects match.</span><button class="btn btn--sm" data-action="plClear">Clear filters</button></div>`
+      : emptyState({ title: 'No projects yet', body: 'Keep a record of each project: its stage, dates, value and notes. Give it a folder on this Mac and Octopus can work on it too.', label: 'Create your first project', attrs: 'data-action="openSheet" data-sheet="addProject"' }))}
   </div>`;
 }

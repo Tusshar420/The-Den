@@ -16,7 +16,7 @@ export function pageSwipe(wrapper, getNeighbors, { lockRatio = 1.3, commit = 70,
     wrapper.style.opacity = String(1 - Math.min(0.6, Math.abs(r) * 0.7));
   };
   const down = e => {
-    if (anim || e.button) return;
+    if (anim || e.button || e.clientX <= 24) return;   // the left screen edge opens the sidebar drawer
     if (e.target.closest('[data-noswipe],input,textarea,label,.handle,.swipe__card')) return;
     info = { x0: e.clientX, y0: e.clientY, lock: null };
   };
@@ -82,15 +82,20 @@ export function swipeDecision(card, reveal, { onApprove, onDeny, threshold = 110
 // list: container of fixed-height rows; rows carry data-id; drag starts on .handle.
 // onDrop(ids) receives the new id order → POST /projects/{id}/todos/reorder (backlog)
 // or a queue reorder endpoint (see README › Backend gaps).
-export function dragReorder(list, { rowHeight = () => parseFloat(getComputedStyle(list).getPropertyValue('--row-h')) || 56, onDrop }) {
+// group(id) may return the ids that travel with a dragged row (e.g. every selected row): they
+// land together, in their current order, where the dragged row is dropped.
+export function dragReorder(list, { rowHeight = () => parseFloat(getComputedStyle(list).getPropertyValue('--row-h')) || 56, onDrop, group }) {
   let drag = null;
   const rows = () => [...list.children].filter(r => r.dataset.id);
   const down = e => {
     const h = e.target.closest('.handle'); if (!h || list.querySelector('.is-open')) return;  // rows are only equal height while closed
     e.preventDefault(); e.stopPropagation();
     const row = h.closest('[data-id]'), all = rows();
-    drag = { row, from: all.indexOf(row), y0: e.clientY, dy: 0, all };
+    const g = group ? (group(row.dataset.id) || []).map(String) : [];
+    const mates = g.length > 1 && g.includes(row.dataset.id) ? new Set(g) : null;
+    drag = { row, from: all.indexOf(row), y0: e.clientY, dy: 0, all, mates };
     row.classList.add('is-dragging');
+    if (mates) all.forEach(r => r !== row && mates.has(r.dataset.id) && r.classList.add('is-grouped'));
   };
   const target = () => Math.max(0, Math.min(drag.all.length - 1, drag.from + Math.round(drag.dy / rowHeight())));
   const move = e => {
@@ -106,11 +111,61 @@ export function dragReorder(list, { rowHeight = () => parseFloat(getComputedStyl
   };
   const up = () => {
     if (!drag) return;
-    const to = target(), from = drag.from, ids = drag.all.map(r => r.dataset.id);
-    const [moved] = ids.splice(from, 1); ids.splice(to, 0, moved);
-    drag.all.forEach(r => (r.style.transform = '')); drag.row.classList.remove('is-dragging');
+    const to = target(), from = drag.from, mates = drag.mates, ids = drag.all.map(r => r.dataset.id);
+    drag.all.forEach(r => { r.style.transform = ''; r.classList.remove('is-grouped'); }); drag.row.classList.remove('is-dragging');
     drag = null;
-    if (to !== from) onDrop(ids);
+    if (to === from) return;
+    if (!mates) { const [moved] = ids.splice(from, 1); ids.splice(to, 0, moved); onDrop(ids); return; }
+    // The group lands where the dragged row would have: count the other rows that stay ahead of it.
+    const rest = ids.filter(id => !mates.has(id)), moving = ids.filter(id => mates.has(id));
+    const ahead = ids.slice(0, to < from ? to : to + 1).filter(id => !mates.has(id)).length;
+    rest.splice(ahead, 0, ...moving);
+    if (rest.join() !== ids.join()) onDrop(rest);
+  };
+  list.addEventListener('pointerdown', down);
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  return () => { list.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); };
+}
+
+// ------------------------------------------------------------------ drag to reorder, rows of any height (To-dos)
+// Like dragReorder, but rows can wrap onto several lines: the drop place comes from the row centres
+// measured when the drag starts, and the rows passed over slide by the dragged row's own height.
+export function dragSort(list, { onDrop }) {
+  let drag = null;
+  const down = e => {
+    const h = e.target.closest('.handle'); if (!h || h.closest('[data-chk-drag]') !== list) return;
+    e.preventDefault(); e.stopPropagation();
+    const row = h.closest('[data-id]'), all = [...list.children].filter(r => r.dataset.id);
+    const mids = all.map(r => { const b = r.getBoundingClientRect(); return b.top + b.height / 2; });
+    drag = { row, all, mids, from: all.indexOf(row), y0: e.clientY, dy: 0, h: row.offsetHeight };
+    row.classList.add('is-dragging');
+  };
+  const target = () => {
+    const mid = drag.mids[drag.from] + drag.dy;
+    let to = drag.from;
+    while (to < drag.all.length - 1 && mid > drag.mids[to + 1]) to++;
+    while (to > 0 && mid < drag.mids[to - 1]) to--;
+    return to;
+  };
+  const move = e => {
+    if (!drag) return;
+    drag.dy = e.clientY - drag.y0;
+    const to = target();
+    drag.all.forEach((r, i) => {
+      if (r === drag.row) r.style.transform = `translateY(${drag.dy}px)`;
+      else if (drag.from < to && i > drag.from && i <= to) r.style.transform = `translateY(${-drag.h}px)`;
+      else if (drag.from > to && i >= to && i < drag.from) r.style.transform = `translateY(${drag.h}px)`;
+      else r.style.transform = '';
+    });
+  };
+  const up = () => {
+    if (!drag) return;
+    const to = target(), from = drag.from, ids = drag.all.map(r => r.dataset.id);
+    drag.all.forEach(r => { r.style.transform = ''; }); drag.row.classList.remove('is-dragging');
+    drag = null;
+    if (to === from) return;
+    const [moved] = ids.splice(from, 1); ids.splice(to, 0, moved);
+    onDrop(ids);
   };
   list.addEventListener('pointerdown', down);
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);

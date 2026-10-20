@@ -7,6 +7,7 @@ import { moodFor } from './octopus.js';
 import { projectById, pendingApprovals, queuedTasks, realProjects, usageWindow } from './data.js';
 import { clock } from './ui.js';
 import { kindWord } from './views/assistant-card.js';
+import { accountById, accountList, restingUntil, shortName } from './views/accounts.js';
 
 // The command an approval is asking about (Bash → its command line).
 export function commandOf(a) {
@@ -31,8 +32,11 @@ export function commandName(a) {
   return first.split('/').pop();
 }
 
-export function limitWindowWords(d = store.data) {
-  const w = d.settings && d.settings.claude_usage && d.settings.claude_usage.limited_window;
+// accountId: that Claude account's limit (default: the default account's).
+export function limitWindowWords(d = store.data, accountId = null) {
+  const acct = accountId && d.settings && (d.settings.claude_accounts || []).find(a => a.id === accountId);
+  const usage = acct ? acct.usage : d.settings && d.settings.claude_usage;
+  const w = usage && usage.limited_window;
   return w === 'five_hour' ? { hit: 'the 5-hour session limit', full: '5-hour session window is full.' }
     : w === 'seven_day' ? { hit: 'the weekly limit', full: 'The weekly limit is used up.' }
     : { hit: 'the usage limit', full: 'The usage limit is reached.' };
@@ -65,6 +69,7 @@ export function derive(d = store.data, now = Date.now()) {
   const hasHistory = tasks.length > 0;
 
   let hero;
+  const limitedName = t => { const a = accountById({ d }, t.claude_account); return a ? shortName(a) : 'its Claude account'; };
   const pname = t => (projectById(t.project_id, d) || {}).name || t.project_name || '?';
   const skipNote = pausedSkips.length ? ` Skipping ${pausedSkips.length} in ${pname(pausedSkips[0])} (paused).` : '';
   if (empty) {
@@ -77,14 +82,20 @@ export function derive(d = store.data, now = Date.now()) {
       sub: `${noEndPunct(taskName(t))} (${pname(t)}) needs a yes before I ${String(approval.tool_name).startsWith('assistant:') ? 'act on' : 'run'} ${commandName(approval)}. ` + (nq ? plural(nq, 'task') + ' waiting behind it.' : 'Nothing behind it.'),
       actions: [{ label: 'Review request', action: 'openApproval', id: approval.id, kind: 'approve' }],
     };
-  } else if (rateLimited && rateLimited.resume_at) {
+  } else if (rateLimited && rateLimited.resume_at && !agentRun) {
     const until = clock(rateLimited.resume_at);
     const left = (new Date(rateLimited.resume_at).getTime() - now) / 1000;
     const ping = d.settings && d.settings.notify_on_resume;
+    // Only the account the task is on is at its limit - name it, and the ones that can still run.
+    const acct = accountById({ d }, rateLimited.claude_account);
+    const who = acct ? shortName(acct) : '';
+    const free = accountList({ d }).filter(a => a !== acct && !restingUntil(a) && !a.auth_error).map(shortName);
     hero = {
-      label: 'RATE-LIMITED · RESUMES ' + until, color: 'var(--sleep)', short: 'Asleep until ' + until,
-      line: `Out of juice. Napping until ${until}.`,
-      sub: `Hit ${limitWindowWords(d).hit} partway through "${noEndPunct(taskName(rateLimited))}". I'll resume it on my own in ${hms(left)}` + (nq ? `, then run ${plural(nq, 'more task')}.` : '.'),
+      label: 'RATE-LIMITED · ' + (who ? who.toUpperCase() + ' · ' : '') + 'RESUMES ' + until, color: 'var(--sleep)',
+      short: (who ? who + ' at limit' : 'Asleep') + ' until ' + until,
+      line: free.length ? `${who || 'One account'} is out of juice until ${until}. ${free.join(', ')} still ${free.length === 1 ? 'has' : 'have'} room.` : `Out of juice. Napping until ${until}.`,
+      sub: `${who ? who + ' hit' : 'Hit'} ${limitWindowWords(d, rateLimited.claude_account).hit} partway through "${noEndPunct(taskName(rateLimited))}". I'll resume it on ${who || 'the same account'} on my own in ${hms(left)}`
+        + (free.length ? `. Tasks on ${free.join(', ')} can run right now.` : nq ? `, then run ${plural(nq, 'more task')}.` : '.'),
       actions: d.settings && d.settings.push_configured ? [{ label: ping ? 'Will ping you ✓' : 'Ping me when back', action: 'togglePingBack' }] : [],
     };
   } else if (agentRun) {
@@ -92,7 +103,8 @@ export function derive(d = store.data, now = Date.now()) {
     hero = {
       label: 'WORKING · ' + mmss(el), color: 'var(--run)', short: 'Working',
       line: `On it: ${lowerFirst(noEndPunct(taskName(agentRun)))}.`,
-      sub: `${agentRun.current_step || 'Getting started'} in ${pname(agentRun)}. ` + (nq ? plural(nq, 'task') + ' queued after this.' : 'Nothing queued after this.') + skipNote,
+      sub: `${agentRun.current_step || 'Getting started'} in ${pname(agentRun)}. ` + (nq ? plural(nq, 'task') + ' queued after this.' : 'Nothing queued after this.') + skipNote
+        + (rateLimited && rateLimited.resume_at ? ` ${pname(rateLimited)} waits for ${limitedName(rateLimited)}'s limit to reset at ${clock(rateLimited.resume_at)}.` : ''),
       actions: [{ label: 'Watch', action: 'openChat', id: agentRun.id }],
     };
   } else if (nq && pausedSkips.length === nq) {

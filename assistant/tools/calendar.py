@@ -18,6 +18,9 @@ WORK_START, WORK_END = time(9, 0), time(18, 0)
 WORK_DAYS = (0, 1, 2, 3, 4)
 SLOT_STEP_MINUTES = 30
 MAX_SLOTS = 6
+# How often a new event can repeat: days apart -> label (same choices as the project timeline, timeline.REPEATS).
+REPEATS = {2: "Every other day"}
+_REPEAT_WORDS = {"every other day": 2, "every 2 days": 2, "every second day": 2, "alternate days": 2, "2": 2}
 
 
 # ------------------------------------------------------------------ helpers
@@ -54,12 +57,44 @@ def event_line(ev: dict[str, Any], me: str = "") -> str:
     others = _others(ev, me)
     with_ = f" · with {_names(others)}" if others else ""
     where = f" · {ev['location']}" if ev.get("location") else ""
-    return f"• {_span(ev)}  {ev['title']}{with_}{where}"
+    again = " · repeats" if ev.get("recurring") else ""
+    on = f" · {ev['account']}" if ev.get("account") else ""      # set when several calendars are read together
+    return f"• {_span(ev)}  {ev['title']}{with_}{where}{again}{on}"
 
 
 def _brief(ev: dict[str, Any], me: str = "") -> dict[str, Any]:
-    return {"id": ev["id"], "title": ev["title"], "start": ev["start"], "end": ev["end"], "all_day": ev.get("all_day", False),
-            "attendees": [a["name"] or a["email"] for a in _others(ev, me)], "location": ev.get("location")}
+    out = {"id": ev["id"], "title": ev["title"], "start": ev["start"], "end": ev["end"], "all_day": ev.get("all_day", False),
+           "attendees": [a["name"] or a["email"] for a in _others(ev, me)], "location": ev.get("location"),
+           "recurring": bool(ev.get("recurring"))}
+    if ev.get("account"):
+        out["account"] = ev["account"]
+    return out
+
+
+def _repeat(args: dict[str, Any], start: datetime) -> tuple[Optional[int], Optional[date]]:
+    """(days apart, last day) from create_event's repeat / repeat_until - (None, None) for a one-off."""
+    word = str(args.get("repeat") or "").strip().lower().replace("_", " ").replace("-", " ")
+    if word in ("", "none", "once", "no", "false", "0", "never"):
+        return None, None
+    n = _REPEAT_WORDS.get(word)
+    if n is None:
+        raise ToolError("repeat can only be 'every_other_day' (every 2 days) - leave it out for a one-off event")
+    if not args.get("repeat_until"):
+        return n, None
+    try:
+        until = date.fromisoformat(str(args["repeat_until"]).strip()[:10])
+    except ValueError:
+        raise ToolError("'repeat_until' must be a date like 2026-10-31")
+    if until < start.date():
+        raise ToolError("'repeat_until' can't be before the first day")
+    return n, until
+
+
+def repeat_words(n: Optional[int], until: Optional[date] = None) -> str:
+    """'Every other day' / 'Every other day until Thu Oct 8' ('' for a one-off)."""
+    if not n:
+        return ""
+    return REPEATS.get(n, f"Every {n} days") + (f" until {timeutil.fmt_day(until)}" if until else "")
 
 
 def window_label(start: datetime, end: datetime, now: datetime) -> str:
@@ -171,6 +206,7 @@ def _calendar_field(provider) -> str:
 class CalendarTool(Tool):
     id = "calendar"
     label = "Calendar"
+    account_service = "calendar"
     actions = {
         "list_events": ActionSpec(
             "list_events", "List calendar events in a time window.",
@@ -189,7 +225,9 @@ class CalendarTool(Tool):
             {"title": "event title", "start": "start, ISO 8601 with offset",
              "end?": "end, ISO 8601 (or give duration_minutes)", "duration_minutes?": "default 60",
              "attendees?": "attendee email address(es)", "description?": "notes", "location?": "where",
-             "add_video_call?": "true to add a Google Meet link", "all_day?": "true for an all-day event"}),
+             "add_video_call?": "true to add a Google Meet link", "all_day?": "true for an all-day event",
+             "repeat?": "'every_other_day' to repeat it every 2 days (leave out for a one-off)",
+             "repeat_until?": "last day it repeats on, YYYY-MM-DD (leave out for no end)"}),
         "update_event": ActionSpec(
             "update_event", "Change an existing event (move it, rename it, add attendees). Needs approval.",
             {"event_id": "id of the event (from list_events)", "title?": "new title", "start?": "new start, ISO 8601",
@@ -299,13 +337,17 @@ class CalendarTool(Tool):
         if end <= start:
             raise ToolError("The event must end after it starts")
         attendees = _addresses(args.get("attendees"))
+        repeat, until = _repeat(args, start)
         caps = ["CALENDAR_CREATE"] + (["CALENDAR_INVITE"] if attendees else [])
         resolved = {"title": args["title"], "start": start.isoformat(), "end": end.isoformat(), "attendees": attendees,
                     "description": args.get("description"), "location": args.get("location"),
-                    "all_day": all_day, "add_video_call": str(args.get("add_video_call", "")).lower() in ("true", "1", "yes")}
+                    "all_day": all_day, "add_video_call": str(args.get("add_video_call", "")).lower() in ("true", "1", "yes"),
+                    "repeat_days": repeat, "repeat_until": until.isoformat() if until else None}
         meeting = bool(attendees)
-        fields = [("Title", args["title"]), ("Date", timeutil.fmt_long_date(start)),
+        again = repeat_words(repeat, until)
+        fields = [("Title", args["title"]), ("Date", timeutil.fmt_long_date(start) + (" (first)" if repeat else "")),
                   ("Time", "All day" if all_day else timeutil.fmt_range(start, end)),
+                  ("Repeats", (again if until else again + ", no end date") if repeat else None),
                   ("Attendees", ", ".join(attendees)), ("Where", args.get("location")),
                   ("Video call", "Google Meet link will be added" if resolved["add_video_call"] else None),
                   ("Calendar", _calendar_field(provider)),
@@ -315,16 +357,22 @@ class CalendarTool(Tool):
                      [] if all_day else _conflicts(provider, start, end))
         return Prepared(resolved, caps, f"{args['title'][:60]} ({timeutil.fmt_day(start)})",
                         f"{'Schedule' if meeting else 'Add'} “{args['title']}” {timeutil.fmt_when(start)}"
+                        + (f", {again[0].lower() + again[1:]}" if repeat else "")
                         + (f" with {', '.join(attendees)}" if meeting else ""), pv)
 
     def run_create_event(self, args, ctx):
         start, end = timeutil.parse_iso(args["start"]), timeutil.parse_iso(args["end"])
+        repeat = args.get("repeat_days")
+        until = date.fromisoformat(args["repeat_until"]) if args.get("repeat_until") else None
         ev = ctx.calendar().create_event(args["title"], start, end, args.get("attendees") or None, args.get("description"),
-                                         args.get("location"), args.get("all_day", False), args.get("add_video_call", False))
+                                         args.get("location"), args.get("all_day", False), args.get("add_video_call", False),
+                                         repeat, until)
         when = "all day" if args.get("all_day") else timeutil.fmt_range(start, end)
+        words = repeat_words(repeat, until)
+        again = f" Repeats {words[0].lower() + words[1:]}." if repeat else ""
         invited = f" Invitation sent to {', '.join(args['attendees'])}." if args.get("attendees") else ""
         link = f"\n{ev['link']}" if ev.get("link") else ""
-        return {"text": f"Created “{ev['title']}” on {timeutil.fmt_day(start)}, {when}.{invited}{link}",
+        return {"text": f"Created “{ev['title']}” on {timeutil.fmt_day(start)}, {when}.{again}{invited}{link}",
                 "data": {"event": _brief(ev)}, "ref": ev.get("id")}
 
     # --------------------------------------------------------------- changing

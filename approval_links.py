@@ -34,8 +34,13 @@ def valid(approval_id: int, decision: str, t: str) -> bool:
     return hmac.compare_digest(token(approval_id, decision).encode(), (t or "").encode())
 
 
+def decide_path(approval_id: int, decision: str) -> str:
+    """Same link without the host - for the dashboard's own service worker (webpush), which is already on it."""
+    return f"/approvals/{approval_id}/quick/{decision}?t={token(approval_id, decision)}"
+
+
 def decide_url(approval_id: int, decision: str) -> str:
-    return f"{den_url()}/approvals/{approval_id}/quick/{decision}?t={token(approval_id, decision)}"
+    return f"{den_url()}{decide_path(approval_id, decision)}"
 
 
 def actions(approval_id: Optional[int] = None) -> list[dict[str, Any]]:

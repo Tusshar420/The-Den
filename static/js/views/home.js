@@ -1,18 +1,22 @@
-// Home: hero, Ask Octopus, rollups, needs you, running now, rate-limit card, up next,
-// scheduled, usage, models, recent. Onboarding replaces it when there are no projects.
+// Home: hero, Ask Octopus, the Octopus panel (what's running now), rollups, needs you, rate-limit card, up next,
+// scheduled, usage, models. Up next has a Completed tab beside it. Onboarding replaces it when there are no projects.
 
 import { rollups } from '../api.js';
-import { agoShort, startedAgo, hms, money, modelState, PERMISSION_MODES, modeInfo, usageSummary, priorityLabel, plural, taskName } from '../format.js';
-import { projectById, projectColor, orderedProjects, threadSummaries, finishedAt, generalProject } from '../data.js';
+import { agoShort, hms, money, modelState, PERMISSION_MODES, modeInfo, usageSummary, priorityLabel, plural, taskName } from '../format.js';
+import { projectById, projectColor, orderedProjects, threadSummaries, finishedAt, generalProject, crmOnly } from '../data.js';
 import { commandOf, limitWindowWords } from '../derive.js';
 import { octopusSVG } from '../octopus.js';
-import { esc, octo, spinner, chipFor, icon, toggle, clock, dayWord, histRow, laneColor, modelLabel, bulkBar } from '../ui.js';
+import { acctDots, foldTitle, folded, esc, octo, spinner, chipFor, icon, toggle, clock, dayWord, histRow, lazy, lazyScroll, laneColor, modelLabel, bulkBar, progressBar, emptyState } from '../ui.js';
 import { sessionColor } from './shell.js';
+import { accountById, shortName, accountPicker } from './accounts.js';
 import { isAssistant, previewOf } from './assistant-card.js';
 import { FEATURES } from '../features.js';
 import { imageStrip } from '../attach.js';
 import { octopusPanel, askControls, askAgentMenu, askVoiceStatus, askVoiceMenu } from './octopus-panel.js';
 import { quickSection } from './quick.js';
+import { comingUp } from './calendar.js';
+import { followupsHome } from './crm-activity.js';
+import { crmHomeCard } from './crm-dash.js';
 
 const tildify = p => (p || '').replace(/^\/Users\/[^/]+/, '~');
 const CADENCE = { once: 'Once', daily: 'Every day', weekdays: 'Weekdays' };
@@ -24,9 +28,13 @@ export const scheduleTarget = s => (s.project_id ? s.project_name || '?' : 'all 
 export function scheduleRow(s, { compactMeta = true } = {}) {
   const time = s.next_run_at ? clock(s.next_run_at) : s.time_of_day;
   const meta = `${cadenceLabel(s)} · ${scheduleTarget(s)}${s.enabled && s.next_run_at ? ' · next ' + dayWord(s.next_run_at) : ' · off'}`;
+  // Tapping the row (or the pencil) opens the edit sheet: what, where, when, or delete.
   return `<div class="sched-row" data-key="s${s.id}">
-    <span class="sched-row__time">${esc(time)}</span>
-    <div class="sched-row__body"><span class="sched-row__label truncate">${esc(s.label)}</span>${compactMeta ? `<span class="meta hide-compact">${esc(meta)}</span>` : `<span class="meta">${esc(meta)}</span>`}</div>
+    <button class="sched-row__main" data-action="editSchedule" data-id="${s.id}" aria-label="Edit schedule: ${esc(s.label)}">
+      <span class="sched-row__time">${esc(time)}</span>
+      <span class="sched-row__body"><span class="sched-row__label truncate">${esc(s.label)}</span>${compactMeta ? `<span class="meta hide-compact">${esc(meta)}</span>` : `<span class="meta">${esc(meta)}</span>`}</span>
+    </button>
+    <button class="icon-btn icon-btn--ghost sched-row__edit" data-action="editSchedule" data-id="${s.id}" title="Edit" aria-label="Edit schedule">${icon('edit', 16)}</button>
     ${toggle(!!s.enabled, 'toggleSchedule', `data-id="${s.id}" aria-label="Schedule on"`, true)}
   </div>`;
 }
@@ -55,7 +63,45 @@ const chev = '<svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke
 // Instant commands (lane control) aren't a model you can pick - they only label the tasks they answered.
 export function modelStates(c) { return c.d.models.filter(m => m.lane !== 'control').map(m => modelState(m, c.now)); }
 
-function ask(c) {
+// On a phone the Ask box takes half the screen, so the page only gets a one-line bar; tapping it opens the full box
+// at the top of the screen (askOverlay, mounted in app.js) with the same controls under the text.
+export function ask(c) {
+  if (c.desk) return askBox(c);
+  const a = c.ui.ask, res = a.result;
+  const status = a.open ? '' : askStatus(c, res);
+  return `<section class="ask ask--bar" data-key="ask-bar">${status}
+    <button class="ask-bar" data-action="askOpen" aria-label="Ask Octopus">
+      <span class="ask-bar__octo" aria-hidden="true">${octopusSVG('idle')}</span>
+      <span class="ask-bar__text${a.text.trim() ? ' has-text' : ''}">${a.sending ? 'Routing… picking a model' : a.text.trim() ? esc(a.text) : 'Ask Octopus anything…'}</span>
+      ${a.sending ? spinner() : a.text.trim() || a.images.length ? '<span class="ask-bar__go" aria-hidden="true">↑</span>' : ''}
+    </button>
+  </section>`;
+}
+
+// Only where the page has an Ask bar (Home, a project's Work tab), so leaving the page doesn't leave the box hanging.
+export function askOverlay(c) {
+  const u = c.ui;
+  if (c.desk || !u.ask.open || !(u.view === 'home' || (u.view === 'project' && u.projectTab === 'work'))) return '';
+  return `<div class="ask-over" data-key="ask-over">
+    <div class="ask-over__scrim" data-action="askClose"></div>
+    <div class="ask-over__panel${u.ask.menu ? ' ask-over__panel--menu' : ''}" role="dialog" aria-label="Ask Octopus">
+      <div class="ask-over__head"><span class="ask-over__title">Ask Octopus</span><button class="icon-btn" data-action="askClose" aria-label="Close">${icon('close', 18)}</button></div>
+      ${askBox(c)}
+    </div>
+  </div>`;
+}
+
+function askStatus(c, res) {
+  const a = c.ui.ask;
+  let status = '';
+  if (a.sending) status = `<div class="ask__status ask__status--routing">${octo('dance', 22)}Routing… picking a model</div>`;
+  else if (res && res.error) status = `<div class="ask__status ask__status--error">Could not send: ${esc(res.error)}</div>`;
+  else if (res && res.answer) status = `<div class="ask__status ask__status--answer">${octo('idle', 22)}<span class="ask__answer">${esc(res.answer)}</span></div>`;
+  else if (res) status = `<div class="ask__status"><span>→</span><b class="lane-${res.lane}">${esc(res.model)}</b><span>·</span><span>${esc(res.why)}</span><span>·</span><button class="ask__open" data-action="openChat" data-id="${res.id}">open #${res.id}</button></div>`;
+  return askVoiceStatus(c) || status;
+}
+
+function askBox(c) {
   const a = c.ui.ask, d = c.d;
   const ms = modelStates(c);
   const pick = a.model === 'auto' ? null : ms.find(m => m.id === a.model);
@@ -71,42 +117,32 @@ function ask(c) {
     const opts = [{ id: 'auto', l: 'Auto - Octopus decides', sub: 'picks a model for each request', dot: 'var(--text)', ok: true },
       ...ms.map(m => ({ id: m.id, l: m.label + m.pickerSuffix, sub: m.status, dot: m.dot, ok: m.available || m.rate }))];
     menu = `<div class="menu-scrim" data-action="closeMenus"></div>
-      <div class="menu menu--model" role="menu"><span class="menu__label">MODEL</span>
+      <div class="menu menu--model menu--up" role="menu"><span class="menu__label">MODEL</span>
       ${opts.map(o => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${a.model === o.id}" data-action="askPick" data-id="${o.id}"${o.ok ? '' : ' aria-disabled="true"'}>
         <span class="dot" style="--c:${o.dot}"></span><span class="menu__two"><span class="menu__main">${esc(o.l)}</span><span class="menu__sub">${esc(o.sub)}</span></span><span class="menu__check">${a.model === o.id ? '✓' : ''}</span></button>`).join('')}
-      </div>`;
-  } else if (a.menu === 'mode') {
-    menu = `<div class="menu-scrim" data-action="closeMenus"></div>
-      <div class="menu menu--model" role="menu"><span class="menu__label">HOW CLAUDE CODE WORKS</span>
-      ${PERMISSION_MODES.map(o => `<button class="menu__opt menu__opt--model" role="menuitemradio" aria-checked="${modeInfo(a.mode).id === o.id}" data-action="askMode" data-id="${o.id}">
-        <span class="dot" style="--c:${o.dot}"></span><span class="menu__two"><span class="menu__main">${esc(o.label)}</span><span class="menu__sub">${esc(o.sub)}</span></span><span class="menu__check">${modeInfo(a.mode).id === o.id ? '✓' : ''}</span></button>`).join('')}
       </div>`;
   } else if (a.menu === 'target') {
     const gen = generalProject(d);
     const opts = [{ id: '', l: 'No project (General)', color: 'var(--p-general)', on: a.projectId == null || (gen && a.projectId === gen.id) },
-      ...orderedProjects(d).filter(p => !p.is_general).map(p => ({ id: p.id, l: p.name, color: projectColor(p), on: a.projectId === p.id }))];
+      ...orderedProjects(d).filter(p => !p.is_general && !crmOnly(p)).map(p => ({ id: p.id, l: p.name, color: projectColor(p), on: a.projectId === p.id }))];
     menu = `<div class="menu-scrim" data-action="closeMenus"></div>
-      <div class="menu menu--target" role="menu"><span class="menu__label">SEND TO</span>
+      <div class="menu menu--target menu--up" role="menu"><span class="menu__label">SEND TO</span>
       ${opts.map(o => `<button class="menu__opt" role="menuitemradio" aria-checked="${o.on}" data-action="askTarget" data-id="${o.id}"><span class="nav-proj__swatch" style="background:${o.color}"></span><span class="grow truncate">${esc(o.l)}</span><span class="menu__check">${o.on ? '✓' : ''}</span></button>`).join('')}
       </div>`;
   }
   if (a.menu === 'agent') menu = askAgentMenu(c);
   if (a.menu === 'voice') menu = askVoiceMenu(c);
-  let status = '';
-  if (a.sending) status = `<div class="ask__status ask__status--routing">${octo('dance', 22)}Routing… picking a model</div>`;
-  else if (res && res.error) status = `<div class="ask__status ask__status--error">Could not send: ${esc(res.error)}</div>`;
-  else if (res && res.answer) status = `<div class="ask__status ask__status--answer">${octo('idle', 22)}<span class="ask__answer">${esc(res.answer)}</span></div>`;
-  else if (res) status = `<div class="ask__status"><span>→</span><b class="lane-${res.lane}">${esc(res.model)}</b><span>·</span><span>${esc(res.why)}</span><span>·</span><button class="ask__open" data-action="openChat" data-id="${res.id}">open #${res.id}</button></div>`;
-  const voiceLine = askVoiceStatus(c);
-  if (voiceLine) status = voiceLine;
-  return `<section class="ask reveal" style="--i:30" data-key="ask">
+  const status = askStatus(c, res);
+  return `<section class="ask${c.desk ? ' reveal' : ''}" style="--i:30" data-key="ask">
+    ${status}
     <div class="ask__wrap">
       <div class="ask__box${a.sending ? ' is-sending' : ''}${res && res.error ? ' is-error' : ''}">
-        <textarea id="askInput" class="ask__input" rows="1" placeholder="🐙 Ask Octopus anything…" aria-label="Ask Octopus" data-input="ask" data-enter="submitAsk" data-autogrow="180" data-live-style${dis}>${esc(a.text)}</textarea>
+        <textarea id="askInput" class="ask__input" rows="1" placeholder="Ask Octopus anything…" aria-label="Ask Octopus" data-input="ask" data-enter="submitAsk" data-autogrow="180" data-live-style${dis}>${esc(a.text)}</textarea>
         ${imageStrip(a.images, 'ask')}
         <div class="ask__controls">
           <button class="ask__model" data-action="askMenu" data-menu="pick" aria-label="Model"${dis}><span class="dot" style="--c:${pick ? pick.dot : 'var(--text)'};width:7px;height:7px"></span>${esc(pick ? pick.label : 'Auto')}${chev}</button>
-          ${pick && pick.lane !== 'agent' ? '' : `<button class="ask__model ask__mode" data-action="askMenu" data-menu="mode" title="${esc(mode.label + ' - ' + mode.sub)}" aria-label="Mode: ${esc(mode.label)}"${dis}><span class="dot" style="--c:${mode.dot};width:7px;height:7px"></span>${esc(mode.short)}${chev}</button>`}
+          ${pick && pick.lane !== 'agent' ? '' : accountPicker(c, a.account, 'askAccount', a.sending)}
+          ${pick && pick.lane !== 'agent' ? '' : `<div class="segmented mode-seg" role="group" aria-label="How Claude Code works" data-noswipe>${PERMISSION_MODES.map(o => `<button class="segmented__opt${mode.id === o.id ? ' is-on' : ''}" title="${esc(o.label + ' - ' + o.sub)}" aria-pressed="${mode.id === o.id}" data-action="askMode" data-id="${o.id}"${dis}>${esc(o.short)}</button>`).join('')}</div>`}
           ${FEATURES.images ? `<label class="tool-btn" title="Attach picture" aria-label="Attach picture"><input type="file" accept="image/*" multiple hidden data-attach="ask"${dis}>${icon('image', 18)}</label>` : ''}
           <button class="tool-btn" data-action="polish" data-target="ask" title="Polish text" aria-label="Polish text"${empty || polishBusy || a.sending ? ' disabled' : ''}>${polishBusy ? '<span class="spinner spinner--tool"></span>' : icon('polish', 18, { strokeWidth: 1.6 })}</button>
           ${askControls(c)}
@@ -116,7 +152,6 @@ function ask(c) {
       </div>
       ${menu}
     </div>
-    ${status}
   </section>`;
 }
 
@@ -172,7 +207,9 @@ function errorCard(c, t) {
     <span class="need__title">${esc(taskName(t))}</span>
     <span class="need__err">${esc((t.error_message || 'Failed').slice(0, 400))}</span>
     <div class="need__row">
-      <button class="btn btn--danger btn--44" data-action="retry" data-id="${t.id}"${busy ? ' disabled' : ''}>${busy ? '<span class="spinner spinner--err"></span>Retrying…' : 'Retry'}</button>
+      ${crmOnly(projectById(t.project_id)) ? `<button class="btn btn--44" data-action="openProject" data-id="${t.project_id}" title="Link a folder to let Octopus work on this project">Link a folder</button>`
+        : `<button class="btn btn--danger btn--44" data-action="retry" data-id="${t.id}"${busy ? ' disabled' : ''}>${busy ? '<span class="spinner spinner--err"></span>Retrying…' : 'Retry'}</button>
+      <button class="btn btn--ghost btn--44" data-action="editRetry" data-id="${t.id}">Edit and retry</button>`}
       <button class="btn btn--ghost btn--44" data-action="openChat" data-id="${t.id}">Open chat</button>
       <button class="btn-dismiss" data-action="dismiss" data-id="${t.id}">Dismiss</button>
     </div>
@@ -201,43 +238,22 @@ function needsYou(c) {
   </section>`;
 }
 
-// ---------------------------------------------------------------- running now
-function runningNow(c) {
-  const rows = c.w.running;
-  return `<section class="section reveal" style="--i:150" data-key="running">
-    <div class="section__head section__head--start"><span class="section__title">Running now</span><span class="section__count">${rows.length || ''}</span></div>
-    ${rows.length ? `<div class="running">${rows.map(t => {
-      const p = projectById(t.project_id);
-      const agent = t.lane !== 'api';
-      const waiting = c.w.apTask.has(t.id);
-      const step = waiting ? 'Waiting for your OK' : t.current_step;
-      const on = !!t.paused;
-      return `<div class="running__item${on ? ' is-paused' : ''}" data-key="r${t.id}"><button class="running__row" data-action="openChat" data-id="${t.id}">
-        ${on ? `<span class="running__pause">${icon('pause', 14)}</span>` : `<span class="spinner spinner--run${agent ? '' : ' spinner--api'}"></span>`}
-        <span class="running__body">
-          <span class="running__title truncate">${esc(taskName(t))}</span>
-          <span class="meta-row"><span class="nowrap">${esc(p ? p.name : '?')}</span>${chipFor(t)}<span class="truncate">· ${on ? 'paused' : t.started_at ? startedAgo(t.started_at, c.now) : 'starting'}</span></span>
-          ${agent && step ? `<span class="running__step truncate hide-compact">› ${esc(step)}</span>` : ''}
-        </span>
-      </button>${agent && !waiting ? `<button class="running__hold" title="${on ? 'Play - carry on' : 'Pause - freeze it here'}" aria-label="${on ? 'Play' : 'Pause'}" data-action="${on ? 'playTask' : 'pauseTask'}" data-id="${t.id}">${icon(on ? 'play' : 'pause', 16)}</button>` : ''}</div>`;
-    }).join('')}</div>` : `<div class="empty">Nothing running</div>`}
-  </section>`;
-}
-
 // ---------------------------------------------------------------- rate limited
 function rateLimitedCard(c) {
   const t = c.w.rateLimited;
   if (!t || !t.resume_at) return '';
   const p = projectById(t.project_id);
+  const acct = accountById(c, t.claude_account);
   const left = (new Date(t.resume_at).getTime() - c.now) / 1000;
   return `<section class="section reveal" style="--i:165" data-key="sleep">
     <div class="section__head"><span class="section__title">Now</span></div>
     <div class="sleep-card">
-      <div class="need__head"><span class="need__kind" style="color:var(--sleep)">RATE-LIMITED</span><span>·</span><span class="need__project">${esc(p ? p.name : '?')}</span></div>
+      <div class="need__head"><span class="need__kind" style="color:var(--sleep)">RATE-LIMITED</span><span>·</span><span class="need__project">${esc(p ? p.name : '?')}${acct ? ' · ' + esc(shortName(acct)) : ''}</span></div>
       <span class="need__title">${esc(taskName(t))}</span>
+      ${progressBar(t, c.now)}
       <div class="sleep-card__timer"><span class="sleep-card__count">${hms(left)}</span><span class="meta">until ${clock(t.resume_at)}${t.current_step ? ' · paused at: ' + esc(t.current_step) : ''}</span></div>
       <div class="sleep-card__bar"></div>
-      <span class="sleep-card__text">${esc(limitWindowWords(c.d).full)} I'll resume this exact session automatically, so you don't need to do anything.</span>
+      <span class="sleep-card__text">${esc(limitWindowWords(c.d, t.claude_account).full)} I'll resume this exact session on the same account automatically, so you don't need to do anything. Projects on other Claude accounts keep going.</span>
       <div class="need__row">
         <button class="btn btn--sleep btn--44" data-action="retry" data-id="${t.id}">Retry now</button>
         <button class="btn btn--ghost btn--44" data-action="openChat" data-id="${t.id}">Open chat</button>
@@ -247,41 +263,69 @@ function rateLimitedCard(c) {
 }
 
 // ---------------------------------------------------------------- up next
-export function upNext(c) {
+export function upNext(c, tabs = '') {
   const { w } = c;
   if (w.empty) return '';
   const q = w.queue;
   let note = '', noteColor = 'var(--text-meta)';
   if (w.approval && q.length) { note = 'held · waiting on you'; noteColor = 'var(--wait)'; }
-  else if (w.rateLimited && w.rateLimited.resume_at && q.length) { note = 'held · until ' + clock(w.rateLimited.resume_at); noteColor = 'var(--sleep)'; }
+  else if (w.rateLimited && w.rateLimited.resume_at && q.length) {
+    const ra = accountById(c, w.rateLimited.claude_account);   // only that account's tasks wait
+    note = (ra ? shortName(ra) + ' ' : '') + 'held · until ' + clock(w.rateLimited.resume_at); noteColor = 'var(--sleep)';
+  }
   else if (q.length) note = c.desk ? 'drag ⋮⋮ to reorder' : 'drag to reorder';
+  const { items: shown, more } = lazy('upnext', q, 6, 6);
+  const picked = q.filter(t => c.ui.qSel[t.id]);
+  const allPicked = q.length && picked.length === q.length;
+  const pickAll = q.length ? `<button class="btn--text" data-action="qSelectAll" data-ids="${allPicked ? '' : q.map(t => t.id).join(',')}">${allPicked ? 'Clear' : 'Select all'}</button>` : '';
   return `<section class="section reveal" style="--i:180" data-key="upnext">
-    <div class="section__head"><span class="section__title">Up next <span class="section__count">${q.length || ''}</span></span><span class="section__note" style="color:${noteColor}">${note}</span></div>
+    <div class="section__head${tabs ? ' section__head--tabs' : ''}">${tabs || `<span class="section__title">Up next <span class="section__count">${q.length || ''}</span></span>`}<span class="section__side"><span class="section__note" style="color:${noteColor}">${note}</span>${pickAll}</span></div>
     ${bulkBar(q, 'bulk-upnext')}
-    ${q.length ? `<div class="list list--queue" data-drag-list="queue">${q.map((t, i) => {
+    ${q.length ? lazyScroll(`<div class="list list--queue" data-drag-list="queue">${shown.map((t, i) => {
       const p = projectById(t.project_id);
       const held = w.isPaused(t);
       const on = !!t.paused;
       const rest = priorityLabel(t.priority) + (t.thread_id ? ' · reply' : '') + (t.run_now ? ' · starting now' : '') + (on ? ' · paused' : '') + (held ? ' · skipped, project paused' : '');
-      return `<div class="qrow${held ? ' is-held' : ''}${on ? ' is-paused' : ''}" data-id="${t.id}" data-key="q${t.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
+      const sel = !!c.ui.qSel[t.id];
+      return `<div class="qrow${c.ui.qOpen[t.id] ? ' is-open' : ''}${held ? ' is-held' : ''}${on ? ' is-paused' : ''}${sel ? ' is-selected' : ''}" data-id="${t.id}" data-key="q${t.id}" style="animation-delay:${Math.min(i, 8) * 45}ms">
         <span class="handle" aria-label="Drag to reorder">⋮⋮</span>
+        <button class="check" role="checkbox" aria-checked="${sel}" data-action="qCheck" data-id="${t.id}" aria-label="Select">${sel ? '✓' : ''}</button>
         <span class="qrow__swatch" style="background:${projectColor(p)}"></span>
-        <div class="qrow__body" data-action="openChat" data-id="${t.id}">
+        <div class="qrow__body" data-action="qRowTap" data-id="${t.id}">
           <span class="qrow__title truncate">${esc(taskName(t))}</span>
-          <div class="meta-row"><span class="nowrap">${esc(p ? p.name : '?')}</span>${chipFor(t)}<span class="truncate">· ${esc(rest)}</span></div>
+          <div class="meta-row"><span class="task-num">#${t.id}</span><span class="nowrap">${esc(p ? p.name : '?')}</span>${acctDots([t])}${chipFor(t)}<span class="truncate">· ${esc(rest)}</span></div>
+          ${progressBar(t, c.now)}
         </div>
-        <div class="qrow__acts">${on ? `<button title="Play - put it back in line" aria-label="Play" data-action="playTask" data-id="${t.id}">${icon('play', 16)}</button>` : `<button title="Proceed now - start alongside what's running" aria-label="Proceed now" data-action="runNow" data-id="${t.id}">▶</button><button title="Pause - skip it until played" aria-label="Pause" data-action="pauseTask" data-id="${t.id}">${icon('pause', 16)}</button>`}<button title="Edit" aria-label="Edit" data-action="editTask" data-id="${t.id}">✎</button><button title="Move to top" aria-label="Move to top" data-action="toTop" data-id="${t.id}">↑</button><button title="Cancel" aria-label="Cancel" data-action="cancelQueued" data-id="${t.id}">✕</button></div>
+        <div class="qrow__acts"><button class="qrow__chat" title="Open chat" aria-label="Open chat" data-action="openChat" data-id="${t.id}">${icon('messages', 16)}</button>${on ? `<button title="Play - put it back in line" aria-label="Play" data-action="playTask" data-id="${t.id}">${icon('play', 16)}</button>` : `<button title="Proceed now - start alongside what's running" aria-label="Proceed now" data-action="runNow" data-id="${t.id}">▶</button><button title="Pause - skip it until played" aria-label="Pause" data-action="pauseTask" data-id="${t.id}">${icon('pause', 16)}</button>`}<button title="Edit" aria-label="Edit" data-action="editTask" data-id="${t.id}">✎</button><button title="Move to top" aria-label="Move to top" data-action="toTop" data-id="${t.id}">↑</button><button title="Cancel" aria-label="Cancel" data-action="cancelQueued" data-id="${t.id}">✕</button><button title="Delete - move to the Recycle bin" aria-label="Delete" data-action="deleteQueued" data-id="${t.id}">${icon('trash', 16)}</button></div>
       </div>`;
-    }).join('')}</div>` : `<div class="empty"><span>Queue's empty.</span><button class="btn btn--sm" data-action="openPalette">Queue something</button></div>`}
+    }).join('')}</div>`, more) : emptyState({ title: 'Your queue is empty', body: 'Tasks you queue here run one after another, even while you are away.', label: 'Add your first task', attrs: 'data-action="openPalette"' })}
+    ${picked.length ? queueSelBar(picked) : ''}
   </section>`;
+}
+
+// Shown while queue rows are ticked: move them as a block, pause / resume them, cancel them, send them to another project, change their priority, or delete them (to the Recycle bin).
+export function queueSelBar(picked) {
+  const paused = picked.some(t => t.paused), playing = picked.some(t => !t.paused);
+  const mv = (dir, label, glyph) => `<button class="qsel__move" data-action="qMove" data-dir="${dir}" title="${label}" aria-label="${label}">${glyph}</button>`;
+  return `<div class="bulkbar qsel" data-key="qsel">
+    <span class="bulkbar__text">${picked.length} selected</span>
+    ${mv('top', 'Move to top', '⤒')}${mv('up', 'Move up', '↑')}${mv('down', 'Move down', '↓')}${mv('bottom', 'Move to bottom', '⤓')}
+    ${playing ? `<button class="bulkbar__del" data-action="qPause">Pause</button>` : ''}
+    ${paused ? `<button class="bulkbar__all" data-action="qResume">Resume</button>` : ''}
+    <button class="bulkbar__all" data-action="qMoveTo">Move…</button>
+    <button class="bulkbar__all" data-action="qPriority">Priority…</button>
+    <button class="bulkbar__del" data-action="qCancel">Cancel</button>
+    <button class="bulkbar__del qsel__danger" data-action="qDelete">Delete</button>
+    <button class="qsel__move" data-action="qClear" title="Clear selection" aria-label="Clear selection">✕</button>
+  </div>`;
 }
 
 // ---------------------------------------------------------------- right column
 function scheduled(c) {
   const rows = c.w.schedules.slice(0, 3);
   return `<section class="section reveal" style="--i:120" data-key="scheduled">
-    <div class="section__head"><span class="section__title">Scheduled</span><button class="btn--text" data-action="go" data-view="recipes">Manage</button></div>
-    ${rows.length ? `<div class="list">${rows.map(s => scheduleRow(s)).join('')}</div>` : `<div class="empty"><span>Nothing scheduled.</span><button class="btn btn--sm" data-action="go" data-view="recipes">Recipes</button></div>`}
+    <div class="section__head">${foldTitle(c, 'scheduled', 'Scheduled')}<button class="btn--text" data-action="go" data-view="recipes">Manage</button></div>
+    ${folded(c, 'scheduled') ? '' : rows.length ? `<div class="list">${rows.map(s => scheduleRow(s)).join('')}</div>` : emptyState({ title: 'Nothing scheduled', body: 'Schedules run a task at a set time, like a daily summary.', label: 'Schedule a task', attrs: `data-action="openPalette" data-when="daily"` })}
   </section>`;
 }
 
@@ -309,14 +353,14 @@ function usage(c) {
       + (w.week ? win('This week', w.week, 'var(--text-meta)', w.week.resets ? 'resets ' + w.week.resets.toLocaleDateString([], { weekday: 'short' }) : 'reset') : '')
     : `<span class="usage-none">Claude usage shows up here after the next Claude Code run.</span>`;
   return `<section class="section reveal" style="--i:180" data-key="usage">
-    <div class="section__head"><span class="section__title">Usage</span><button class="btn--text" data-action="openSheet" data-sheet="usage">Details</button></div>
-    <div class="card usage-card">
+    <div class="section__head">${foldTitle(c, 'usage', 'Usage')}<button class="btn--text" data-action="openSheet" data-sheet="usage">Details</button></div>
+    ${folded(c, 'usage') ? '' : `<div class="card usage-card">
       ${windows}
       <div class="usage-spend">
         <div class="usage-spend__txt"><span class="usage-spend__v">${money(s ? s.today_usd : 0)}</span><span class="usage-spend__l">API spend today · ${money(s ? s.month_usd : 0)} of ${money(s ? s.monthly_budget_usd : 100)} this month</span></div>
         <div class="sparks">${spendBars(s)}</div>
       </div>
-    </div>
+    </div>`}
   </section>`;
 }
 
@@ -326,8 +370,8 @@ const usageLine = u => (u && u.tasks && u.cost_usd == null ? `${u.tasks} tasks �
 function models(c) {
   const ms = modelStates(c);
   return `<section class="section reveal" style="--i:210" data-key="models">
-    <div class="section__head section__head--start"><span class="section__title">Models <span class="section__count">· last 30 days</span></span></div>
-    <div class="list">${ms.map(m => {
+    <div class="section__head section__head--start">${foldTitle(c, 'models', 'Models <span class="section__count">· last 30 days</span>')}</div>
+    ${folded(c, 'models') ? '' : `<div class="list">${ms.map(m => {
       const u = c.d.usage[m.id];
       const off = !m.available && !m.rate;
       return `<div class="model-row${m.rate ? ' is-rate' : ''}${off ? ' is-off' : ''}" data-key="m${esc(m.id)}">
@@ -336,17 +380,26 @@ function models(c) {
         <span class="model-row__usage${u && u.tasks ? '' : ' is-unused'}">${esc(usageLine(u))}</span>
         <span class="model-row__status">${esc(m.status)}</span>
       </div>`;
-    }).join('') || '<div class="empty">No models configured.</div>'}</div>
+    }).join('') || '<div class="empty">No models configured.</div>'}</div>`}
   </section>`;
 }
 
-function recent(c) {
-  const hide = c.ui.hideDone;
-  const rows = threadSummaries(c.d).filter(t => t.status === 'done' || t.status === 'cancelled')
-    .sort((a, b) => finishedAt(b).localeCompare(finishedAt(a))).slice(0, 4);
-  return `<section class="section reveal" style="--i:240" data-key="recent">
-    <div class="section__head"><span class="section__title">Recent</span><span><button class="btn--text" data-action="toggleHideDone" aria-pressed="${hide}">${hide ? 'Show' : 'Hide'}</button> <button class="btn--text" data-action="go" data-view="activity">All activity</button></span></div>
-    ${hide ? `<div class="empty">Completed items hidden.</div>` : rows.length ? `<div class="list">${rows.map(t => histRow(t)).join('')}</div>` : `<div class="empty">Nothing finished yet.</div>`}
+// Home's queue card: In queue | Completed tabs, so what just finished is one tap away instead of at the bottom.
+function queueTabs(c) {
+  const tab = c.ui.homeTab;
+  const done = threadSummaries(c.d).filter(t => t.status === 'done' || t.status === 'cancelled')
+    .sort((a, b) => finishedAt(b).localeCompare(finishedAt(a)));
+  const midnight = new Date(c.now); midnight.setHours(0, 0, 0, 0);
+  const today = done.filter(t => new Date(finishedAt(t)) >= midnight).length;
+  const opt = (k, label, n) => `<button class="tabs__opt${tab === k ? ' is-on' : ''}" role="tab" aria-selected="${tab === k}" data-action="homeTab" data-tab="${k}">${label}${n ? `<span class="tabs__n">${n}</span>` : ''}</button>`;
+  const tabs = `<div class="tabs" role="tablist" data-noswipe>${opt('queue', 'In queue', c.w.queue.length)}${opt('done', 'Completed', today ? today + ' today' : '')}</div>`;
+  if (tab !== 'done') return upNext(c, tabs);
+  const { items: rows } = lazy('home-done', done, 6, 6);
+  const left = done.length - rows.length;
+  const moreBtn = left > 0 ? `<button class="btn--text" data-action="lazyMore" data-lazy="home-done" data-first="6" data-step="6">Load ${Math.min(6, left)} more</button>` : '';
+  return `<section class="section reveal" style="--i:180" data-key="completed">
+    <div class="section__head section__head--tabs">${tabs}<span class="section__side">${moreBtn}<button class="btn--text" data-action="go" data-view="activity">All activity</button></span></div>
+    ${rows.length ? lazyScroll(`<div class="list">${rows.map(t => histRow(t)).join('')}</div>`, '') : emptyState({ title: 'Nothing finished yet', body: 'Finished tasks and their results will collect here.', label: 'Add your first task', attrs: 'data-action="openPalette"' })}
   </section>`;
 }
 
@@ -382,8 +435,9 @@ function onboarding(c) {
 export function home(c) {
   if (c.w.empty) return `<div class="page page--onboard" data-key="page-onboard">${onboarding(c)}</div>`;
   return `<div class="page page--home" data-key="page-home">
-    <div class="page__col">${hero(c)}${ask(c)}${quickSection(c)}${octopusPanel(c)}${rollupsHTML(c)}${needsYou(c)}${runningNow(c)}${rateLimitedCard(c)}${upNext(c)}</div>
-    <div class="page__col">${scheduled(c)}${usage(c)}${models(c)}${recent(c)}</div>
+    <div class="page__col">${hero(c)}${octopusPanel(c)}${rollupsHTML(c)}${needsYou(c)}${rateLimitedCard(c)}${queueTabs(c)}</div>
+    <div class="page__col">${crmHomeCard(c)}${comingUp(c)}${followupsHome(c)}${scheduled(c)}${quickSection(c)}${usage(c)}${models(c)}</div>
+    <div class="page__dock">${ask(c)}</div>
   </div>`;
 }
 

@@ -5,8 +5,31 @@ __pycache__/
 queue.db
 queue.db-*
 queue.db.bak*
+# Den 2.0 hidden vault: encrypted files (the key is in the Keychain), never in git.
+vault/
+# Den 2.1 database backups (Settings › Backup) - copies of queue.db, never in git.
+backups/
 .DS_Store
 *.log
 # Holds the real API_KEY (and soon OPENAI_API_KEY) - never commit it.
 setup/com.tushar.claudequeue.plist
 workspace/
+# Claude account tokens (accounts.py) - never commit them.
+accounts.json
+accounts.json.tmp
+
+# Tasks a restart held, let go again on the next start (restart_control.py)
+restart_held.json
+restart_requested.json
+static/project-images/
+# Extra OpenAI / Gemini API keys (api_keys.py) - never commit them.
+api_keys.json
+api_keys.json.tmp
+# The dashboard login: password hash and session hashes (login.py) - never commit it.
+login.json
+login.json.tmp
+
+# Den releases (modules/den_updates): published bundles live here, never in git.
+releases/
+# Downloaded updates and the backup of the version before them (launcher.py).
+.den-update/

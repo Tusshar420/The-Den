@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div ref="{{ rootRef }}" style="position:relative; display:flex; flex-direction:column; gap:10px; min-width:0; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <div style="display:flex; flex-direction:column; gap:8px; padding:10px; border-radius:14px; background:rgba(255,255,255,0.03); border:1px solid {{ addBd }}; transition:border-color .15s;">
+    <div style="display:flex; align-items:flex-start; gap:8px;">
+      <span style="flex:none; width:20px; height:20px; margin-top:7px; display:grid; place-items:center; border-radius:50%; border:1.5px dashed rgba(255,255,255,0.22); color:#6B7A8A;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg></span>
+      <textarea value="{{ text }}" onChange="{{ onText }}" onKeyDown="{{ onKey }}" onPaste="{{ onPaste }}" onFocus="{{ onFocus }}" onBlur="{{ onBlur }}" rows="{{ taRows }}" placeholder="{{ ph }}" style="flex:1; min-width:0; resize:none; padding:6px 0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14px; line-height:1.5;"></textarea>
+    </div>
+    <sc-if value="{{ showAddOpts }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding-left:28px;">
+        <sc-if value="{{ unscoped }}" hint-placeholder-val="{{ true }}">
+          <div data-todo-menu="1" style="position:relative;">
+            <button onMouseDown="{{ keep }}" onClick="{{ addProjToggle }}" style="height:26px; display:flex; align-items:center; gap:6px; padding:0 9px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:#DCE4EB;"><span style="width:7px; height:7px; border-radius:2px; background:{{ addProjC }};"></span>{{ addProjName }}</button>
+            <sc-if value="{{ addProjOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; top:calc(100% + 4px); left:0; z-index:40; width:210px; padding:5px; border-radius:12px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 20px 50px -18px rgba(0,0,0,0.85);">
+                <sc-for list="{{ addProjOpts }}" as="p" hint-placeholder-count="5"><button onMouseDown="{{ keep }}" onClick="{{ p.pick }}" style="width:100%; display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:8px; border:0; background:{{ p.bg }}; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;"><span style="width:8px; height:8px; border-radius:2px; background:{{ p.c }};"></span>{{ p.name }}</button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-for list="{{ addPrios }}" as="p" hint-placeholder-count="3"><button onMouseDown="{{ keep }}" onClick="{{ p.pick }}" title="{{ p.label }}" style="width:26px; height:26px; display:grid; place-items:center; border-radius:8px; border:1px solid {{ p.bd }}; background:{{ p.bg }}; cursor:pointer; color:{{ p.c }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-2 4 2 4H5"></path></svg></button></sc-for>
+        <span style="width:1px; height:16px; margin:0 3px; background:rgba(255,255,255,0.08);"></span>
+        <sc-for list="{{ addDues }}" as="d" hint-placeholder-count="3"><button onMouseDown="{{ keep }}" onClick="{{ d.pick }}" style="height:26px; padding:0 9px; border-radius:999px; border:1px solid {{ d.bd }}; background:{{ d.bg }}; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:650; color:{{ d.fg }};">{{ d.label }}</button></sc-for>
+        <span style="flex:1;"></span>
+        <button onMouseDown="{{ keep }}" onClick="{{ addNow }}" style="height:26px; padding:0 11px; border-radius:8px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; color:#1A0A05;">Add ↵</button>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ hasPend }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:14px; background:rgba(255,123,92,0.06); border:1px solid rgba(255,123,92,0.3); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+      <div style="display:flex; align-items:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFA48C" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path></svg><span style="flex:1; font-size:13px; font-weight:700;">{{ pendTitle }}</span><span style="font-size:11px; color:#93A1B0;">bullets &amp; numbers removed</span></div>
+      <div style="display:flex; flex-direction:column; gap:2px; max-height:200px; overflow-y:auto;">
+        <sc-for list="{{ pend }}" as="p" hint-placeholder-count="4"><div style="display:flex; align-items:center; gap:8px; min-height:30px; padding:0 4px 0 8px; border-radius:8px; background:rgba(6,9,13,0.35);"><span style="flex:none; width:14px; height:14px; border-radius:50%; border:1.5px solid {{ p.ring }}; background:{{ p.fill }};"></span><span style="flex:1; min-width:0; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#DCE4EB;">{{ p.text }}</span><sc-if value="{{ p.meta }}" hint-placeholder-val="{{ false }}"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10px; color:#93A1B0;">{{ p.meta }}</span></sc-if><button onClick="{{ p.rm }}" title="Skip this line" style="flex:none; width:22px; height:22px; border-radius:6px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;">×</button></div></sc-for>
+      </div>
+      <div style="display:flex; gap:6px;"><button onClick="{{ pendCancel }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#DCE4EB;">Cancel</button><button onClick="{{ pendAdd }}" style="flex:1; height:32px; border-radius:10px; border:0; background:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; color:#1A0A05;">{{ pendBtn }}</button></div>
+    </div>
+  </sc-if>
+
+  <div style="display:flex; align-items:center; gap:6px;">
+    <div style="flex:1; min-width:0; display:flex; gap:2px; padding:3px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);">
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.pick }}" style="flex:1; min-width:0; white-space:nowrap; height:26px; display:flex; align-items:center; justify-content:center; gap:5px; border-radius:7px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; background:{{ f.bg }}; color:{{ f.fg }};">{{ f.label }}<span style="font-family:'JetBrains Mono', monospace; font-size:10px; opacity:.7;">{{ f.n }}</span></button></sc-for>
+    </div>
+    <div data-todo-menu="1" style="position:relative; flex:none;">
+      <button onClick="{{ sortToggle }}" title="Sort" style="height:32px; display:flex; align-items:center; gap:5px; padding:0 9px; border-radius:10px; border:1px solid {{ sortBd }}; background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#C2CDD8;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"></path></svg><sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}"><span>{{ sortLabel }}</span></sc-if></button>
+      <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; top:calc(100% + 4px); right:0; z-index:40; width:190px; padding:5px; border-radius:12px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 20px 50px -18px rgba(0,0,0,0.85); animation:denRise .14s cubic-bezier(.2,.7,.3,1);">
+          <div style="padding:5px 9px; font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#6B7A8A;">SORT BY</div>
+          <sc-for list="{{ sorts }}" as="o" hint-placeholder-count="6"><button onClick="{{ o.pick }}" style="width:100%; display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:8px; border:0; background:{{ o.bg }}; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;"><span style="flex:1;">{{ o.label }}</span><sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF7B5C" style="stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button></sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <button onClick="{{ selToggle }}" title="Select multiple" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid {{ selBtnBd }}; background:{{ selBtnBg }}; cursor:pointer; color:{{ selBtnFg }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 4h6v6H4zM14 7h6M4 14h6v6H4zM14 17h6M5.5 17l1.5 1.5 2.5-3"></path></svg></button>
+    <div data-todo-menu="1" style="position:relative; flex:none;">
+      <button onClick="{{ moreToggle }}" title="More" style="width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round;"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button>
+      <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; top:calc(100% + 4px); right:0; z-index:40; width:210px; padding:5px; border-radius:12px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 20px 50px -18px rgba(0,0,0,0.85); animation:denRise .14s cubic-bezier(.2,.7,.3,1);">
+          <sc-for list="{{ moreActs }}" as="a" hint-placeholder-count="4"><button onClick="{{ a.run }}" style="width:100%; display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:8px; border:0; background:transparent; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:{{ a.fg }};" style-hover="background:rgba(255,255,255,0.05);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg>{{ a.label }}</button></sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ skelOn }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; gap:2px;"><sc-for list="{{ skelRows }}" as="sk" hint-placeholder-count="5"><div style="display:flex; align-items:flex-start; gap:10px; padding:9px 8px;"><span style="flex:none; width:20px; height:20px; border-radius:50%; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></span><span style="flex:1; display:flex; flex-direction:column; gap:6px;"><span style="height:13px; width:{{ sk.w }}; border-radius:5px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></span><span style="height:10px; width:34%; border-radius:5px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></span></span></div></sc-for></div></sc-if>
+  <div style="display:flex; flex-direction:column; gap:2px;">
+    <sc-for list="{{ list }}" as="r" hint-placeholder-count="6"><div style="display:flex; flex-direction:column; min-width:0;">
+      <sc-if value="{{ r.isHead }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; gap:7px; padding:10px 4px 4px;"><span style="width:7px; height:7px; border-radius:2px; background:{{ r.c }};"></span><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#93A1B0;">{{ r.label }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#5B6A7A;">{{ r.n }}</span></div>
+      </sc-if>
+      <sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}">
+        <div draggable="{{ r.draggable }}" onDragStart="{{ r.dStart }}" onDragOver="{{ r.dOver }}" onDrop="{{ r.dDrop }}" onDragEnd="{{ r.dEnd }}" onMouseEnter="{{ r.hin }}" onMouseLeave="{{ r.hout }}" onClick="{{ r.rowClick }}" style="position:relative; display:flex; align-items:flex-start; gap:10px; padding:8px 6px 8px 8px; border-radius:11px; background:{{ r.bg }}; box-shadow:{{ r.line }}; opacity:{{ r.op }}; cursor:{{ r.cur }}; transition:background .12s;">
+          <sc-if value="{{ r.selMode }}" hint-placeholder-val="{{ false }}">
+            <span style="flex:none; width:20px; height:20px; margin-top:1px; display:grid; place-items:center; border-radius:6px; border:1.5px solid {{ r.sBd }}; background:{{ r.sBg }}; color:#1A0A05;"><sc-if value="{{ r.selOn }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span>
+          </sc-if>
+          <sc-if value="{{ r.notSel }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ r.toggle }}" title="{{ r.checkTitle }}" style="flex:none; width:20px; height:20px; margin-top:1px; padding:0; display:grid; place-items:center; border-radius:50%; border:1.5px solid {{ r.ring }}; background:{{ r.fill }}; cursor:pointer; color:#0A0E13; transition:all .15s;" style-hover="background:{{ r.hovFill }};"><sc-if value="{{ r.done }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+          </sc-if>
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
+            <sc-if value="{{ r.editing }}" hint-placeholder-val="{{ false }}"><input ref="{{ focusRef }}" value="{{ editText }}" onChange="{{ onEditText }}" onKeyDown="{{ editKey }}" onBlur="{{ editSave }}" style="height:24px; margin:-2px 0; padding:0 6px; border-radius:6px; border:1px solid rgba(255,123,92,0.5); background:rgba(6,9,13,0.6); color:#E8EEF3; font-family:inherit; font-size:14px; outline:none;"></sc-if>
+            <sc-if value="{{ r.notEditing }}" hint-placeholder-val="{{ true }}"><div onDoubleClick="{{ r.startEdit }}" style="font-size:14px; line-height:1.4; color:{{ r.tc }}; text-decoration:{{ r.deco }}; text-decoration-color:rgba(255,255,255,0.3); text-wrap:pretty; word-break:break-word;">{{ r.text }}</div></sc-if>
+            <sc-if value="{{ r.hasMeta }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11px;">
+                <sc-if value="{{ r.hasDue }}" hint-placeholder-val="{{ false }}"><span style="flex:none; white-space:nowrap; display:flex; align-items:center; gap:4px; font-weight:650; color:{{ r.dueC }};"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg>{{ r.dueTxt }}</span></sc-if>
+                <sc-if value="{{ r.hasPrio }}" hint-placeholder-val="{{ false }}"><span style="flex:none; white-space:nowrap; display:flex; align-items:center; gap:3px; font-weight:650; color:{{ r.prioC }};"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-2 4 2 4H5"></path></svg>{{ r.prioL }}</span></sc-if>
+                <sc-if value="{{ r.showProj }}" hint-placeholder-val="{{ false }}"><span style="flex:none; white-space:nowrap; display:flex; align-items:center; gap:5px; color:#93A1B0;"><span style="width:6px; height:6px; border-radius:2px; background:{{ r.projC }};"></span>{{ r.proj }}</span></sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ r.showActs }}" hint-placeholder-val="{{ false }}">
+            <div data-todo-menu="1" style="position:relative; flex:none; display:flex; gap:1px; margin:-3px 0;">
+              <button onClick="{{ r.menuToggle }}" title="Options" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:{{ r.menuBg }}; cursor:pointer; color:#93A1B0;" style-hover="background:rgba(255,255,255,0.08); color:#E8EEF3;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:3; stroke-linecap:round;"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button>
+              <button onClick="{{ r.del }}" title="Delete" style="width:26px; height:26px; display:grid; place-items:center; border-radius:7px; border:0; background:transparent; cursor:pointer; color:#6B7A8A;" style-hover="background:rgba(255,84,112,0.12); color:#FF8FA2;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg></button>
+              <sc-if value="{{ r.menuOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute; top:calc(100% + 4px); right:0; z-index:40; width:230px; padding:6px; border-radius:13px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 22px 54px -18px rgba(0,0,0,0.9); animation:denRise .14s cubic-bezier(.2,.7,.3,1);">
+                  <button onClick="{{ r.startEdit }}" style="width:100%; display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:8px; border:0; background:transparent; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;" style-hover="background:rgba(255,255,255,0.05);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>Edit text</button>
+                  <div style="padding:6px 9px 4px; font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#6B7A8A;">PRIORITY</div>
+                  <div style="display:flex; gap:3px; padding:0 6px 4px;"><sc-for list="{{ r.prios }}" as="p" hint-placeholder-count="4"><button onClick="{{ p.pick }}" style="flex:1; height:28px; border-radius:8px; border:1px solid {{ p.bd }}; background:{{ p.bg }}; cursor:pointer; font-family:inherit; font-size:11px; font-weight:650; color:{{ p.c }};">{{ p.label }}</button></sc-for></div>
+                  <div style="padding:6px 9px 4px; font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#6B7A8A;">DUE</div>
+                  <div style="display:flex; gap:3px; flex-wrap:wrap; padding:0 6px 4px;"><sc-for list="{{ r.dues }}" as="d" hint-placeholder-count="4"><button onClick="{{ d.pick }}" style="height:26px; padding:0 8px; border-radius:999px; border:1px solid {{ d.bd }}; background:{{ d.bg }}; cursor:pointer; font-family:inherit; font-size:11px; font-weight:650; color:{{ d.fg }};">{{ d.label }}</button></sc-for></div>
+                  <div style="padding:6px 9px 4px; font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#6B7A8A;">PROJECT</div>
+                  <sc-for list="{{ r.projs }}" as="p" hint-placeholder-count="5"><button onClick="{{ p.pick }}" style="width:100%; display:flex; align-items:center; gap:8px; padding:6px 9px; border-radius:8px; border:0; background:{{ p.bg }}; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;"><span style="width:7px; height:7px; border-radius:2px; background:{{ p.c }};"></span><span style="flex:1;">{{ p.name }}</span><sc-if value="{{ p.on }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FF7B5C" style="stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button></sc-for>
+                  <div style="height:1px; margin:5px 4px; background:rgba(255,255,255,0.06);"></div>
+                  <button onClick="{{ r.toQueue }}" style="width:100%; display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:8px; border:0; background:transparent; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#FFA48C;" style-hover="background:rgba(255,123,92,0.08);"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"></path></svg>Send to Octopus queue</button>
+                  <button onClick="{{ r.dup }}" style="width:100%; display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:8px; border:0; background:transparent; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;" style-hover="background:rgba(255,255,255,0.05);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;"><path d="M8 8h12v12H8zM4 16V4h12"></path></svg>Duplicate</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div></sc-for>
+    <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:28px 14px; border-radius:14px; border:1px dashed rgba(255,255,255,0.1); text-align:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B6A7A" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg>
+        <span style="font-size:13px; font-weight:650; color:#C2CDD8;">{{ emptyTitle }}</span>
+        <span style="font-size:11.5px; line-height:1.5; color:#6B7A8A;">{{ emptySub }}</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ selMode }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky; bottom:0; z-index:20; display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:8px; border-radius:14px; background:rgba(15,21,29,0.96); border:1px solid rgba(255,255,255,0.1); box-shadow:0 -10px 30px -12px rgba(0,0,0,0.7); backdrop-filter:blur(18px);">
+      <button onClick="{{ selAll }}" style="height:30px; padding:0 8px; border:0; border-radius:8px; background:transparent; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#FFA48C;">{{ selAllLabel }}</button>
+      <span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ selCount }} selected</span>
+      <sc-for list="{{ bulk }}" as="b" hint-placeholder-count="4"><button onClick="{{ b.run }}" title="{{ b.label }}" style="height:30px; display:flex; align-items:center; gap:5px; padding:0 9px; border-radius:8px; border:1px solid {{ b.bd }}; background:{{ b.bg }}; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:{{ b.fg }}; opacity:{{ b.op }};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ b.icon }}"></path></svg><sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}"><span>{{ b.label }}</span></sc-if></button></sc-for>
+      <div data-todo-menu="1" style="position:relative;">
+        <button onClick="{{ moveToggle }}" title="Move to project" style="height:30px; display:flex; align-items:center; gap:5px; padding:0 9px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-family:inherit; font-size:12px; font-weight:650; color:#DCE4EB; opacity:{{ bulkOp }};"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><sc-if value="{{ wide }}" hint-placeholder-val="{{ false }}"><span>Move</span></sc-if></button>
+        <sc-if value="{{ moveOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; bottom:calc(100% + 6px); right:0; z-index:41; width:210px; padding:5px; border-radius:12px; background:rgba(15,21,29,0.98); border:1px solid rgba(255,255,255,0.1); box-shadow:0 20px 50px -18px rgba(0,0,0,0.85);">
+            <sc-for list="{{ moveOpts }}" as="p" hint-placeholder-count="5"><button onClick="{{ p.pick }}" style="width:100%; display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:8px; border:0; background:transparent; cursor:pointer; text-align:left; font-family:inherit; font-size:12.5px; font-weight:600; color:#E8EEF3;" style-hover="background:rgba(255,255,255,0.05);"><span style="width:8px; height:8px; border-radius:2px; background:{{ p.c }};"></span>{{ p.name }}</button></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button onClick="{{ selToggle }}" style="height:30px; padding:0 10px; border-radius:8px; border:0; background:#E8EEF3; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; color:#0A0E13;">Done</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasUndo }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky; bottom:0; z-index:21; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:12px; background:#E8EEF3; color:#0A0E13; box-shadow:0 14px 40px -14px rgba(0,0,0,0.8); animation:denRise .16s cubic-bezier(.2,.7,.3,1);">
+      <span style="flex:1; font-size:12.5px; font-weight:650;">{{ undoText }}</span>
+      <button onClick="{{ undo }}" style="height:26px; padding:0 10px; border-radius:7px; border:0; background:#0A0E13; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; color:#FFFFFF;">Undo</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:380,&quot;height&quot;:720},&quot;project&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;say&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(title:string, sub?:string, color?:string)=&gt;void&quot;}}">
+const PROJ = { 'The Den':'#FF7B5C', 'KodeAura7':'#7FB2FF', 'Sanskrit exam paper':'#E6C07B', 'Law Accounting site':'#7FD1B9', 'General':'#6FCF97' };
+const PRIO = [['None', '#93A1B0'], ['Low', '#7FB2FF'], ['Medium', '#FFB547'], ['High', '#FF5470']];
+const KEY = 'den.todos.v1'; const TODAY = '2026-10-06';
+const addDays = (s, n) => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const tint = (h, a) => { const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+const SEED = [
+  ['Send Abhishek the stage-history demo link', 'KodeAura7', 3, '2026-10-08'], ['Check handover PDF stays under 12 pages', 'The Den', 2, TODAY],
+  ['Fix invoice rounding copy on pricing page', 'Law Accounting site', 2, '2026-10-05'], ['Renew Tailscale certificate', 'General', 1, '2026-10-14'],
+  ['Collect answer keys for paper set C', 'Sanskrit exam paper', 0, ''], ['Decide on queue templates for Phase 3', 'The Den', 0, ''],
+  ['Write release notes for queue dependencies', 'The Den', 0, '', 1], ['Buy HDMI adapter for the Echo Show', 'General', 0, '', 1]
+].map(([text, proj, prio, due, done], i) => ({ id:'t' + i, text, proj, prio, due, done:!!done, order:i, created:100 - i }));
+const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(v)) return v; } catch (e) {} return SEED; };
+function parseLine(raw, def) {
+  let t = raw.replace(/^\s*(?:[-*•–]|\d+[.)]|[a-z][.)])\s+/i, ''); let done = false;
+  const cb = /^\s*\[( |x|X)?\]\s*/.exec(t); if (cb) { done = /x/i.test(cb[1] || ''); t = t.slice(cb[0].length); }
+  let prio = def.prio, proj = def.proj, due = def.due;
+  t = t.replace(/(^|\s)!(!{0,2}|[123]|high|med|low)(?=\s|$)/i, (m, sp, v) => { prio = /^[123]$/.test(v) ? +v : v === '!!' || /high/i.test(v) ? 3 : v === '!' || /med/i.test(v) ? 2 : /low/i.test(v) ? 1 : 1; return sp; });
+  t = t.replace(/(^|\s)#([\w-]+)/, (m, sp, w) => { const hit = Object.keys(PROJ).find(p => p.toLowerCase().replace(/\s+/g, '').startsWith(w.toLowerCase())); if (hit) { proj = hit; return sp; } return m; });
+  t = t.replace(/(^|\s)(today|tomorrow|tmrw)\s*$/i, (m, sp, w) => { due = /today/i.test(w) ? TODAY : addDays(TODAY, 1); return ''; });
+  return { text:t.trim(), done, prio, proj, due };
+}
+class Component extends DCLogic {
+  state = { items:load(), text:'', pend:null, filter:'active', sort:'manual', selMode:false, sel:{}, menu:null, edit:null, editText:'', addProj:null, addPrio:0, addDue:'', undo:null, drag:null, over:null, focus:false, hov:null, w:400 };
+  rootRef = el => { if (el === this.root) return; this.root = el; this.ro && this.ro.disconnect(); if (!el) return; this.ro = new ResizeObserver(() => { const w = el.clientWidth; if (Math.abs(w - this.state.w) > 20) this.setState({ w }); }); this.ro.observe(el); };
+  focusRef = el => { if (el && el !== this._fe) { this._fe = el; requestAnimationFrame(() => { el.focus(); el.select(); }); } };
+  componentDidMount() { this.props.onReady && this.props.onReady();
+    this.sync = () => this.setState({ items:load() }); window.addEventListener('den-todos', this.sync); window.addEventListener('storage', this.sync);
+    this.pd = e => { if (this.state.menu && !(e.target.closest && e.target.closest('[data-todo-menu]'))) this.setState({ menu:null }); }; document.addEventListener('pointerdown', this.pd, true);
+    this.touch = window.matchMedia && window.matchMedia('(hover: none)').matches;
+  }
+  componentWillUnmount() { window.removeEventListener('den-todos', this.sync); window.removeEventListener('storage', this.sync); document.removeEventListener('pointerdown', this.pd, true); this.ro && this.ro.disconnect(); clearTimeout(this.ut); }
+  save(items) { this.setState({ items }); try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} window.removeEventListener('den-todos', this.sync); window.dispatchEvent(new Event('den-todos')); window.addEventListener('den-todos', this.sync); }
+  upd(ids, fn) { const set = new Set([].concat(ids)); this.save(this.state.items.map(i => set.has(i.id) ? { ...i, ...fn(i) } : i)); }
+  remove(ids) { const set = new Set([].concat(ids)); const gone = this.state.items.filter(i => set.has(i.id)); if (!gone.length) return; this.save(this.state.items.filter(i => !set.has(i.id))); clearTimeout(this.ut); this.setState({ undo:{ items:gone, text: gone.length === 1 ? 'Deleted “' + gone[0].text.slice(0, 32) + (gone[0].text.length > 32 ? '…' : '') + '”' : 'Deleted ' + gone.length + ' to-dos' }, sel:{}, menu:null }); this.ut = setTimeout(() => this.setState({ undo:null }), 6000); }
+  defaults() { return { proj: this.props.project || this.state.addProj || 'General', prio:this.state.addPrio, due:this.state.addDue }; }
+  addMany(parsed) { const items = this.state.items; let min = Math.min(0, ...items.map(i => i.order)); const now = Date.now(); const add = parsed.filter(p => p.text).map((p, k) => ({ id:'t' + now + '-' + k, ...p, order: min - parsed.length + k, created: now + k })); if (!add.length) return; this.save([...add, ...items]); this.setState({ text:'', pend:null, addPrio:0, addDue:'' }); if (add.length > 1 && this.props.say) this.props.say(add.length + ' to-dos added', add[0].proj, '#6FCF97'); }
+  copyText(list) { const t = list.map(i => '- [' + (i.done ? 'x' : ' ') + '] ' + i.text).join('\n'); try { navigator.clipboard.writeText(t); } catch (e) {} clearTimeout(this.ut); this.setState({ undo:null, menu:null }); if (this.props.say) this.props.say('Copied ' + list.length + ' to-do' + (list.length > 1 ? 's' : ''), 'Paste anywhere — or back here to re-create them', '#6FCF97'); }
+  renderVals() {
+    const s = this.state; const scoped = this.props.project || ''; const wide = s.w >= 420;
+    const base = s.items.filter(i => !scoped || i.proj === scoped);
+    const nA = base.filter(i => !i.done).length, nD = base.length - nA;
+    let vis = base.filter(i => s.filter === 'all' || (s.filter === 'done' ? i.done : !i.done));
+    const SORTS = { manual:(a, b) => a.order - b.order, due:(a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.order - b.order, prio:(a, b) => b.prio - a.prio || a.order - b.order, project:(a, b) => a.proj.localeCompare(b.proj) || a.order - b.order, new:(a, b) => b.created - a.created, az:(a, b) => a.text.localeCompare(b.text) };
+    vis = [...vis].sort((a, b) => (a.done - b.done) || SORTS[s.sort](a, b));
+    const dueInfo = d => { if (!d) return null; const diff = Math.round((new Date(d + 'T00:00') - new Date(TODAY + 'T00:00')) / 864e5); const dt = new Date(d + 'T00:00'); const lbl = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()] + ' ' + dt.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.getMonth()];
+      return diff < 0 ? ['Overdue · ' + dt.getDate() + ' ' + lbl.split(' ')[2], '#FF8FA2'] : diff === 0 ? ['Today', '#FFB547'] : diff === 1 ? ['Tomorrow', '#FFA48C'] : [lbl, '#93A1B0']; };
+    const canDrag = s.sort === 'manual' && !s.selMode && !this.touch;
+    const selIds = Object.keys(s.sel).filter(k => s.sel[k]);
+    const dueOpts = (cur, pick) => [['Today', TODAY], ['Tomorrow', addDays(TODAY, 1)], ['Next week', addDays(TODAY, 7)], ['None', '']].map(([label, v]) => ({ label, pick:() => pick(v), bg: cur === v ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', bd: cur === v ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.08)', fg: cur === v ? '#FFFFFF' : '#A3B0BE' }));
+    const mkRow = i => { const p = PRIO[i.prio] || PRIO[0]; const di = dueInfo(i.done ? '' : i.due); const sel = !!s.sel[i.id]; const menuOpen = s.menu === 'row:' + i.id; const editing = s.edit === i.id;
+      return { isRow:true, isHead:false, id:i.id, text:i.text, done:i.done, editing, notEditing:!editing,
+        ring: i.done ? '#6FCF97' : i.prio ? p[1] : 'rgba(255,255,255,0.28)', fill: i.done ? '#6FCF97' : i.prio ? tint(p[1], 0.08) : 'transparent', hovFill: i.done ? '#6FCF97' : tint(i.prio ? p[1] : '#FFFFFF', 0.16), checkTitle: i.done ? 'Mark as not done' : 'Mark complete',
+        tc: i.done ? '#6B7A8A' : '#E8EEF3', deco: i.done ? 'line-through' : 'none',
+        hasDue: !!di, dueTxt: di ? di[0] : '', dueC: di ? di[1] : '', hasPrio: !i.done && i.prio > 0, prioL:p[0], prioC:p[1], showProj: !scoped && s.sort !== 'project', proj:i.proj, projC: PROJ[i.proj] || '#93A1B0',
+        hasMeta: (!!di) || (!i.done && i.prio > 0) || (!scoped && s.sort !== 'project'),
+        selMode:s.selMode, notSel:!s.selMode, selOn:sel, sBd: sel ? '#FF7B5C' : 'rgba(255,255,255,0.28)', sBg: sel ? '#FF7B5C' : 'transparent',
+        bg: sel ? 'rgba(255,123,92,0.08)' : menuOpen || (s.hov === i.id && !s.drag) ? 'rgba(255,255,255,0.04)' : 'transparent', op: s.drag === i.id ? '0.4' : '1', cur: s.selMode ? 'pointer' : canDrag ? 'grab' : 'default',
+        line: s.over === i.id && s.drag && s.drag !== i.id ? 'inset 0 2px 0 #FF7B5C' : 'none',
+        showActs: !s.selMode && !editing && (this.touch || s.hov === i.id || menuOpen), menuOpen, menuBg: menuOpen ? 'rgba(255,255,255,0.08)' : 'transparent',
+        hin:() => { if (s.hov !== i.id) this.setState({ hov:i.id }); }, hout:() => { if (this.state.hov === i.id) this.setState({ hov:null }); },
+        rowClick:() => { if (this.state.selMode) this.setState(st => ({ sel:{ ...st.sel, [i.id]: !st.sel[i.id] } })); },
+        toggle:e => { e.stopPropagation(); this.upd(i.id, x => ({ done:!x.done })); },
+        del:e => { e.stopPropagation(); this.remove(i.id); },
+        menuToggle:e => { e.stopPropagation(); this.setState({ menu: menuOpen ? null : 'row:' + i.id }); },
+        startEdit:() => this.setState({ edit:i.id, editText:i.text, menu:null }),
+        prios: PRIO.map(([label, c], k) => ({ label, c: i.prio === k ? '#FFFFFF' : c, bg: i.prio === k ? tint(k ? c : '#93A1B0', 0.22) : 'rgba(255,255,255,0.03)', bd: i.prio === k ? tint(k ? c : '#93A1B0', 0.5) : 'rgba(255,255,255,0.07)', pick:() => this.upd(i.id, () => ({ prio:k })) })),
+        dues: dueOpts(i.due, v => this.upd(i.id, () => ({ due:v }))),
+        projs: Object.entries(PROJ).map(([name, c]) => ({ name, c, on: i.proj === name, bg: i.proj === name ? 'rgba(255,123,92,0.08)' : 'transparent', pick:() => { this.upd(i.id, () => ({ proj:name })); this.setState({ menu:null }); } })),
+        toQueue:() => { this.setState({ menu:null }); this.props.say && this.props.say('Sent to queue', i.text.slice(0, 50) + ' · ' + i.proj, '#FF7B5C'); },
+        dup:() => { const k = s.items.findIndex(x => x.id === i.id); const c = { ...i, id:'t' + Date.now(), done:false, order:i.order + 0.5, created:Date.now() }; const a = [...s.items]; a.splice(k + 1, 0, c); this.save(a); this.setState({ menu:null }); },
+        draggable: canDrag && !editing, dStart:e => { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', i.text); } catch (x) {} this.setState({ drag:i.id, menu:null }); },
+        dOver:e => { if (!this.state.drag) return; e.preventDefault(); if (this.state.over !== i.id) this.setState({ over:i.id }); },
+        dDrop:e => { e.preventDefault(); const from = this.state.drag; if (!from || from === i.id) return this.setState({ drag:null, over:null }); const ord = [...this.state.items].sort((a, b) => a.order - b.order); const m = ord.findIndex(x => x.id === from); const [mv] = ord.splice(m, 1); ord.splice(ord.findIndex(x => x.id === i.id), 0, mv); this.save(ord.map((x, k) => ({ ...x, order:k }))); this.setState({ drag:null, over:null }); },
+        dEnd:() => this.setState({ drag:null, over:null }) }; };
+    let rows;
+    if (s.sort === 'project' && !scoped) { rows = []; Object.keys(PROJ).forEach(pn => { const g = vis.filter(i => i.proj === pn); if (!g.length) return; rows.push({ isHead:true, isRow:false, label:pn.toUpperCase(), c:PROJ[pn], n:String(g.length) }); g.forEach(i => rows.push(mkRow(i))); }); }
+    else rows = vis.map(mkRow);
+    const lines = s.text.split('\n').length;
+    const addProj = scoped || s.addProj || 'General';
+    const SORTL = [['manual', 'Manual (drag)'], ['due', 'Due date'], ['prio', 'Priority'], ['project', 'Project'], ['new', 'Newest first'], ['az', 'A → Z']].filter(o => !(scoped && o[0] === 'project'));
+    const selList = s.items.filter(i => s.sel[i.id]);
+    const visIds = vis.map(i => i.id); const allSel = visIds.length > 0 && visIds.every(id => s.sel[id]);
+    return {
+      rootRef:this.rootRef, focusRef:this.focusRef, wide, unscoped:!scoped, keep:e => e.preventDefault(),
+      text:s.text, taRows: Math.min(6, Math.max(1, lines)), list: rows, ph: scoped ? 'Add a to-do for ' + scoped + '…' : 'Add a to-do…  (paste lines to add many)',
+      addBd: s.focus || s.text ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.07)', showAddOpts: !!s.text.trim() && !s.pend,
+      onText:e => this.setState({ text:e.target.value }), onFocus:() => this.setState({ focus:true }), onBlur:() => this.setState({ focus:false }),
+      onKey:e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const ls = this.state.text.split('\n').map(l => l.trim()).filter(Boolean); if (ls.length > 1) this.setState({ pend:ls.map(l => parseLine(l, this.defaults())) }); else if (ls.length) this.addMany([parseLine(ls[0], this.defaults())]); } else if (e.key === 'Escape') this.setState({ text:'' }); },
+      onPaste:e => { const t = (e.clipboardData && e.clipboardData.getData('text')) || ''; const ls = t.split(/\r?\n/).map(l => l.trim()).filter(Boolean); if (ls.length > 1) { e.preventDefault(); this.setState({ pend:ls.map(l => parseLine(l, this.defaults())) }); } },
+      addNow:() => { const ls = this.state.text.split('\n').map(l => l.trim()).filter(Boolean); if (ls.length > 1) this.setState({ pend:ls.map(l => parseLine(l, this.defaults())) }); else if (ls.length) this.addMany([parseLine(ls[0], this.defaults())]); },
+      addProjName:addProj, addProjC: PROJ[addProj] || '#93A1B0', addProjOpen: s.menu === 'addProj', addProjToggle:() => this.setState({ menu: s.menu === 'addProj' ? null : 'addProj' }),
+      addProjOpts: Object.entries(PROJ).map(([name, c]) => ({ name, c, bg: addProj === name ? 'rgba(255,123,92,0.1)' : 'transparent', pick:() => this.setState({ addProj:name, menu:null }) })),
+      addPrios: [1, 2, 3].map(k => { const [label, c] = PRIO[k]; const on = s.addPrio === k; return { label:label + ' priority', c, bg: on ? tint(c, 0.18) : 'transparent', bd: on ? tint(c, 0.5) : 'rgba(255,255,255,0.08)', pick:() => this.setState({ addPrio: on ? 0 : k }) }; }),
+      addDues: dueOpts(s.addDue, v => this.setState({ addDue: s.addDue === v ? '' : v })).filter(d => d.label !== 'None'),
+      hasPend: !!(s.pend && s.pend.length), pendTitle: s.pend ? 'Create ' + s.pend.length + ' to-dos' + (scoped ? '' : ' in ' + addProj) : '', pendBtn: s.pend ? 'Add ' + s.pend.length + ' to-dos' : '',
+      pend: (s.pend || []).map((p, k) => ({ text:p.text, ring: p.done ? '#6FCF97' : p.prio ? PRIO[p.prio][1] : 'rgba(255,255,255,0.3)', fill: p.done ? '#6FCF97' : 'transparent', meta: [p.due ? (p.due === TODAY ? 'today' : 'tmrw') : '', p.prio ? '!' + p.prio : '', p.proj !== addProj ? '#' + p.proj.split(' ')[0] : ''].filter(Boolean).join(' '), rm:() => this.setState(st => ({ pend: st.pend.filter((x, j) => j !== k) })) })),
+      pendCancel:() => this.setState({ pend:null }), pendAdd:() => this.addMany(s.pend.map(p => ({ ...p, proj: scoped || (p.proj === 'General' && addProj !== 'General' ? addProj : p.proj) }))),
+      filters: [['active', 'To do', nA], ['done', 'Done', nD], ['all', 'All', base.length]].map(([id, label, n]) => ({ label, n:String(n), pick:() => this.setState({ filter:id }), bg: s.filter === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.filter === id ? '#FFFFFF' : '#93A1B0' })),
+      sortOpen: s.menu === 'sort', sortToggle:() => this.setState({ menu: s.menu === 'sort' ? null : 'sort' }), sortLabel: (SORTL.find(o => o[0] === s.sort) || SORTL[0])[1].replace(' (drag)', ''), sortBd: s.sort !== 'manual' ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.08)',
+      sorts: SORTL.map(([id, label]) => ({ label, on: s.sort === id, bg: s.sort === id ? 'rgba(255,123,92,0.08)' : 'transparent', pick:() => this.setState({ sort:id, menu:null }) })),
+      selMode:s.selMode, selToggle:() => this.setState(st => ({ selMode:!st.selMode, sel:{}, menu:null })), selBtnBg: s.selMode ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', selBtnBd: s.selMode ? 'rgba(255,123,92,0.45)' : 'rgba(255,255,255,0.08)', selBtnFg: s.selMode ? '#FFA48C' : '#C2CDD8',
+      moreOpen: s.menu === 'more', moreToggle:() => this.setState({ menu: s.menu === 'more' ? null : 'more' }),
+      moreActs: [['Copy list as text', 'M9 9h11v11H9zM5 15H4V4h11v1', '#E8EEF3', () => this.copyText(vis)], ['Select multiple', 'M4 4h6v6H4zM14 7h6M4 14h6v6H4zM14 17h6', '#E8EEF3', () => this.setState({ selMode:true, sel:{}, menu:null })], ['Mark all done', 'M5 12l5 5 9-10', '#E8EEF3', () => { this.upd(base.filter(i => !i.done).map(i => i.id), () => ({ done:true })); this.setState({ menu:null }); }], ['Clear completed (' + nD + ')', 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', '#FF8FA2', () => this.remove(base.filter(i => i.done).map(i => i.id))]].map(([label, icon, fg, run]) => ({ label, icon, fg, run })),
+      editText:s.editText, onEditText:e => this.setState({ editText:e.target.value }),
+      editSave:() => { const id = this.state.edit; if (!id) return; const t = this.state.editText.trim(); if (t) this.upd(id, () => ({ text:t })); this.setState({ edit:null }); },
+      editKey:e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } else if (e.key === 'Escape') this.setState({ edit:null }); },
+      empty: !rows.length, emptyTitle: s.filter === 'done' ? 'Nothing completed yet' : base.length ? 'All done' : 'No to-dos yet', emptySub: s.filter === 'done' ? 'Tick items off and they land here.' : base.length ? 'Nice. Enjoy the quiet.' : 'Type above, or paste a list — each line becomes a to-do. Use #project, !high, today.',
+      selCount:String(selIds.length), selAllLabel: allSel ? 'None' : 'All', selAll:() => this.setState({ sel: allSel ? {} : Object.fromEntries(visIds.map(id => [id, true])) }), bulkOp: selIds.length ? '1' : '0.4',
+      bulk: [['Complete', 'M5 12l5 5 9-10', () => { this.upd(selIds, () => ({ done:true })); this.setState({ sel:{} }); }], ['Copy', 'M9 9h11v11H9zM5 15H4V4h11v1', () => this.copyText(selList)], ['Delete', 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', () => this.remove(selIds), 1]].map(([label, icon, run, danger]) => ({ label, icon, op: selIds.length ? '1' : '0.4', run:() => selIds.length && run(), fg: danger ? '#FF8FA2' : '#DCE4EB', bg: danger ? 'rgba(255,84,112,0.08)' : 'rgba(255,255,255,0.04)', bd: danger ? 'rgba(255,84,112,0.3)' : 'rgba(255,255,255,0.08)' })),
+      moveOpen: s.menu === 'move', moveToggle:() => selIds.length && this.setState({ menu: s.menu === 'move' ? null : 'move' }),
+      moveOpts: Object.entries(PROJ).map(([name, c]) => ({ name, c, pick:() => { this.upd(selIds, () => ({ proj:name })); this.setState({ menu:null, sel:{} }); this.props.say && this.props.say('Moved ' + selIds.length + ' to-dos', name, c); } })),
+      hasUndo: !!s.undo, undoText: s.undo ? s.undo.text : '', undo:() => { const u = this.state.undo; if (!u) return; this.save([...this.state.items, ...u.items]); this.setState({ undo:null }); }
+    };
+  }
+}
+
+;(function () { const P = Component.prototype; const rv = P.renderVals;
+  P.renderVals = function () { const key = this.state.filter + '|' + this.state.sort + '|' + (this.props.project || ''); if (!this.__bootT) this.__bootT = setTimeout(() => { this.__booted = true; this.forceUpdate(); }, 450);
+    if (key !== this.__skKey) { const had = this.__skKey !== undefined; this.__skKey = key; if (had) setTimeout(() => { this.setState({ __sk:true }); clearTimeout(this.__skt); this.__skt = setTimeout(() => this.setState({ __sk:false }), 320); }, 0); }
+    const o = rv.call(this); const on = !this.__booted || !!this.state.__sk; o.skelOn = on; o.skelRows = ['72%', '58%', '80%', '46%', '66%'].map(w => ({ w })); if (on) { o.list = []; o.empty = false; } return o; };
+})();
+</script>
+</body>
+</html>

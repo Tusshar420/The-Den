@@ -18,9 +18,12 @@ BODY_FOR_MODEL = 6000
 
 def _short(m: dict[str, Any]) -> dict[str, Any]:
     who = m.get("from_name") or m.get("from_email") or "?"
-    return {"id": m["id"], "thread_id": m.get("thread_id"), "from": who, "from_email": m.get("from_email"),
-            "subject": m.get("subject"), "date": m.get("date"), "snippet": (m.get("snippet") or "")[:160],
-            "unread": m.get("unread", False)}
+    out = {"id": m["id"], "thread_id": m.get("thread_id"), "from": who, "from_email": m.get("from_email"),
+           "subject": m.get("subject"), "date": m.get("date"), "snippet": (m.get("snippet") or "")[:160],
+           "unread": m.get("unread", False)}
+    if m.get("account"):          # set when several mailboxes are searched together
+        out["account"] = m["account"]
+    return out
 
 
 def _when(iso: Any) -> str:
@@ -54,6 +57,7 @@ def _email_preview(title: str, action: str, to: list[str], cc: list[str], subjec
 class EmailTool(Tool):
     id = "email"
     label = "Email"
+    account_service = "email"
     actions = {
         "search": ActionSpec(
             "search", "Search the mailbox, newest first. Uses Gmail search syntax (from:rahul subject:proposal newer_than:7d).",
@@ -97,7 +101,7 @@ class EmailTool(Tool):
         lines = [f'Found {len(msgs)} email{"s" if len(msgs) != 1 else ""} for "{args["query"]}":']
         for i, m in enumerate(msgs, 1):
             who = f"{m['from_name']} <{m['from_email']}>" if m.get("from_name") else m.get("from_email", "?")
-            lines.append(f"{i}. {who} · {_when(m.get('date'))} · {m.get('subject')}")
+            lines.append(f"{i}. {who} · {_when(m.get('date'))} · {m.get('subject')}" + (f" · in {m['account']}" if m.get("account") else ""))
             if m.get("snippet"):
                 lines.append(f"   “{m['snippet'][:140]}”")
         return {"text": "\n".join(lines), "data": {"messages": [_short(m) for m in msgs]}}
@@ -123,12 +127,13 @@ class EmailTool(Tool):
     def run_find_contact(self, args, ctx):
         provider = ctx.email()
         name = args["name"].strip().strip('"')
-        needle, me = name.lower(), provider.account().lower()
+        needle = name.lower()
+        mine = {a.lower() for a in (provider.accounts() if hasattr(provider, "accounts") else [provider.account()])}
         found: dict[str, dict[str, Any]] = {}
         for m in provider.search(f'from:"{name}" OR to:"{name}"', 20):
             pairs = [(m.get("from_name", ""), m.get("from_email", ""))] + [("", a) for a in m.get("to", []) + m.get("cc", [])]
             for display, addr in pairs:
-                if not addr or addr == me:
+                if not addr or addr.lower() in mine:
                     continue
                 if needle in display.lower() or needle in addr.split("@")[0].lower():
                     c = found.setdefault(addr, {"name": display, "email": addr, "count": 0})
@@ -178,7 +183,7 @@ class EmailTool(Tool):
         provider = ctx.email()
         original = provider.get(args["message_id"])
         try:
-            composed = mailutil.compose_reply(original, _need_text(args, "body"), provider.account(),
+            composed = mailutil.compose_reply(original, _need_text(args, "body"), original.get("account") or provider.account(),
                                               str(args.get("reply_all", "")).lower() in ("true", "1", "yes"))
         except ValueError as e:
             raise ToolError(str(e))
