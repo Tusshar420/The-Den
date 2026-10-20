@@ -1,0 +1,88 @@
+/* Tushar's Workspace · toasts + notification centre (top-right).
+   Load after components.css. Values match reference/Workspace Prototype.dc.html 1:1.
+   Every kind-coloured element reads --k (kind colour) and --kt (kind colour at 14%), set inline by notifications.js. */
+
+@keyframes toast-in  { from { opacity: 0; transform: translateX(32px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes notif-in  { from { opacity: 0; transform: translateY(-10px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.app { --notif-top: calc(70px + env(safe-area-inset-top)); --notif-right: 12px; }
+.app--desk { --notif-top: 78px; --notif-right: 24px; }
+.notif-root { display: contents; }
+
+/* the "live" dot is dropped on phone to make room for the bell */
+.app:not(.app--desk) .live { display: none; }
+
+/* ---------------------------------------------------------------- shared kind pieces */
+.nkind-ic { width: 38px; height: 38px; border-radius: var(--r-btn); flex: none; display: flex; align-items: center; justify-content: center; color: var(--k); background: var(--kt); }
+.nkind-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nkind-kicker { font: 600 var(--fs-eyebrow) var(--font-mono); letter-spacing: .08em; color: var(--k); }
+.nkind-sub { font: 500 var(--fs-meta) var(--font-mono); color: var(--text-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------------------------------------------------------- bell (header, between usage pill and density toggle; uses .icon-btn) */
+.bell { position: relative; }
+.bell.is-open { background: var(--surface-2); border-color: var(--line-btn); color: var(--text); }
+.bell__badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; border: 2px solid var(--bg); box-sizing: content-box;
+  background: var(--coral); color: var(--on-coral); font: 700 10px/16px var(--font-mono); text-align: center; }
+
+/* ---------------------------------------------------------------- toast stack */
+.toasts { position: absolute; top: var(--notif-top); right: var(--notif-right); width: calc(100% - 24px); z-index: 80; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.app--desk .toasts { width: 380px; }
+.toast { pointer-events: auto; position: relative; overflow: hidden; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 12px 8px 12px 12px; border-radius: var(--r-card); background: rgba(18, 25, 34, .94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line-strong); box-shadow: 0 18px 44px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .04);
+  animation: toast-in .42s cubic-bezier(.2, .8, .25, 1) both; }
+.toast.is-link { cursor: pointer; }
+.toast__title { font: 600 var(--fs-row)/1.3 var(--font-ui); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast__actions { display: flex; align-items: center; gap: 2px; }
+.toast__action { height: 36px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--line-btn); background: var(--surface-2); color: var(--k); font: 700 13px var(--font-ui); }
+.toast__close { width: 36px; height: 36px; border-radius: 11px; border: none; background: none; color: var(--text-faint); display: flex; align-items: center; justify-content: center; }
+.toast__close:hover { color: var(--text); background: var(--surface-2); }
+.toast__bar { position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: var(--k); opacity: .75; transform-origin: left; animation: toast-bar var(--life, 5s) linear forwards; }
+
+/* ---------------------------------------------------------------- notification panel */
+.notif-scrim { position: absolute; inset: 0; z-index: 60; background: rgba(3, 5, 8, .62); animation: fadein var(--t) ease; }
+.app--desk .notif-scrim { background: rgba(3, 5, 8, .28); }
+.notif { position: absolute; top: var(--notif-top); right: 12px; left: 12px; max-height: calc(100% - 190px - env(safe-area-inset-top)); z-index: 61;
+  display: flex; flex-direction: column; border-radius: 22px; background: var(--bg-sheet); border: 1px solid var(--line-strong); box-shadow: var(--sh-modal); overflow: hidden;
+  transform-origin: top right; animation: notif-in .24s cubic-bezier(.2, .8, .3, 1) both; }
+.app--desk .notif { left: auto; right: 24px; width: 400px; max-height: min(640px, calc(100% - 110px)); }
+
+.notif__head { flex: none; display: flex; align-items: center; gap: 10px; padding: 16px 12px 12px 18px; }
+.notif__title { font: 800 20px var(--font-ui); letter-spacing: -.02em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif__new { flex: none; white-space: nowrap; padding: 2px 8px; border-radius: var(--r-pill); background: var(--coral-tint-2); color: var(--coral); font: 600 11px var(--font-mono); }
+.notif__spacer { flex: 1; }
+.notif__link { flex: none; white-space: nowrap; height: 36px; padding: 0 10px; border-radius: var(--r-md); border: none; background: none; color: var(--text-meta); font: 600 13px var(--font-ui); }
+.notif__link:hover { color: var(--text); background: var(--surface-2); }
+
+.notif__tabs { flex: none; display: flex; gap: 3px; margin: 0 16px 12px; padding: 3px; border-radius: var(--r-btn); background: var(--inset-deep); }
+.notif__tab { flex: 1; height: 36px; border-radius: 9px; border: none; background: transparent; color: var(--text-meta); font: 600 13px var(--font-ui);
+  display: flex; align-items: center; justify-content: center; gap: 7px; transition: background var(--t-fast); }
+.notif__tab.is-active { background: var(--surface-2); color: var(--text); }
+.notif__tab-n { font: 600 11px var(--font-mono); color: var(--text-faint); }
+.notif__tab-n.is-wait { color: var(--wait); }
+
+.notif__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 8px; border-top: 1px solid var(--line-soft);
+  scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+.notif__group { display: block; padding: 14px 10px 6px; font: 600 var(--fs-eyebrow) var(--font-mono); color: var(--text-faint); letter-spacing: .08em; }
+
+.nrow { width: 100%; display: grid; grid-template-columns: 38px minmax(0, 1fr) 10px; gap: 12px; align-items: start; padding: 10px; border-radius: var(--r-btn-lg);
+  border: none; background: transparent; text-align: left; transition: background var(--t-fast); }
+.nrow.is-unread { background: rgba(255, 123, 92, .05); }
+.nrow:hover { background: var(--surface-2); }
+.nrow__body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nrow__top { display: flex; align-items: center; gap: 8px; }
+.nrow__when { font: 500 11px var(--font-mono); color: var(--text-faint); }
+.nrow__title { font: 600 var(--fs-body)/1.35 var(--font-ui); color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+.nrow__cta { margin-top: 6px; align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 9px; background: var(--kt); color: var(--k); font: 700 var(--fs-small) var(--font-ui);
+  display: flex; align-items: center; gap: 6px; }
+.nrow__dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--coral); opacity: 0; }
+.nrow.is-unread .nrow__dot { opacity: 1; }
+
+.notif__empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 24px 36px; text-align: center; }
+.notif__empty-art { width: 64px; height: 64px; }
+.notif__empty-title { font: 700 16px var(--font-ui); }
+.notif__empty-sub { font: 400 13px/1.45 var(--font-ui); color: var(--text-meta); text-wrap: balance; max-width: 260px; }
+
+.notif__foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 18px; border-top: 1px solid var(--line-soft); }
+.notif__count { font: 500 var(--fs-meta) var(--font-mono); color: var(--text-faint); }
