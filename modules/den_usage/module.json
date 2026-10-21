@@ -1,0 +1,13 @@
+{
+  "name": "den_usage",
+  "version": "1.0.0",
+  "description": "Product-usage analytics: which sections are used most and for how long, sessions and active days. Counts and timings only - never any content.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {},
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

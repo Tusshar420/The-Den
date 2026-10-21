@@ -459,8 +459,44 @@
     }).then(n => { invalidate('pad'); openNote(n.id); return n; });
   }
 
+  // ---------------------------------------------------------------- usage tracking (product analytics)
+  // Records ONLY which section is open and for how long (active seconds while the window is visible),
+  // plus a session count. No content ever leaves here - just section ids and times. It is sent to the
+  // den_usage module, which keeps daily totals. If that module isn't installed the calls 404 and are
+  // ignored. Never blocks or breaks the UI; every failure is swallowed.
+  const usage = (() => {
+    const pend = {};                  // section -> { opens, seconds }
+    let cur = null, since = 0, timer = null, sessionNew = true;
+    const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+    const bucket = s => (pend[s] || (pend[s] = { opens: 0, seconds: 0 }));
+    function addElapsed() {
+      if (cur && since && visible()) { const secs = Math.round((Date.now() - since) / 1000); if (secs > 0 && secs < 7200) bucket(cur).seconds += secs; }
+      since = Date.now();
+    }
+    function track(section) {
+      if (!section || typeof section !== 'string' || section === cur) return;
+      addElapsed(); cur = section; since = Date.now(); bucket(section).opens += 1;
+      if (!timer) timer = setTimeout(flush, 15000);
+    }
+    function flush() {
+      addElapsed(); clearTimeout(timer); timer = null;
+      const events = Object.entries(pend).filter(([, v]) => v.opens || v.seconds).map(([section, v]) => ({ section, opens: v.opens, seconds: v.seconds }));
+      for (const k in pend) delete pend[k];
+      if (store.needKey || store.offline) return;              // not signed in / unreachable: hold until next time
+      if (!events.length && !sessionNew) return;
+      const payload = { events, new_session: sessionNew }; sessionNew = false;
+      api('/modules/commands/den-usage-track', { method: 'POST', body: { arg: JSON.stringify(payload) } }).catch(() => {});
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => { addElapsed(); since = Date.now(); if (document.visibilityState === 'hidden') flush(); });
+      window.addEventListener('pagehide', flush);
+      setInterval(() => { if (cur) flush(); }, 60000);
+    }
+    return { track, flush };
+  })();
+
   const Den = {
-    C, PALETTE, tint, store, api, refresh, start, need, load, invalidate, act, emit,
+    C, PALETTE, tint, store, api, refresh, start, need, load, invalidate, act, emit, track: usage.track,
     commandOf, imgUrl, firstUnread, markSeen, chatScroll, chatToEnd, chatSent, lastError: () => errors[errors.length - 1] || null, prefs, setPref, keyFor, shortcut, SHORTCUT_DEFAULTS, workspaces, workspace, addWorkspace, updateWorkspace, useWorkspace, removeWorkspace, base,
     auth, key: () => { try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; } },
     setKey: k => { try { localStorage.setItem(KEY_STORAGE, k.trim()); } catch (e) {} store.needKey = false; start(); },

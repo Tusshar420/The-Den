@@ -50,6 +50,7 @@ import accounts
 import api_keys
 import backup
 import db
+import den_platform
 import mailer
 import router as model_router
 from assistant import connections, timeutil
@@ -389,7 +390,7 @@ VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 def _which(prog: str) -> Optional[str]:
     if os.path.isabs(prog):
         return prog if os.access(prog, os.X_OK) else None
-    venv = Path(sys.executable).parent / prog          # the service's own venv first (weasyprint lives there)
+    venv = Path(sys.executable).parent / (prog + ".exe" if den_platform.IS_WINDOWS else prog)   # the service's own venv first (weasyprint lives there)
     if venv.is_file() and os.access(venv, os.X_OK):
         return str(venv)
     return shutil.which(prog) or next((p for p in (f"/opt/homebrew/bin/{prog}", f"/usr/local/bin/{prog}",
@@ -397,7 +398,7 @@ def _which(prog: str) -> Optional[str]:
 
 
 def _playwright() -> dict[str, Any]:
-    for cache in (Path.home() / "Library/Caches/ms-playwright", Path.home() / ".cache/ms-playwright"):
+    for cache in den_platform.browser_cache_dirs():
         found = sorted(cache.glob("chromium-*")) if cache.is_dir() else []
         if found:
             return {"path": str(cache).replace(str(Path.home()), "~"), "version": "chromium " + found[-1].name.split("-")[-1], "status": "ok"}

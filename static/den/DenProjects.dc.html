@@ -103,6 +103,13 @@
           <sc-for list="{{ inlineActs }}" as="a" hint-placeholder-count="3">
             <button onClick="{{ a.run }}" data-tip="{{ a.label }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 12px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; white-space:nowrap; color:{{ a.fg }}; border-color:{{ a.bd }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ a.icon }}"></path></svg><sc-if value="{{ a.showLabel }}" hint-placeholder-val="{{ true }}"><span>{{ a.label }}</span></sc-if></button>
           </sc-for>
+          <sc-if value="{{ dev.show }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <sc-if value="{{ dev.up }}" hint-placeholder-val="{{ false }}"><a href="{{ dev.link }}" target="_blank" rel="noopener" title="{{ dev.openTip }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 12px; border-radius:11px; border:1px solid rgba(69,224,200,0.35); background:rgba(69,224,200,0.1); cursor:pointer; font-size:12.5px; font-weight:650; white-space:nowrap; color:#45E0C8; text-decoration:none;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>Open site</a></sc-if>
+              <button onClick="{{ dev.toggle }}" title="{{ dev.tip }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 12px; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; white-space:nowrap; color:{{ dev.fg }}; opacity:{{ dev.op }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linejoin:round;"><path d="{{ dev.icon }}"></path></svg>{{ dev.label }}</button>
+              <button onClick="{{ dev.edit }}" title="Change the command that starts this site" style="width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:1px solid rgba(255,255,255,0.08); background:transparent; cursor:pointer; color:#6B7A8A;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"></path></svg></button>
+            </div>
+          </sc-if>
           <button onClick="{{ addTask }}" style="height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:11px; border:0; cursor:pointer; background:#FF7B5C; color:#1A0A05; font-size:13px; font-weight:700; white-space:nowrap;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.2; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New task</button>
           <sc-if value="{{ hasMoreActs }}" hint-placeholder-val="{{ false }}">
           <div style="position:relative; flex:none;">
@@ -249,6 +256,8 @@
           <div style="flex:{{ chatListFlex }}; min-width:0; display:flex; flex-direction:column; gap:6px; padding:8px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(20px); min-height:0; overflow-y:auto; overscroll-behavior:contain;">
             <button onClick="{{ newChatBtn }}" style="flex:none; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13.5px; font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.3; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New chat</button>
             <div style="padding:6px 8px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">TASK CHATS</div>
+            <input value="{{ clq }}" onInput="{{ onClq }}" placeholder="Search chats" style="flex:none; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13px; outline:none;">
+            <sc-if value="{{ noChatMatch }}" hint-placeholder-val="{{ false }}"><div style="padding:8px; font-size:12.5px; color:#93A1B0;">No chats match.</div></sc-if>
             <sc-if value="{{ newChatRow }}" hint-placeholder-val="{{ false }}">
               <button onClick="{{ newChatBtn }}" style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:13px; cursor:pointer; text-align:left; background:rgba(255,123,92,0.1); border:1px solid rgba(255,123,92,0.25);">
                 <span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:#FF7B5C;"></span>
@@ -269,8 +278,15 @@
             </sc-for>
           </div>
         </sc-if>
+        <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border-radius:18px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(20px);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4A5866" style="stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round;"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+            <span style="font-size:15px; font-weight:650; color:#93A1B0;">Select a chat to see the conversation</span>
+          </div>
+        </sc-if>
         <sc-if value="{{ showThread }}" hint-placeholder-val="{{ true }}">
           <div style="flex:1 1 0; min-width:0; display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(20px); overflow:hidden;">
+            <sc-if value="{{ tsOpen }}" hint-placeholder-val="{{ false }}"><div style="flex:none; display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);"><input ref="{{ tsFocus }}" value="{{ tsQ }}" onInput="{{ onTsQ }}" onKeyDown="{{ tsKey }}" placeholder="Search in this chat" style="flex:1; min-width:0; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none;"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ tsCount }}</span><button onClick="{{ toggleTs }}" title="Close search" style="flex:none; width:30px; height:30px; border-radius:9px; border:0; background:transparent; cursor:pointer; color:#93A1B0; font-size:16px;">×</button></div></sc-if>
             <div ref="{{ threadScrollRef }}" style="flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;">
             <div style="flex:none; position:sticky; top:-16px; z-index:6; margin:-16px -16px 0; display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(16,22,30,0.97); backdrop-filter:blur(14px); border-bottom:1px solid rgba(255,255,255,0.06);">
               <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><button onClick="{{ toggleChatList }}" title="{{ chatListTitle }}" style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ chatListIcon }}"></path></svg></button></sc-if>
@@ -279,6 +295,7 @@
                 <button onClick="{{ threadDetails }}" title="View and edit details" style="max-width:100%; display:flex; align-items:center; gap:8px; padding:0; border:0; background:none; cursor:pointer; text-align:left; font-family:inherit; color:#E8EEF3;" style-hover="color:#FFFFFF;"><span style="min-width:0; font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:underline; text-decoration-color:rgba(255,255,255,0.15); text-underline-offset:4px;">{{ thread.title }}</span><sc-if value="{{ threadEditable }}" hint-placeholder-val="{{ true }}"><span style="flex:none; width:22px; height:22px; display:grid; place-items:center; border-radius:7px; background:rgba(255,255,255,0.05); color:#93A1B0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></span></sc-if></button>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11.5px; color:#93A1B0;"><span style="font-family:'JetBrains Mono', monospace; color:#6B7A8A;">{{ thread.id }}</span><span style="color:#4A5866;">·</span><span style="color:{{ thread.dot }};">{{ thread.status }}</span><span style="color:#4A5866;">·</span><span>{{ thread.lane }}</span></div>
               </div>
+              <button onClick="{{ toggleTs }}" title="Search in this chat" style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid {{ tsBd }}; background:{{ tsBg }}; cursor:pointer; color:#C2CDD8;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg></button>
               <sc-if value="{{ threadEditable }}" hint-placeholder-val="{{ true }}"><button onClick="{{ threadStar }}" title="{{ thread.starTip }}" style="flex:none; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; border:1px solid {{ thread.starBd }}; background:{{ thread.starBg }}; cursor:pointer; color:{{ thread.starFg }};"><svg width="15" height="15" viewBox="0 0 24 24" fill="{{ thread.starFill }}" stroke="currentColor" style="stroke-width:1.8; stroke-linejoin:round;"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"></path></svg></button></sc-if>
               <sc-if value="{{ threadEditPrompt }}" hint-placeholder-val="{{ false }}"><button onClick="{{ threadEdit }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Edit prompt</button></sc-if>
               <button onClick="{{ threadAction }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">{{ thread.action }}</button>
@@ -1113,10 +1130,12 @@ class Component extends DCLogic {
     const isStar = c => c.important != null ? !!c.important : starred.has(c.id);
     const chatsData = ((chatList && chatList.chats) || []).filter(c => this.envShows(curC.id, c.env_id)).sort((a, b) => isStar(b) - isStar(a));
     const selId = s.chatSel === 'new' ? 'new' : s.chatSel || (chatsData[0] && chatsData[0].id) || 'new';
-    const chatPart = tab === 'chats' && typeof selId === 'number' && (!isPhone || s.chatOpenPhone) ? '/' + selId : '';
+    const noChat = !isPhone && !s.chatSel && chatsData.length > 0;   /* desktop: nothing picked yet, so the right side stays blank */
+    const chatPart = tab === 'chats' && typeof selId === 'number' && !noChat && (!isPhone || s.chatOpenPhone) ? '/' + selId : '';
     const hp = (location.hash || '').split('/'), selP = s.sel ? D.projectById(s.sel) : null;   /* the address has the project's name (#/projects/the-den/chats) */
     if (selP && this._curTab && hp[1] === 'projects' && D.projectFromSlug(hp[2]) === selP) { const hh = '#/projects/' + D.projSlug(selP) + '/' + this._curTab + chatPart; if (location.hash !== hh) history.replaceState(null, '', location.pathname + location.search + hh); }
-    const chats = chatsData.map(c => { const on = c.id === selId; const pv = c.preview || {}; const d = c.status === 'running' ? C.teal : c.status === 'queued' ? C.blue : c.needs_you ? C.amber : c.status === 'error' ? C.err : c.status === 'done' ? C.green : '#5B6A7A';
+    const clq = (s.clq || '').trim().toLowerCase();
+    const chats = chatsData.filter(c => !clq || [c.title, '#' + c.id, (c.preview && (c.preview.text || c.preview.result)) || c.snippet || ''].join(' ').toLowerCase().includes(clq)).map(c => { const on = !noChat && c.id === selId; const pv = c.preview || {}; const d = c.status === 'running' ? C.teal : c.status === 'queued' ? C.blue : c.needs_you ? C.amber : c.status === 'error' ? C.err : c.status === 'done' ? C.green : '#5B6A7A';
       return { title:c.title || ('#' + c.id), star:isStar(c), env:this.envTag(curC.id, c.env_id), when:D.ago(c.last_at), preview:D.firstLine(pv.text || pv.result || c.snippet || '', 80) || c.status, dot:d,
         ring: c.status === 'running' ? '0 0 0 3px rgba(69,224,200,0.22), 0 0 8px rgba(69,224,200,0.6)' : 'none', anim: c.status === 'running' ? 'denPulse 1.4s ease-in-out infinite' : 'none',
         bg: on ? 'rgba(255,123,92,0.1)' : 'transparent', bd: on ? 'rgba(255,123,92,0.25)' : 'transparent', pick:() => this.setState({ chatSel:c.id, chatOpenPhone:true, chatImgs:[] }) }; });
@@ -1154,7 +1173,7 @@ class Component extends DCLogic {
       hiddenN: counts.Hidden > 0, hiddenLabel: s.filter === 'Hidden' ? '← Back to all projects' : counts.Hidden + ' hidden — show', toggleHidden:() => this.setState({ filter: s.filter === 'Hidden' ? 'All' : 'Hidden' }),
       projects, listEmpty: projects.length === 0 && D.store.loaded, clearFilters:() => this.setState({ q:'', filter:'All' }),
       newProject:() => this.openBrowser('new'), projDirRef:() => {}, onProjDir:() => {},
-      cur, back:() => this.open(null), openFolder:() => this.reveal(curC), addTask:() => this.addTask('next'),
+      cur, dev:this.devVals(curC), back:() => this.open(null), openFolder:() => this.reveal(curC), addTask:() => this.addTask('next'),
       ...this.tabCustom(s, tabsAll),
       tabs: this.orderedTabs(s, tabsAll).map(([id, label, count, pin]) => ({ label, count: count === '0' ? '' : count, pinned:pin, tip: pin ? 'Pinned tab' : '', pos: pin ? 'sticky' : 'relative', z: pin ? '2' : '1', tbg: pin ? 'rgba(10,14,19,0.98)' : 'transparent', sep: pin ? '1px solid rgba(255,255,255,0.06)' : '0', pick:() => this.pickTab(id), fg: tab === id ? '#FFFFFF' : '#93A1B0', line: tab === id ? '#FF7B5C' : 'transparent' })),
       tabTasks: tab === 'tasks', ...this.extraTabs(s, curC, tab), ...this.overview(s, curC, detail, tab, cards),
@@ -1168,7 +1187,7 @@ class Component extends DCLogic {
       views:[['board', 'Board', 'M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v13h-4z'], ['list', 'List', 'M4 6h16M4 12h16M4 18h16']].map(([id, label, icon]) => ({ label, icon, pick:() => this.setState({ view:id }), bg: s.view === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.view === id ? '#FFFFFF' : '#93A1B0' })),
       isBoard: s.view === 'board', isListView: s.view === 'list', boardHint: s.view === 'board' ? (isPhone ? 'Scroll sideways · open a card to chat' : 'Drag cards between columns') : 'Change status from the menu on each row',
       tq:s.tq, onTq:e => this.setState({ tq:e.target.value }), cols, colOpts: COLS.map(([id, label]) => ({ id, label })), stop:e => e.stopPropagation(),
-      chats, showChatList: isPhone ? !s.chatOpenPhone : !s.chatListShut, isDesk: !isPhone, chatListTitle: s.chatListShut ? 'Show the chat list' : 'Hide the chat list', chatListIcon: s.chatListShut ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6', toggleChatList:() => { const v = !s.chatListShut; try { localStorage.setItem('den.projects.chatListShut', v ? '1' : '0'); } catch (e) {} this.setState({ chatListShut:v }); }, showThread: !isPhone || s.chatOpenPhone, chatListFlex: '0 0 300px', chatBack:() => this.setState({ chatOpenPhone:false }),
+      chats, clq:s.clq || '', onClq:e => this.setState({ clq:e.target.value }), noChatMatch: !!clq && !chats.length, showChatList: isPhone ? !s.chatOpenPhone : (!s.chatListShut || noChat), showEmpty: noChat, isDesk: !isPhone, chatListTitle: s.chatListShut ? 'Show the chat list' : 'Hide the chat list', chatListIcon: s.chatListShut ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6', toggleChatList:() => { const v = !s.chatListShut; try { localStorage.setItem('den.projects.chatListShut', v ? '1' : '0'); } catch (e) {} this.setState({ chatListShut:v }); }, showThread: noChat ? false : (!isPhone || s.chatOpenPhone), chatListFlex: '0 0 300px', chatBack:() => this.setState({ chatOpenPhone:false }),
       newChatRow: selId === 'new', newChatBtn:() => this.setState({ tab:'chats', chatSel:'new', chatOpenPhone:true, draftCol:'next', draftTodo:null, chatText:'', chatImgs:[] }),
       ...thread, ...this.composer(selId, thread.lastMsg || null, curC.raw),
       chatImgs:(s.chatImgs || []).map(f => ({ name:f.name, remove:() => this.setState(st => ({ chatImgs:(st.chatImgs || []).filter(x => x.id !== f.id) })) })), hasChatImgs:(s.chatImgs || []).length > 0 || !!s.chatImgBusy,
@@ -1242,7 +1261,12 @@ class Component extends DCLogic {
       return D.act(() => D.api('/projects/' + p.id + '/tasks', { method:'POST', body:{ prompt:root.prompt, ...(root.env_id ? { env_id:root.env_id } : {}) } }), { ok:['Queued again', D.taskTitle(root), C.coral], reload });
     };
     const star = !!root.important;
-    return { lastMsg:last, thread:{ id:'#' + root.id, title:D.taskTitle(root), status:label, dot, action, lane:D.laneLabel(last), msgs: msgs.map(m => ({ you:!!m.you, bot:!!m.bot, step:!!m.step, code:!!m.code, ask:!!m.ask, approve:m.approve, deny:m.deny, text:m.text, dot:m.dot || '#93A1B0' })),
+    const tq = this.state.tsOpen ? (this.state.tsQ || '').trim().toLowerCase() : '';
+    const shownMsgs = tq ? msgs.filter(m => (m.you || m.bot || m.step || m.code) && String(m.text || '').toLowerCase().includes(tq)) : msgs;
+    const tsx = { tsOpen:!!this.state.tsOpen, tsQ:this.state.tsQ || '', tsBg:this.state.tsOpen ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', tsBd:this.state.tsOpen ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)',
+      tsCount: tq ? (shownMsgs.length === 1 ? '1 match' : shownMsgs.length + ' matches') : '', tsFocus:el => { if (el && !el._f) { el._f = 1; el.focus(); } },
+      toggleTs:() => this.setState({ tsOpen:!this.state.tsOpen, tsQ:'' }), onTsQ:e => this.setState({ tsQ:e.target.value }), tsKey:e => { if (e.key === 'Escape') this.setState({ tsOpen:false, tsQ:'' }); } };
+    return { ...tsx, lastMsg:last, thread:{ id:'#' + root.id, title:D.taskTitle(root), status:label, dot, action, lane:D.laneLabel(last), msgs: shownMsgs.map(m => ({ you:!!m.you, bot:!!m.bot, step:!!m.step, code:!!m.code, ask:!!m.ask, approve:m.approve, deny:m.deny, text:m.text, dot:m.dot || '#93A1B0' })),
         starTip: star ? 'Important - click to unmark' : 'Mark this chat as important', starFill: star ? 'currentColor' : 'none', starFg: star ? C.amber : '#C2CDD8', starBg: star ? 'rgba(255,181,71,0.12)' : 'rgba(255,255,255,0.04)', starBd: star ? 'rgba(255,181,71,0.35)' : 'rgba(255,255,255,0.08)' },
       threadStar:() => D.act(() => D.api('/tasks/' + root.id + '/important?important=' + !star, { method:'POST', body:{} }), { ok: star ? ['No longer important', D.taskTitle(root), '#93A1B0'] : ['Marked important ★', D.taskTitle(root), C.amber], reload, core:false }),
       threadAction:run, threadEditPrompt:st === 'queued', threadEdit:() => D.openChatEdit && D.openChatEdit(last), threadDetails:() => D.openChatDetails && D.openChatDetails(root), threadEditable:true,
@@ -1348,6 +1372,34 @@ class Component extends DCLogic {
     if (this.state.confirmDel !== p.id) { this.setState({ confirmDel:p.id }); this.say('Tap ' + (fromSettings ? 'Archive project' : 'Delete') + ' again to confirm', 'Moves ' + p.name + ' to the Recycle bin for 30 days', C.err); clearTimeout(this.delT); this.delT = setTimeout(() => this.setState({ confirmDel:null }), 5000); return; }
     this.setState({ confirmDel:null, pmenu:null });
     D.act(() => D.api('/den/projects/' + p.id + '/delete', { method:'POST', body:{} }), { ok:['Moved to Recycle bin', p.name + ' · restore within 30 days', C.err], reload:['projStates'] }).then(() => { if (this.state.sel === p.id) this.open(null); });
+  }
+  /* Run the project's website (localhost) without VS Code: the dev_server module does the work, this only shows and clicks it. */
+  devCall(cmd, arg) { return D.api('/modules/commands/' + cmd, { method:'POST', body:{ arg:typeof arg === 'string' ? arg : JSON.stringify(arg) } }).then(r => r.result); }
+  devSync(force) {
+    if (this._devBusyFetch || (!force && this._devAt && Date.now() - this._devAt < 5000)) return;
+    this._devBusyFetch = true; this._devAt = Date.now();
+    this.devCall('devserver_list', '').then(r => { const m = {}; ((r && r.servers) || []).forEach(x => { m[x.id] = x; }); this._dev = m; this._devOk = true; }).catch(() => { this._dev = {}; this._devOk = false; })
+      .then(() => { this._devBusyFetch = false; this.setState({ devTick:Date.now() }); });
+  }
+  devVals(p) {
+    this.devSync();
+    const x = (this._dev || {})[p.id], busy = !!(this._devBusy || {})[p.id];
+    const none = { show:false, openTip:'', up:false, link:'', toggle:() => {}, edit:() => {}, tip:'', fg:'#C2CDD8', op:'1', icon:'', label:'' };
+    if (!x || !this._devOk) return none;
+    const PLAY = 'M7 4l13 8-13 8z', STOP = 'M6 6h12v12H6z';
+    const set = v => { this._devBusy = { ...(this._devBusy || {}), [p.id]: v }; this.setState({ devTick:Date.now() }); };
+    const edit = () => { const c = window.prompt('Command that starts ' + p.name + '’s website (leave empty to use the automatic one):', x.custom ? x.command : (x.command || 'npm run dev')); if (c === null) return; set(true);
+      this.devCall('devserver_set', { id:p.id, command:c }).then(() => this.devSync(true)).catch(e => this.say('Couldn’t save that', e.message, C.err)).then(() => set(false)); };
+    const start = () => { set(true); this.devCall('devserver_start', String(p.id)).then(r => { this.devSync(true);
+      if (r.running) this.say('Website started', r.link, C.green);
+      else this.devCall('devserver_log', String(p.id)).then(l => this.say('It stopped right away', (l.log || '').split('\n').filter(Boolean).slice(-2).join(' · ').slice(0, 200) || 'Check the command (pencil button).', C.err)); })
+      .catch(e => this.say('Couldn’t start it', e.message, C.err)).then(() => set(false)); };
+    const stop = () => { set(true); this.devCall('devserver_stop', String(p.id)).then(() => { this.devSync(true); this.say('Website stopped', p.name, '#93A1B0'); }).catch(e => this.say('Couldn’t stop it', e.message, C.err)).then(() => set(false)); };
+    return { show:true, up:x.running, link:x.link, openTip:'Open ' + x.link, edit, op: busy ? '0.5' : '1',
+      toggle: busy ? () => {} : !x.can_run ? edit : x.running ? stop : start,
+      label: busy ? (x.running ? 'Stopping…' : 'Starting…') : !x.can_run ? 'Set up website' : x.running ? 'Stop site' : x.crashed ? 'Start again' : 'Start site',
+      icon: x.running ? STOP : PLAY, fg: x.running ? '#FF8A7A' : x.crashed ? C.amber : '#C2CDD8',
+      tip: !x.can_run ? 'No website command found. Click to add one (for example npm run dev).' : x.running ? 'Stop ' + x.link : 'Runs: ' + x.command + ' (' + x.why + ')' };
   }
   reveal(p) { const q = this.envQ(p.id).q; D.act(() => D.api('/den/projects/' + p.id + '/reveal' + (q ? '?' + q : ''), { method:'POST', body:{} }), { ok:r => ['Opening in Finder', r.path, C.blue], core:false }); }
   projActions(p, inDetail) {

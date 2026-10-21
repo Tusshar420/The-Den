@@ -21,6 +21,7 @@ from typing import Any, Callable, Optional
 import accounts
 import api_keys
 import db
+import den_platform
 import uploads
 
 
@@ -316,7 +317,7 @@ def _gemini_call(model: str, body: dict[str, Any], key: str, timeout: int, web: 
 
 # ------------------------------------------------------------- claude code
 
-CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+CLAUDE_BIN = den_platform.claude_bin()
 CLAUDE_TEXT_CWD = Path(__file__).parent / "workspace" / "assistant"
 _LIMIT_WORDS = ("usage limit", "rate limit", "limit reached", "hit your limit")
 

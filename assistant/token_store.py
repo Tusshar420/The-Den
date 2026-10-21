@@ -5,7 +5,8 @@ responses - only here.
 On the Mac that is the login Keychain, written through `security -i` so the
 token travels over stdin and never shows up in `ps`. Anywhere without the
 `security` tool (or with OCTOPUS_TOKEN_BACKEND=file) it falls back to a
-0600 file under ~/.octopus/, which is weaker but still owner-only.
+0600 file under ~/.octopus/, which is weaker but still owner-only. On Windows it is the
+Credential Manager (or an owner-only key file), through den_platform.
 """
 
 import base64
@@ -18,6 +19,8 @@ import sys
 import threading
 from pathlib import Path
 from typing import Any, Optional
+
+import den_platform
 
 SERVICE = "com.tushar.octopus.assistant"
 _lock = threading.Lock()
@@ -66,6 +69,30 @@ class KeychainStore:
             raise TokenStoreError(f"Keychain delete failed (security exit {r.returncode})")
 
 
+class PlatformStore:
+    """Windows: the Credential Manager (through the `keyring` package) when it is there, otherwise a
+    owner-only key file in the Den's folder. The choice is made in den_platform."""
+    name = "platform"
+
+    def get(self, account: str) -> Optional[dict[str, Any]]:
+        try:
+            return den_platform.secret_get(SERVICE, account)
+        except OSError as e:
+            raise TokenStoreError(f"The key store couldn't be read ({e.__class__.__name__})")
+
+    def set(self, account: str, data: dict[str, Any]) -> None:
+        try:
+            den_platform.secret_set(SERVICE, account, data)
+        except OSError as e:
+            raise TokenStoreError(f"The key store couldn't be written ({e.__class__.__name__})")
+
+    def delete(self, account: str) -> None:
+        try:
+            den_platform.secret_delete(SERVICE, account)
+        except OSError as e:
+            raise TokenStoreError(f"The key store couldn't be changed ({e.__class__.__name__})")
+
+
 class FileStore:
     name = "file"
 
@@ -108,6 +135,8 @@ def backend():
         return FileStore()
     if choice == "keychain" or (sys.platform == "darwin" and shutil.which("security")):
         return KeychainStore()
+    if den_platform.IS_WINDOWS:
+        return PlatformStore()
     return FileStore()
 
 

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:16px; padding:{{ pad }}; box-sizing:border-box; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <sc-if value="{{ isOff }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:48px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:18px; font-weight:750;">Sharing isn't available on this Den</div>
+      <div style="font-size:13.5px; line-height:1.6; color:#93A1B0; max-width:420px;">The sharing module is switched off. Switch it on under Settings, Modules.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div style="flex:1 1 260px; min-width:0;">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6B7A8A;">SHARING</div>
+        <div style="font-size:{{ titleSize }}; font-weight:800; letter-spacing:-.02em; margin-top:4px;">Work on projects together</div>
+        <div style="font-size:13px; color:#93A1B0; margin-top:4px; line-height:1.5;">Share a project or a chat. People see the same tasks and data and can chat at the same time. This Den does the work, so it has to be on.</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:4px; padding:4px; border-radius:13px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06); align-self:flex-start;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.pick }}" style="height:34px; padding:0 16px; border-radius:9px; border:0; cursor:pointer; white-space:nowrap; font-family:inherit; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+    </div>
+
+    <sc-if value="{{ msg }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 14px; border-radius:12px; background:{{ msgBg }}; font-size:13px; color:{{ msgFg }};">{{ msg }}</div></sc-if>
+
+    <!-- ===================== SHARED BY ME ===================== -->
+    <sc-if value="{{ isMine }}" hint-placeholder-val="{{ true }}">
+
+      <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <span style="width:10px; height:10px; border-radius:50%; background:{{ serveDot }};"></span>
+          <div style="flex:1 1 220px;"><div style="font-size:15px; font-weight:700;">{{ serveTitle }}</div><div style="font-size:12.5px; color:#93A1B0; margin-top:2px;">{{ serveSub }}</div></div>
+          <button onClick="{{ toggleServe }}" style="height:36px; padding:0 16px; border-radius:10px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; background:{{ serveBtnBg }}; color:{{ serveBtnFg }};">{{ serveBtn }}</button>
+        </div>
+        <sc-if value="{{ serving }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px; color:#93A1B0; line-height:1.55;">People reach this Den at: <sc-for list="{{ urls }}" as="u" hint-placeholder-count="2"><span style="display:inline-block; margin:2px 6px 2px 0; padding:2px 9px; border-radius:7px; background:rgba(255,255,255,0.06); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8;">{{ u }}</span></sc-for>. On the same Wi-Fi, or through Tailscale, this works as it is.</div>
+        </sc-if>
+        <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#FF8AA0;">{{ error }}</div></sc-if>
+      </section>
+
+      <sc-if value="{{ hasHeld }}" hint-placeholder-val="{{ false }}">
+        <section style="display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:20px; background:rgba(255,181,71,0.07); border:1px solid rgba(255,181,71,0.25);">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#FFB547;">WAITING FOR YOUR OK</div>
+          <sc-for list="{{ held }}" as="h" hint-placeholder-count="1">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border-radius:12px; background:rgba(20,28,38,0.55);">
+              <div style="flex:1 1 240px; min-width:0;"><div style="font-size:13.5px; font-weight:650;">{{ h.name }} <span style="color:#6B7A8A; font-weight:500;">in {{ h.project }}</span></div><div style="font-size:12.5px; color:#C2CDD8; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ h.prompt }}</div></div>
+              <button onClick="{{ h.approve }}" style="height:32px; padding:0 14px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:700; background:#6FCF97; color:#06190F;">Run it</button>
+              <button onClick="{{ h.decline }}" style="height:32px; padding:0 14px; border-radius:9px; border:1px solid rgba(255,255,255,0.12); cursor:pointer; font-family:inherit; font-size:12.5px; background:transparent; color:#C2CDD8;">Decline</button>
+            </div>
+          </sc-for>
+        </section>
+      </sc-if>
+
+      <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">INVITE SOMEONE</div>
+        <input value="{{ name }}" onChange="{{ setName }}" placeholder="Their name (for example Priya)" style="height:38px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.2); color:#E8EEF3; font-family:inherit; font-size:14px; outline:none;">
+        <div style="font-size:12px; color:#93A1B0;">Which project to share</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <sc-for list="{{ pickProjects }}" as="p" hint-placeholder-count="4"><button onClick="{{ p.pick }}" style="height:32px; padding:0 12px; border-radius:9px; border:1px solid {{ p.bd }}; background:{{ p.bg }}; color:{{ p.fg }}; cursor:pointer; font-family:inherit; font-size:12.5px;">{{ p.label }}</button></sc-for>
+        </div>
+        <div style="font-size:12px; color:#93A1B0;">What they can do</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <sc-for list="{{ pickRoles }}" as="r" hint-placeholder-count="3"><button onClick="{{ r.pick }}" style="height:32px; padding:0 12px; border-radius:9px; border:1px solid {{ r.bd }}; background:{{ r.bg }}; color:{{ r.fg }}; cursor:pointer; font-family:inherit; font-size:12.5px;">{{ r.label }}</button></sc-for>
+        </div>
+        <div style="font-size:12px; color:#6B7A8A; line-height:1.5;">{{ roleHelp }}</div>
+        <button onClick="{{ toggleHold }}" style="align-self:flex-start; display:flex; align-items:center; gap:8px; height:32px; padding:0 12px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:12.5px;"><span style="width:14px; height:14px; border-radius:4px; border:1.5px solid #6B7A8A; background:{{ holdFill }};"></span>Ask me before their tasks run</button>
+        <button onClick="{{ invite }}" style="align-self:flex-start; height:38px; padding:0 20px; border-radius:11px; border:0; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:750; background:#FF7B5C; color:#1A0A05;">Create invite link</button>
+        <sc-if value="{{ hasLink }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:12px; background:rgba(111,207,151,0.08); border:1px solid rgba(111,207,151,0.25);">
+            <div style="font-size:13px; font-weight:650; color:#CDEBD9;">{{ linkFor }}</div>
+            <div style="font-size:12.5px; color:#93A1B0;">Send this link to them. It only works for them. They can open it in a browser, or paste it in their own Den under Sharing, then "Shared with me".</div>
+            <sc-for list="{{ links }}" as="l" hint-placeholder-count="2">
+              <div style="display:flex; gap:8px; align-items:center;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,0.25); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8;">{{ l.text }}</span><button onClick="{{ l.copy }}" style="height:30px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; background:#6FCF97; color:#06190F;">Copy</button></div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="display:flex; flex-direction:column; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <div style="padding:16px 18px 10px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PEOPLE · {{ peopleCount }}</div>
+        <sc-if value="{{ noPeople }}" hint-placeholder-val="{{ false }}"><div style="padding:6px 18px 20px; font-size:13px; color:#93A1B0;">Nobody yet. Invite someone above.</div></sc-if>
+        <sc-for list="{{ people }}" as="m" hint-placeholder-count="2">
+          <div style="display:flex; flex-direction:column; gap:8px; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.05);">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span style="width:9px; height:9px; border-radius:50%; background:{{ m.dot }};"></span>
+              <div style="flex:1 1 160px; min-width:0;"><div style="font-size:14px; font-weight:700;">{{ m.name }}</div><div style="font-size:12px; color:#93A1B0;">{{ m.seen }}</div></div>
+              <button onClick="{{ m.flipHold }}" style="height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:{{ m.holdFg }}; cursor:pointer; font-family:inherit; font-size:11.5px;">{{ m.holdText }}</button>
+              <button onClick="{{ m.newLink }}" style="height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:11.5px;">New link</button>
+              <button onClick="{{ m.remove }}" style="height:28px; padding:0 10px; border-radius:8px; border:1px solid rgba(255,84,112,0.35); background:transparent; color:#FF8AA0; cursor:pointer; font-family:inherit; font-size:11.5px;">{{ m.removeText }}</button>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <sc-for list="{{ m.shares }}" as="s" hint-placeholder-count="2">
+                <span style="display:flex; align-items:center; border-radius:8px; background:rgba(127,178,255,0.1); overflow:hidden;"><span style="padding:4px 4px 4px 10px; font-size:12px; color:#CFE0FF;">{{ s.label }}</span><button onClick="{{ s.cycle }}" data-tip="Change what they can do" style="height:24px; margin:0 2px; padding:0 8px; border-radius:6px; border:0; cursor:pointer; background:rgba(255,255,255,0.08); color:#E8EEF3; font-family:inherit; font-size:11.5px; font-weight:650;">{{ s.role }}</button><button onClick="{{ s.drop }}" data-tip="Stop sharing this" style="height:24px; width:24px; border:0; cursor:pointer; background:transparent; color:#93A1B0; font-size:14px;">×</button></span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <!-- ===================== SHARED WITH ME ===================== -->
+    <sc-if value="{{ isTheirs }}" hint-placeholder-val="{{ false }}">
+      <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">ADD A SHARED PROJECT</div>
+        <div style="font-size:13px; color:#93A1B0; line-height:1.55;">Paste the invite link someone sent you. Their Den has to be on, and you have to be on the same Wi-Fi or on their Tailscale.</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input value="{{ link }}" onChange="{{ setLink }}" placeholder="http://their-mac:8791/#join=..." style="flex:1 1 280px; min-width:0; height:38px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.2); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12.5px; outline:none;">
+          <button onClick="{{ addLink }}" style="height:38px; padding:0 20px; border-radius:11px; border:0; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:750; background:#FF7B5C; color:#1A0A05;">Add</button>
+        </div>
+      </section>
+      <sc-if value="{{ noConns }}" hint-placeholder-val="{{ false }}"><div style="padding:30px 10px; text-align:center; font-size:13.5px; color:#93A1B0;">Nothing shared with you yet.</div></sc-if>
+      <sc-for list="{{ conns }}" as="c" hint-placeholder-count="1">
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="width:10px; height:10px; border-radius:50%; background:{{ c.dot }};"></span>
+            <div style="flex:1 1 200px; min-width:0;"><div style="font-size:15px; font-weight:700;">{{ c.title }}</div><div style="font-size:12.5px; color:{{ c.stateFg }};">{{ c.state }}</div></div>
+            <button onClick="{{ c.open }}" style="height:34px; padding:0 16px; border-radius:10px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; background:{{ c.openBg }}; color:#1A0A05; opacity:{{ c.openOp }};">Open</button>
+            <button onClick="{{ c.remove }}" style="height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:transparent; color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:12.5px;">Remove</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <sc-for list="{{ c.items }}" as="i" hint-placeholder-count="2"><span style="padding:4px 10px; border-radius:8px; background:rgba(127,178,255,0.1); font-size:12px; color:#CFE0FF;">{{ i }}</span></sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </sc-if>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:980,&quot;height&quot;:900},&quot;isPhone&quot;:{&quot;editor&quot;:&quot;bool&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onReady&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
+// Sharing (Den 2.2): invite people to a project and see who can do what (Shared by me), and open projects other
+// Den owners shared with this person (Shared with me). Everything goes through the den_collab module's two commands.
+const D = window.Den;
+const ROLES = ['viewer', 'editor', 'admin'];
+const ROLE_HELP = { viewer: 'Viewer: can read the tasks, chats, notes, calendar and files.', editor: 'Editor: can also add tasks and chat. This Den runs the work.', admin: 'Admin: can also invite and remove people on that project.' };
+
+class Component extends DCLogic {
+  state = { tab:'mine', data:null, conns:null, off:false, name:'', project:0, role:'editor', hold:false, link:'', msg:'', msgTone:'ok', fresh:null };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.refresh(); this._t = setInterval(() => this.refresh(true), 20000); }
+  componentWillUnmount() { this._dead = true; clearInterval(this._t); }
+
+  cmd(name, payload) { return D.api('/modules/commands/' + name, { method:'POST', body:{ arg: JSON.stringify(payload) } }).then(r => { const x = r && r.result !== undefined ? r.result : r; if (x && x.error) throw { detail: x.error }; return x; }); }
+  say(text, tone) { this.setState({ msg:text, msgTone: tone || 'ok' }); clearTimeout(this._mt); this._mt = setTimeout(() => !this._dead && this.setState({ msg:'' }), 6000); }
+  fail(e) { this.say((e && (e.detail || e.message)) || 'That did not work', 'bad'); }
+  refresh(quiet) {
+    this.cmd('collab', { action:'status' }).then(d => { if (!this._dead) this.setState({ data:d, off:false, project: this.state.project || (d.projects[0] && d.projects[0].id) || 0 }); },
+      e => { if (!this._dead && e && e.status === 404) this.setState({ off:true }); });
+    this.cmd('collab-guest', { action:'list' }).then(r => !this._dead && this.setState({ conns: r.connections }), () => {});
+  }
+  act(payload, okText) { return this.cmd('collab', payload).then(r => { if (okText) this.say(okText); this.refresh(true); return r; }, e => { this.fail(e); throw e; }); }
+
+  toggleServe = () => {
+    const on = !(this.state.data && this.state.data.serving);
+    D.api('/modules/den_collab/config', { method:'PATCH', body:{ config:{ serve: on } } }).then(() => { setTimeout(() => this.refresh(true), 600); this.say(on ? 'Sharing is on. People can open their invite links.' : 'Sharing is off. Nobody can reach this Den until you turn it on.'); }, e => this.fail(e));
+  };
+  invite = () => {
+    const s = this.state;
+    if (!s.name.trim()) return this.say('Type their name first.', 'bad');
+    if (!s.project) return this.say('Pick a project to share.', 'bad');
+    const serving = this.state.data && this.state.data.serving;
+    this.act({ action:'invite', name:s.name.trim(), hold:s.hold, shares:[{ kind:'project', ref_id:s.project, role:s.role }] }).then(r => {
+      this.setState({ fresh:{ name:s.name.trim(), links:r.links }, name:'' });
+      if (!serving) this.say('Invite created. Turn sharing on above so they can open it.', 'warn');
+    }, () => {});
+  };
+  copy(text) { try { navigator.clipboard.writeText(text).then(() => this.say('Copied.'), () => this.say('Select the link and copy it by hand.', 'warn')); } catch (e) { this.say('Select the link and copy it by hand.', 'warn'); } }
+  addLink = () => {
+    const l = this.state.link.trim();
+    if (!l) return;
+    this.cmd('collab-guest', { action:'add', link:l }).then(r => { this.setState({ link:'', conns:r.connections }); this.say('Added.'); }, e => this.fail(e));
+  };
+
+  renderVals() {
+    const s = this.state, d = s.data, isPhone = !!this.props.isPhone;
+    const tabs = [['mine', 'Shared by me'], ['theirs', 'Shared with me']].map(([id, label]) => ({ label, pick:() => this.setState({ tab:id }), bg: s.tab === id ? '#FF7B5C' : 'transparent', fg: s.tab === id ? '#1A0A05' : '#C2CDD8' }));
+    const tone = { ok:['rgba(111,207,151,0.12)', '#CDEBD9'], bad:['rgba(255,84,112,0.12)', '#FFB3C0'], warn:['rgba(255,181,71,0.12)', '#FFD9A0'] }[s.msgTone] || ['rgba(255,255,255,0.05)', '#E8EEF3'];
+    const base = { pad: isPhone ? '4px 0 40px' : '4px 0 48px', titleSize: isPhone ? '22px' : '26px', tabs, isOff: s.off, isOn: !s.off,
+      isMine: s.tab === 'mine', isTheirs: s.tab === 'theirs', msg: s.msg, msgBg: tone[0], msgFg: tone[1],
+      serving:false, urls:[], error:'', hasHeld:false, held:[], people:[], peopleCount:0, noPeople:true, pickProjects:[], pickRoles:[], links:[], hasLink:false, linkFor:'',
+      serveDot:'#6B7A8A', serveTitle:'Sharing is off', serveSub:'No one can reach this Den from outside yet.', serveBtn:'Turn on', serveBtnBg:'#6FCF97', serveBtnFg:'#06190F',
+      name:s.name, link:s.link, setName:e => this.setState({ name:e.target.value }), setLink:e => this.setState({ link:e.target.value }),
+      toggleServe:this.toggleServe, invite:this.invite, addLink:this.addLink, toggleHold:() => this.setState({ hold:!s.hold }),
+      holdFill: s.hold ? '#6FCF97' : 'transparent', roleHelp: ROLE_HELP[s.role], conns:[], noConns:false };
+    if (d) {
+      base.serving = d.serving; base.urls = d.urls; base.error = d.server_error || '';
+      base.serveDot = d.serving ? '#6FCF97' : '#6B7A8A';
+      base.serveTitle = d.serving ? 'Sharing is on' : 'Sharing is off';
+      base.serveSub = d.serving ? 'People with an invite link can open what you shared.' : 'No one can reach this Den from outside until you turn it on.';
+      base.serveBtn = d.serving ? 'Turn off' : 'Turn on'; base.serveBtnBg = d.serving ? 'rgba(255,255,255,0.07)' : '#6FCF97'; base.serveBtnFg = d.serving ? '#E8EEF3' : '#06190F';
+      base.held = d.held.map(h => ({ ...h, approve:() => this.act({ action:'approve', task_id:h.task_id }, 'Running it now.'), decline:() => this.act({ action:'decline', task_id:h.task_id }, 'Declined.') }));
+      base.hasHeld = d.held.length > 0;
+      base.pickProjects = d.projects.map(p => ({ label:p.name, pick:() => this.setState({ project:p.id }), bg: s.project === p.id ? 'rgba(255,123,92,0.16)' : 'rgba(255,255,255,0.03)', bd: s.project === p.id ? 'rgba(255,123,92,0.5)' : 'rgba(255,255,255,0.1)', fg: s.project === p.id ? '#FF9478' : '#C2CDD8' }));
+      base.pickRoles = ROLES.map(r => ({ label:r, pick:() => this.setState({ role:r }), bg: s.role === r ? 'rgba(255,123,92,0.16)' : 'rgba(255,255,255,0.03)', bd: s.role === r ? 'rgba(255,123,92,0.5)' : 'rgba(255,255,255,0.1)', fg: s.role === r ? '#FF9478' : '#C2CDD8' }));
+      base.people = d.members.map(m => {
+        const online = m.last_seen && (Date.now() - Date.parse(m.last_seen)) < 120000;
+        return { name:m.name, dot: online ? '#6FCF97' : '#4A5663', seen: m.last_seen ? (online ? 'Online now' : 'Last seen ' + D.ago(m.last_seen, false)) : 'Has not opened the link yet',
+          holdText: m.hold ? 'Asks you first' : 'Runs freely', holdFg: m.hold ? '#FFB547' : '#93A1B0',
+          flipHold:() => this.act({ action:'update', member_id:m.id, hold:!m.hold }, m.hold ? 'Their tasks now run without asking.' : 'Their tasks now wait for your OK.'),
+          newLink:() => this.act({ action:'newlink', member_id:m.id }).then(r => this.setState({ fresh:{ name:m.name, links:r.links } })),
+          removeText:'Remove', remove:() => { if (confirm('Remove ' + m.name + '? Their link stops working at once.')) this.act({ action:'remove', member_id:m.id }, m.name + ' was removed.'); },
+          shares:m.shares.map(sh => ({ label:(sh.kind === 'chat' ? 'Chat: ' : '') + (sh.name || '?'), role:sh.role,
+            cycle:() => this.act({ action:'share', member_id:m.id, kind:sh.kind, ref_id:sh.ref_id, role:ROLES[(ROLES.indexOf(sh.role) + 1) % ROLES.length] }),
+            drop:() => this.act({ action:'unshare', member_id:m.id, kind:sh.kind, ref_id:sh.ref_id }, 'Stopped sharing.') })) };
+      });
+      base.peopleCount = d.members.length; base.noPeople = d.members.length === 0;
+    }
+    if (s.fresh) {
+      base.hasLink = true; base.linkFor = 'Invite link for ' + s.fresh.name;
+      base.links = s.fresh.links.map(l => ({ text:l, copy:() => this.copy(l) }));
+    }
+    const conns = s.conns || [];
+    base.noConns = conns.length === 0;
+    base.conns = conns.map(c => ({ title: (c.host || 'A Den') + (c.as ? ' · you are ' + c.as : ''), dot: c.online ? '#6FCF97' : '#FF5470',
+      state: c.online ? 'Online' : (c.error || 'Not reachable'), stateFg: c.online ? '#6FCF97' : '#FF8AA0',
+      items: c.projects.map(p => p.name + ' · ' + p.role).concat(c.chats.map(x => 'Chat: ' + x.title + ' · ' + x.role)),
+      openBg: c.online ? '#FF7B5C' : '#6B7A8A', openOp: c.online ? '1' : '0.5', open:() => { if (c.online) window.open(c.open, '_blank', 'noopener'); },
+      remove:() => this.cmd('collab-guest', { action:'remove', id:c.id }).then(r => this.setState({ conns:r.connections }), e => this.fail(e)) }));
+    return base;
+  }
+}
+</script>
+</body>
+</html>

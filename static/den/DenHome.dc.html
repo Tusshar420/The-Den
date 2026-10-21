@@ -163,7 +163,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
             </sc-if>
             <sc-if value="{{ g.open }}" hint-placeholder-val="{{ true }}">
               <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
-                <button onClick="{{ it.go }}" data-tour="nav-{{ it.id }}" data-tip="{{ it.label }}" data-kbd="{{ it.key }}" style="position:relative; display:flex; align-items:center; gap:11px; min-height:38px; padding:0 10px; border-radius:11px; border:1px solid {{ it.bd }}; cursor:pointer; text-align:left; justify-content:{{ justify }}; background:{{ it.bg }}; color:{{ it.fg }}; font-size:14px; font-weight:{{ it.fw }}; transition:background .15s;" style-hover="background:rgba(255,255,255,0.05);">
+                <a href="{{ it.href }}" onClick="{{ it.go }}" data-tour="nav-{{ it.id }}" data-tip="{{ it.label }}" data-kbd="{{ it.key }}" style="position:relative; box-sizing:border-box; text-decoration:none; display:flex; align-items:center; gap:11px; min-height:38px; padding:0 10px; border-radius:11px; border:1px solid {{ it.bd }}; cursor:pointer; text-align:left; justify-content:{{ justify }}; background:{{ it.bg }}; color:{{ it.fg }}; font-size:14px; font-weight:{{ it.fw }}; transition:background .15s;" style-hover="background:rgba(255,255,255,0.05);">
                   <span style="display:grid; place-items:center; color:{{ it.ic }};"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ it.icon }}"></path></svg></span>
                   <sc-if value="{{ showLabels }}" hint-placeholder-val="{{ true }}">
                     <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ it.label }}</span>
@@ -177,7 +177,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
                   <sc-if value="{{ it.railDot }}" hint-placeholder-val="{{ false }}">
                     <span style="position:absolute; top:7px; right:9px; width:7px; height:7px; border-radius:50%; background:{{ it.badgeBg }}; box-shadow:0 0 0 2px #0A0E13;"></span>
                   </sc-if>
-                </button>
+                </a>
               </sc-for>
             </sc-if>
           </div>
@@ -187,11 +187,11 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
       <div style="display:flex; flex-direction:column; gap:8px;">
         <div style="display:flex; gap:4px; flex-direction:{{ footDir }};">
           <sc-for list="{{ footItems }}" as="f" hint-placeholder-count="3">
-            <button onClick="{{ f.go }}" data-tour="foot-{{ f.id }}" title="{{ f.title }}" style="flex:1 0 auto; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:11px; border:1px solid {{ f.bd }}; background:{{ f.bg }}; cursor:pointer; color:{{ f.fg }}; font-size:13px; font-weight:600; transition:background .15s;" style-hover="filter:brightness(1.2);">
+            <a href="{{ f.href }}" onClick="{{ f.go }}" data-tour="foot-{{ f.id }}" title="{{ f.title }}" style="flex:1 0 auto; box-sizing:border-box; text-decoration:none; height:38px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:11px; border:1px solid {{ f.bd }}; background:{{ f.bg }}; cursor:pointer; color:{{ f.fg }}; font-size:13px; font-weight:600; transition:background .15s;" style-hover="filter:brightness(1.2);">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ f.icon }}"></path></svg>
               <sc-if value="{{ showLabels }}" hint-placeholder-val="{{ true }}"><span>{{ f.label }}</span></sc-if>
               <sc-if value="{{ f.live }}" hint-placeholder-val="{{ false }}"><span style="width:6px; height:6px; border-radius:50%; background:#FF7B5C; animation:denPulse 1s ease-in-out infinite;"></span></sc-if>
-            </button>
+            </a>
           </sc-for>
         </div>
         
@@ -418,6 +418,12 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
         </sc-if>
         <sc-if value="{{ pg.updates }}" hint-placeholder-val="{{ false }}">
           <div style="display:{{ pgDisp }};"><dc-import name="DenHelp" page="updates" is-phone="{{ isPhone }}" say="{{ sayFn }}" on-ready="{{ readyFn }}" on-nav="{{ navFn }}" hint-size="100%,0px"></dc-import></div>
+        </sc-if>
+        <sc-if value="{{ pg.sharing }}" hint-placeholder-val="{{ false }}">
+          <div style="display:{{ pgDisp }};"><dc-import name="DenSharing" is-phone="{{ isPhone }}" on-ready="{{ readyFn }}" hint-size="100%,0px"></dc-import></div>
+        </sc-if>
+        <sc-if value="{{ pg.analytics }}" hint-placeholder-val="{{ false }}">
+          <div style="display:{{ pgDisp }};"><dc-import name="DenAnalytics" is-phone="{{ isPhone }}" on-ready="{{ readyFn }}" hint-size="100%,0px"></dc-import></div>
         </sc-if>
         <sc-if value="{{ pgMessages }}" hint-placeholder-val="{{ false }}">
           <div style="display:{{ pgDisp }};"><dc-import name="DenMessages" currency="{{ currency }}" initial="{{ msgInitial }}" width="{{ frameWidth }}" on-collapse="{{ msgCollapse }}" is-phone="{{ isPhone }}" say="{{ sayFn }}" on-ready="{{ readyFn }}" hint-size="100%,0px"></dc-import></div>
@@ -960,6 +966,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
     <sc-if value="{{ rpOpen }}" hint-placeholder-val="{{ false }}">
       <aside data-tour="rpanel" style="animation:{{ rpAnim }}; position:{{ rpPos }}; right:{{ rpRight }}; top:0; bottom:0; z-index:42; width:{{ rpW }}; flex:none; display:flex; flex-direction:column; background:rgba(10,14,19,0.72); backdrop-filter:blur(26px) saturate(150%); border-left:1px solid rgba(255,255,255,0.06); ">
         <sc-if value="{{ notPhone }}" hint-placeholder-val="{{ true }}"><div onPointerDown="{{ rpDrag }}" onDoubleClick="{{ rpDragReset }}" title="Drag to resize · double-click to reset" style="position:absolute; left:-4px; top:0; bottom:0; width:8px; z-index:5; cursor:col-resize; touch-action:none;" style-hover="background:linear-gradient(90deg, transparent 3px, rgba(255,123,92,0.6) 3px, rgba(255,123,92,0.6) 5px, transparent 5px);"></div></sc-if>
+        <sc-if value="{{ rpHead }}" hint-placeholder-val="{{ true }}">
         <div style="flex:none; display:flex; align-items:center; gap:10px; padding:16px 14px 12px 18px; border-bottom:1px solid rgba(255,255,255,0.05);">
           <span style="width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:rgba(255,123,92,0.12); color:#FF7B5C;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ rp.icon }}"></path></svg></span>
           <div style="flex:1; min-width:0; line-height:1.15;">
@@ -969,6 +976,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
           <sc-if value="{{ rp.isMsg }}" hint-placeholder-val="{{ false }}"><button onClick="{{ msgFullAll }}" title="Open full screen" style="width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; color:#C2CDD8;" style-hover="color:#FFFFFF; background:rgba(255,255,255,0.07);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button></sc-if>
           <button onClick="{{ closeRp }}" title="Close  Esc" style="width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; color:#A3B0BE;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
+        </sc-if>
 
         <div ref="{{ rpScrollRef }}" style="position:relative; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;"><sc-if value="{{ rpLoad }}" hint-placeholder-val="{{ false }}"><div style="position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; gap:12px; padding:14px; background:#0D131B;"><div style="height:16px; width:45%; border-radius:6px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:96px; border-radius:16px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:58px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:58px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:58px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:14px; width:30%; border-radius:6px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div><div style="height:58px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.035) 100%); background-size:400px 100%; animation:denShimmer 1.2s linear infinite;"></div></div></sc-if><div style="display:flex; flex-direction:column; gap:12px; padding:14px; min-height:100%; box-sizing:border-box;">
 
@@ -1003,13 +1011,13 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
               <button onClick="{{ readAll }}" style="border:0; background:none; cursor:pointer; font-size:12px; font-weight:600; color:#FF7B5C;">Mark all read</button>
             </div>
             <sc-for list="{{ alerts }}" as="n" hint-placeholder-count="5">
-              <div style="display:flex; gap:10px; padding:12px; border-radius:14px; background:{{ n.bg }}; border:1px solid {{ n.bd }};">
+              <div onClick="{{ n.open }}" style="display:flex; gap:10px; padding:12px; border-radius:14px; background:{{ n.bg }}; border:1px solid {{ n.bd }}; cursor:{{ n.cur }};">
                 <span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:{{ n.tone }};"></span>
                 <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px;">
                   <div style="display:flex; align-items:baseline; gap:8px;"><span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.08em; color:{{ n.tone }};">{{ n.kind }}</span><span style="flex:1;"></span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ n.when }}</span></div>
                   <div style="font-size:13.5px; font-weight:{{ n.fw }};">{{ n.title }}</div>
                   <div style="font-size:12px; color:#93A1B0;">{{ n.sub }}</div>
-                  <sc-if value="{{ n.cta }}" hint-placeholder-val="{{ false }}"><div style="display:flex; gap:6px; margin-top:6px;"><button onClick="{{ n.deny }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12px; font-weight:600; color:#FF8FA2;">Deny</button><button onClick="{{ n.approve }}" style="height:30px; padding:0 12px; border-radius:9px; border:0; background:#FF7B5C; cursor:pointer; font-size:12px; font-weight:700; color:#1A0A05;">{{ n.cta }}</button></div></sc-if>
+                  <sc-if value="{{ n.cta }}" hint-placeholder-val="{{ false }}"><div onClick="{{ stopQ }}" style="display:flex; gap:6px; margin-top:6px;"><button onClick="{{ n.deny }}" style="height:30px; padding:0 11px; border-radius:9px; border:1px solid rgba(255,84,112,0.35); background:rgba(255,84,112,0.08); cursor:pointer; font-size:12px; font-weight:600; color:#FF8FA2;">Deny</button><button onClick="{{ n.approve }}" style="height:30px; padding:0 12px; border-radius:9px; border:0; background:#FF7B5C; cursor:pointer; font-size:12px; font-weight:700; color:#1A0A05;">{{ n.cta }}</button></div></sc-if>
                 </div>
               </div>
             </sc-for>
@@ -1075,8 +1083,9 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
           <sc-if value="{{ rp.isMsg }}" hint-placeholder-val="{{ false }}">
             
             <sc-if value="{{ msgListView }}" hint-placeholder-val="{{ true }}">
-            <div style="height:38px; display:flex; align-items:center; gap:8px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); color:#6B7A8A; font-size:13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>Search all chats</div>
+            <div style="height:38px; display:flex; align-items:center; gap:8px; padding:0 12px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); color:#6B7A8A;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="flex:none; stroke-width:1.8; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg><input value="{{ rpQ }}" onInput="{{ rpOnQ }}" placeholder="Search all chats" style="flex:1; min-width:0; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:13px;"></div>
             <button onClick="{{ newChat }}" style="height:40px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13.5px; font-weight:700;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.3; stroke-linecap:round;"><path d="M12 5v14M5 12h14"></path></svg>New chat</button>
+            <sc-if value="{{ rpNoMatch }}" hint-placeholder-val="{{ false }}"><div style="padding:18px 8px; text-align:center; font-size:13px; color:#93A1B0;">No chats match.</div></sc-if>
             <sc-for list="{{ messages }}" as="m" hint-placeholder-count="5">
               <div onClick="{{ m.open }}" style="display:flex; gap:10px; padding:10px; margin:0 -4px; border-radius:14px; cursor:pointer;" style-hover="background:rgba(255,255,255,0.04);">
                 <span style="flex:none; width:8px; height:8px; margin-top:6px; border-radius:50%; background:{{ m.dot }};"></span>
@@ -1099,8 +1108,11 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
               <div style="position:sticky; top:0; z-index:4; margin:-14px -14px 0; padding:12px 14px 10px; display:flex; align-items:center; gap:8px; background:rgba(13,19,27,0.97); backdrop-filter:blur(14px); border-bottom:1px solid rgba(255,255,255,0.06);">
                 <button onClick="{{ msgBack }}" title="{{ msgBackTitle }}" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; color:#C2CDD8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 6l-6 6 6 6"></path></svg></button>
                 <button onClick="{{ msgOpenDetails }}" title="View details (status, model, tokens…)" style="flex:1; min-width:0; display:block; padding:0; border:0; background:none; cursor:pointer; text-align:left; font-family:inherit; color:#E8EEF3;" style-hover="color:#FFFFFF;"><div style="font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ msgCur.title }}</div><div style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ msgCur.meta }}</div></button>
-                
+                <button onClick="{{ rpTsToggle }}" title="Search in this chat" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid {{ rpTsBd }}; background:{{ rpTsBg }}; cursor:pointer; color:#C2CDD8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg></button>
+                <button onClick="{{ msgFullAll }}" title="Open full screen" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; color:#C2CDD8;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button>
+                <button onClick="{{ closeRp }}" title="Close  Esc" style="flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; color:#A3B0BE;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
               </div>
+              <sc-if value="{{ rpTsOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px;"><input ref="{{ rpTsFocus }}" value="{{ rpTsQ }}" onInput="{{ rpTsOn }}" onKeyDown="{{ rpTsKey }}" placeholder="Search in this chat" style="flex:1; min-width:0; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13px; outline:none;"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ rpTsCount }}</span></div></sc-if>
               <sc-for list="{{ msgCur.thread }}" as="t" hint-placeholder-count="3">
                 <sc-if value="{{ t.you }}" hint-placeholder-val="{{ false }}"><div data-msg="1" style="align-self:flex-end; max-width:85%; padding:9px 12px; border-radius:14px 14px 4px 14px; background:rgba(255,123,92,0.14); border:1px solid rgba(255,123,92,0.25); font-size:13px; line-height:1.5;">{{ t.text }}</div></sc-if><sc-if value="{{ t.hasFiles }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><sc-for list="{{ t.files }}" as="tf" hint-placeholder-count="1"><span title="{{ tf.name }}" style="position:relative; flex:none; width:60px; height:60px; box-sizing:border-box; border-radius:12px; background:linear-gradient(135deg, rgba(127,178,255,0.25), rgba(165,139,255,0.2)); border:1px solid rgba(255,255,255,0.12); display:grid; place-items:center; color:#B7D1FF; cursor:pointer;"><sc-if value="{{ tf.img }}" hint-placeholder-val="{{ false }}"><img src="{{ tf.src }}" alt="" onClick="{{ tf.open }}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:11px;"></sc-if><sc-if value="{{ tf.doc }}" hint-placeholder-val="{{ true }}"><span onClick="{{ tf.open }}" style="display:flex; flex-direction:column; align-items:center; gap:2px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;"><path d="M14 3H6v18h12V7zM14 3v4h4"></path></svg><span style="font-family:'JetBrains Mono', monospace; font-size:8.5px; font-weight:700; letter-spacing:.04em;">{{ tf.ext }}</span></span></sc-if><sc-if value="{{ tf.canRm }}" hint-placeholder-val="{{ false }}"><button onClick="{{ tf.rm }}" title="Remove" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; display:grid; place-items:center; border-radius:50%; border:0; background:#223040; color:#E8EEF3; cursor:pointer;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2.6; stroke-linecap:round;"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></sc-if></span></sc-for></div></sc-if>
                 <sc-if value="{{ t.live }}" hint-placeholder-val="{{ false }}"><div title="{{ t.text }}" style="display:flex; align-items:center; gap:8px; padding:0 2px; min-width:0; font-family:'JetBrains Mono', monospace; font-size:11.5px;"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:{{ t.dot }}; box-shadow:0 0 8px {{ t.dot }}; animation:denPulse 1.4s ease-in-out infinite;"></span><span style="flex:none; display:inline-flex; align-items:baseline; gap:3px;"><span style="font-weight:600; color:#C2CDD8; background:linear-gradient(90deg, #93A1B0 0%, #FFFFFF 50%, #93A1B0 100%); background-size:200px 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:denShimmer 1.8s linear infinite;">{{ t.verb }}</span><span style="display:inline-flex; gap:2px; align-items:flex-end; height:8px;"><span style="width:3px; height:3px; border-radius:50%; background:{{ t.dot }}; animation:denType 1.2s 0s ease-in-out infinite;"></span><span style="width:3px; height:3px; border-radius:50%; background:{{ t.dot }}; animation:denType 1.2s .15s ease-in-out infinite;"></span><span style="width:3px; height:3px; border-radius:50%; background:{{ t.dot }}; animation:denType 1.2s .3s ease-in-out infinite;"></span></span></span><span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#6B7A8A;">{{ t.what }}</span></div></sc-if><sc-if value="{{ t.step }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px; padding:0 2px; font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#93A1B0;"><span style="flex:none; width:7px; height:7px; border-radius:50%; background:{{ t.dot }};"></span><span style="min-width:0;">{{ t.text }}</span></div></sc-if><sc-if value="{{ t.newStart }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:10px; margin:4px 0; font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:.1em; color:#FF7B5C;"><span style="flex:1; height:1px; background:rgba(255,123,92,0.35);"></span>NEW MESSAGES<span style="flex:1; height:1px; background:rgba(255,123,92,0.35);"></span></div></sc-if><sc-if value="{{ t.bot }}" hint-placeholder-val="{{ false }}"><div data-msg="1" data-new-start="{{ t.newMark }}" data-reply="1" style="max-width:90%; min-width:0; padding:9px 12px; border-radius:4px 14px 14px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); font-size:13px; line-height:1.5; overflow-wrap:anywhere;"><dc-import name="DenMd" text="{{ t.text }}"></dc-import></div></sc-if>
@@ -1479,7 +1491,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
     </sc-if>
     <div style="position:absolute; top:76px; right:16px; z-index:1100; width:min(360px, calc(100% - 32px)); display:flex; flex-direction:column; align-items:flex-end; gap:10px; pointer-events:none;">
     <sc-for list="{{ apPops }}" as="p" hint-placeholder-count="1">
-      <div style="pointer-events:auto; width:100%; box-sizing:border-box; padding:12px 14px; border-radius:16px; background:rgba(18,25,34,0.92); border:1px solid rgba(255,181,71,0.3); backdrop-filter:blur(24px); box-shadow:0 20px 50px -20px rgba(0,0,0,0.8); display:flex; flex-direction:column; gap:8px; animation:denRise .26s cubic-bezier(.2,.7,.3,1);">
+      <div onClick="{{ p.details }}" style="pointer-events:auto; cursor:pointer; width:100%; box-sizing:border-box; padding:12px 14px; border-radius:16px; background:rgba(18,25,34,0.92); border:1px solid rgba(255,181,71,0.3); backdrop-filter:blur(24px); box-shadow:0 20px 50px -20px rgba(0,0,0,0.8); display:flex; flex-direction:column; gap:8px; animation:denRise .26s cubic-bezier(.2,.7,.3,1);">
         <div style="display:flex; align-items:center; gap:8px;">
           <span style="flex:none; width:8px; height:8px; border-radius:50%; background:#FFB547; animation:denPulse 1.6s infinite;"></span>
           <span style="flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:600; letter-spacing:.08em; color:#FFB547; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ p.kicker }}</span>
@@ -1506,6 +1518,7 @@ html.den-nomotion *{animation:none!important;transition:none!important;}
           <div style="font-size:14px; font-weight:650;">{{ toast.title }}</div>
           <div style="font-size:12.5px; color:#93A1B0; margin-top:2px;">{{ toast.sub }}</div>
         </div>
+        <sc-if value="{{ toast.open }}" hint-placeholder-val="{{ false }}"><span data-tip="Open" style="flex:none; margin-top:3px; color:#6B7A8A;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 6l6 6-6 6"></path></svg></span></sc-if>
       </div>
     </sc-if>
     </div>
@@ -1668,6 +1681,8 @@ const NAV = [
   { id:'ws', name:'Workspace', items:[
     { id:'home', label:'Den Home', icon:I.home, key:'1' },
     { id:'projects', label:'Projects', icon:I.folder, key:'2' },
+    { id:'messages', label:'Message center', icon:I.chat },
+    { id:'sharing', label:'Sharing', icon:'M16 8a3 3 0 1 0-2.8-4M8 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6M16 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6M8.5 14.5l2.7-3.7M15.5 14.5l-2.7-3.7M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6' },
     { id:'clients', label:'Clients', icon:I.users },
     { id:'contacts', label:'Contacts', icon:'M4 4h16v16H4zM9 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0M7 16c.6-1.5 2-2.5 4-2.5s3.4 1 4 2.5M16 8h2M16 12h2' },
     { id:'team', label:'Team', icon:'M17 20v-2a4 4 0 0 0-3-3.9M7 20v-2a4 4 0 0 1 4-4h2M9 7a3 3 0 1 0 6 0 3 3 0 0 0-6 0M20 20v-1.5a3 3 0 0 0-2-2.8M4 20v-1.5a3 3 0 0 1 2-2.8' },
@@ -1689,7 +1704,8 @@ const NAV = [
     { id:'accounts', label:'AI accounts', icon:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0' },
     { id:'providers', label:'AI providers', icon:I.cpu },
     { id:'routing', label:'Routing', icon:I.route },
-    { id:'voice', label:'Voice', icon:I.mic } ] },
+    { id:'voice', label:'Voice', icon:I.mic },
+    { id:'analytics', label:'Analytics', icon:'M4 19l4-5 3 3 5-7 4 4M4 5h16v14H4z' } ] },
   { id:'help', name:'Help', items:[
     { id:'about', label:'About the Den', icon:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 11v5M12 8h.01' },
     { id:'setup', label:'Setup guide', icon:'M3 5h18v11H3zM8 20h8M12 16v4' },
@@ -1698,7 +1714,7 @@ const NAV = [
 ];
 // Pages that live inside the hidden private vault: never in the menu or ⌘K, and only open while it's unlocked.
 const VAULT_PAGES = [{ id:'hidden', label:'Hidden tasks', icon:'M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7c1.6 0 3-.4 4.3-1' }];
-const ALLNAV = NAV.flatMap(g => g.items).concat([{ id:'messages', label:'Message center', icon:I.chat }, { id:'settings', label:'Settings', icon:I.sliders }, { id:'bin', label:'Recycle bin', icon:I.trash }]);
+const ALLNAV = NAV.flatMap(g => g.items).concat([{ id:'settings', label:'Settings', icon:I.sliders }, { id:'bin', label:'Recycle bin', icon:I.trash }]);
 const QUICK_ICONS = [I.sun, I.note, I.reply, I.translate, I.sparkle, I.play, I.bolt, I.chat];
 const QUICK_TONES = [C.amber, C.blue, C.teal, C.violet, '#E6C07B', C.coral, C.green, C.blue];
 const VMODES = [
@@ -1728,8 +1744,8 @@ const store = k => { try { return localStorage.getItem(k); } catch (e) { return 
 const keep = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
 const copy = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
 // Pages with a component wired in below; the rest show the "next in line" card until they're built.
-const BUILT = ['home', 'projects', 'activity', 'email', 'crm', 'clients', 'contacts', 'team', 'crmx', 'review', 'hidden', 'calendar', 'briefing', 'accounts', 'notes', 'recipes', 'usage', 'providers', 'routing', 'connections', 'devices', 'voice', 'settings', 'bin', 'messages', 'about', 'setup', 'guides', 'updates'];
-const PAGE_IDS = ['home', 'projects', 'activity', 'email', 'crm', 'clients', 'contacts', 'team', 'notes', 'recipes', 'usage', 'accounts', 'providers', 'routing', 'connections', 'devices', 'voice', 'settings', 'bin', 'messages', 'briefing', 'calendar', 'crmx', 'review', 'hidden', 'about', 'setup', 'guides', 'updates'];
+const BUILT = ['home', 'projects', 'activity', 'email', 'crm', 'clients', 'contacts', 'team', 'crmx', 'review', 'hidden', 'calendar', 'briefing', 'accounts', 'notes', 'recipes', 'usage', 'providers', 'routing', 'connections', 'devices', 'voice', 'settings', 'bin', 'messages', 'about', 'setup', 'guides', 'updates', 'analytics', 'sharing'];
+const PAGE_IDS = ['home', 'projects', 'activity', 'email', 'crm', 'clients', 'contacts', 'team', 'notes', 'recipes', 'usage', 'accounts', 'providers', 'routing', 'connections', 'devices', 'voice', 'settings', 'bin', 'messages', 'briefing', 'calendar', 'crmx', 'review', 'hidden', 'about', 'setup', 'guides', 'updates', 'analytics', 'sharing'];
 
 class Component extends DCLogic {
   state = { w: typeof window !== 'undefined' ? window.innerWidth : 1400, scope:'All', tab:'next', collapsed:{}, railDesk:false, railTab:true, drawer:false, palette:false, q:'', cat:'All', sel:0, keysOpen:false, toast:null, now:Date.now(), active:'home', ask:'', mode:'Edits', model:'auto', projId:null };
@@ -1760,10 +1776,10 @@ class Component extends DCLogic {
   fileRef = el => { this.fileEl = el; };
 
   measure() { const el = this.frame; const w = Math.round(el && el.clientWidth ? el.clientWidth : window.innerWidth); if (Math.abs(w - this.state.w) > 2) this.setState({ w }); }
-  componentDidMount() { window.__denBooted && window.__denBooted(); if (/[?&]safe=1\b/.test(location.search)) this.setState({ safeMode:true });
+  componentDidMount() { window.__denBooted && window.__denBooted(); D.track && D.track(this.state.active); if (/[?&]safe=1\b/.test(location.search)) this.setState({ safeMode:true });
     try { const t = localStorage.getItem('den-theme'); if (t) this.setState({ theme:t }); } catch (e) {}
     this.mq = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: light)') : null; this.mqf = () => this.forceUpdate(); this.mq && this.mq.addEventListener && this.mq.addEventListener('change', this.mqf);
-    D.say = (t, s, c) => this.say(t, s, c); D.pill = (w, t, s, c) => this.pill(w, t, s, c);
+    D.say = (t, s, c, o) => this.say(t, s, c, o); D.pill = (w, t, s, c) => this.pill(w, t, s, c);
     D.go = (id, opts) => this.go(id, opts);
     D.openChat = t => this.openTask(t);
     D.openChatEdit = t => this.openTask(t, { edit:true });
@@ -1791,7 +1807,7 @@ class Component extends DCLogic {
       if (id === 'projects' && h[1]) { const p = D.projectFromSlug(h[1]);
         if (p) { h[1] = String(p.id); const want = '#/' + ['projects', D.projSlug(p), ...h.slice(2)].join('/'); if (location.hash !== want) history.replaceState(null, '', location.pathname + location.search + want); }
         else if (!D.store.loaded) this._projWait = true; }
-      if (PAGE_IDS.includes(id) && id !== this.state.active) this.setState({ active:id, route:h.slice(1), drawer:false, scrolled:false });
+      if (PAGE_IDS.includes(id) && id !== this.state.active) { this.setState({ active:id, route:h.slice(1), drawer:false, scrolled:false }); D.track && D.track(id); }
       else if (id === 'projects' && id === this.state.active && (this.state.route || []).join('/') !== h.slice(1).join('/')) this.setState({ route:h.slice(1) }); };
     if (!(location.hash || '').replace(/^#\/?/, '')) { const sp = D.prefs().startPage; if (sp && sp !== 'home') location.hash = '#/' + sp; }
     fromHash(); this.hc = fromHash; window.addEventListener('hashchange', this.hc);
@@ -1835,17 +1851,24 @@ class Component extends DCLogic {
     clearTimeout(this.pt); this.setState({ pill:{ where, title, sub:sub || '', tone: tone || C.coral } }); this.pt = setTimeout(() => this.setState({ pill:null }), 2600); }
   pillAt(k) { const p = this.state.pill; return p && p.where === k ? p : null; }
   // An error stays long enough to read (or until clicked away); everything else is a brief note.
-  say(title, sub, tone) { clearTimeout(this.tt); this.setState({ toast:{ title, sub:sub || '', tone: tone || C.coral } }); this.tt = setTimeout(() => this.setState({ toast:null }), tone === C.err ? 8000 : 2600); }
+  // Clicking it opens what it's about: `open`, or the task named as "#123" in the title.
+  say(title, sub, tone, open) { clearTimeout(this.tt);
+    const m = !open && /#(\d+)\b/.exec(String(title || '')); const tk = m && D.taskById(+m[1]); if (tk) open = () => this.openTask(tk);
+    this.setState({ toast:{ title, sub:sub || '', tone: tone || C.coral, open: open || null } }); this.tt = setTimeout(() => this.setState({ toast:null }), tone === C.err ? 8000 : 2600); }
   go(id, opts) {
     if (VAULT_PAGES.find(x => x.id === id)) { if (!this._vTok) return this.say('Unlock the vault first', 'Hold the right sidebar to show it', C.violet); }
     else if (!ALLNAV.find(x => x.id === id) && id !== 'home') return;
     const route = (opts && opts.route) || [];
     this.setState({ active:id, route, drawer:false, palette:false, scrolled:false }); if (this.mainEl) this.mainEl.scrollTop = 0;
+    D.track && D.track(id);
     const p = id === 'projects' && /^\d+$/.test(String(route[0] || '')) ? D.projectById(+route[0]) : null;   /* the address shows the project's name, not its number */
     const shown = p ? [D.projSlug(p), ...route.slice(1)] : route;
     const h = '#/' + id + (shown.length ? '/' + shown.join('/') : '');
     if (location.hash !== h) history.pushState(null, '', location.pathname + location.search + h);   // pathname: the page's <base> points at /static/den/
   }
+  // Sidebar entries are real links (right-click: open in new tab, copy link). A plain click still switches page in place.
+  hrefFor(id, route) { return location.pathname + location.search + '#/' + id + (route && route.length ? '/' + route.join('/') : ''); }
+  linkGo(e, fn) { if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1)) return; if (e && e.preventDefault) e.preventDefault(); fn(); }
   fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
   sayFn = (t, s, c) => this.say(t, s, c);
   navFn = id => this.go(id);
@@ -2165,8 +2188,8 @@ class Component extends DCLogic {
     return { apMore: more > 0 ? '+' + more + ' more waiting for you' : '', apMoreOpen:() => this.setState({ rp:'alerts', alertTab:'Needs you', drawer:false }),
       apPops: list.slice(0, 3).map(a => { const t = D.taskById(a.task_id) || { id:a.task_id, title:a.task_title, prompt:a.task_prompt, project_id:a.project_id };
         return { kicker:'NEEDS APPROVAL · ' + D.projName(D.projectById(a.project_id)).toUpperCase(), when:D.ago(a.created_at), title:D.taskTitle(t), code:D.commandOf(a),
-          approve:() => { this.apPopClose(a.id); this.decide(a, true); }, deny:() => { this.apPopClose(a.id); this.decide(a, false); },
-          details:() => { this.apPopClose(a.id); this.openTask(t); }, close:() => this.apPopClose(a.id) }; }) }; }
+          approve:e => { e.stopPropagation(); this.apPopClose(a.id); this.decide(a, true); }, deny:e => { e.stopPropagation(); this.apPopClose(a.id); this.decide(a, false); },
+          details:e => { e.stopPropagation(); this.apPopClose(a.id); this.openTask(t); }, close:e => { e.stopPropagation(); this.apPopClose(a.id); } }; }) }; }
   apPopClose(id) { this.setState(st => ({ apPop:(st.apPop || []).filter(x => x !== id) })); }
   // Settings › Notifications › Sounds: a soft two-note chime when a task finishes.
   chime() { const done = D.store.tasks.filter(t => ['done', 'needs_review', 'error'].includes(t.status)).map(t => t.id);
@@ -2595,7 +2618,7 @@ class Component extends DCLogic {
       else if (t.status === 'error' || (t.status === 'needs_review' && t.error_message)) { if (!t.dismissed) out.push({ kind:'ERROR', tone:C.err, title:'#' + t.id + ' ' + D.taskTitle(t) + ' failed', sub:D.firstLine(t.error_message, 70) || 'See what broke', at, cta:'', needs:true, tid:t.id }); }
       else if (t.status === 'done' && !t.thread_id) out.push({ kind:'DONE', tone:C.green, title:'#' + t.id + ' ' + D.taskTitle(t), sub:p + ' · ' + D.dur(t.duration_ms) + ' run', at, cta:'', tid:t.id }); });
     const wp = D.store.settings && D.store.settings.weekly_pace;
-    if (wp && wp.level) out.push({ kind:'WEEKLY', tone:C.violet, title:wp.title || ('Weekly usage at ' + wp.pct + '%'), sub:wp.message || ('Resets ' + D.resetLabel(wp.resets_at, true)), at:new Date().toISOString(), cta:'', needs:false });
+    if (wp && wp.level) out.push({ kind:'WEEKLY', tone:C.violet, title:wp.title || ('Weekly usage at ' + wp.pct + '%'), sub:wp.message || ('Resets ' + D.resetLabel(wp.resets_at, true)), at:new Date().toISOString(), cta:'', needs:false, go:'usage' });
     out.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
     return out.map(n => ({ ...n, when:D.ago(n.at), unread: D.parseT(n.at).getTime() > seen }));
   }
@@ -2642,7 +2665,9 @@ class Component extends DCLogic {
     const alerts = this.alertsList(); const atab = s.alertTab || 'All';
     const run = D.running();
     // Message center panel
-    const msgList = D.need('rpMessages', '/messages?limit=30', 10000);
+    const rpQL = s.rpQLive || '';
+    const rpTq = s.rpTsOpen ? (s.rpTsQ || '').trim().toLowerCase() : '';
+    const msgList = D.need('rpMessages:' + rpQL, '/messages?limit=30' + (rpQL ? '&q=' + encodeURIComponent(rpQL) : ''), 10000);
     const chats = (msgList && msgList.chats) || [];
     const rem = D.need('reminders', '/assistant/reminders', 20000) || [];
     const pad = D.need('pad', '/pad', 20000); const padItems = (pad && pad.items) || [];
@@ -2682,7 +2707,8 @@ class Component extends DCLogic {
       alertTabs:['All', 'Needs you'].map(x => ({ label:x, pick:() => this.setState({ alertTab:x }), bg: atab === x ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: atab === x ? '#FFA48C' : '#A3B0BE', bd: atab === x ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.07)' })),
       readAll:() => { keep('den.alertsSeen', String(Date.now())); this.forceUpdate(); this.say('All caught up', 'Notifications marked read.', C.green); },
       alerts: alerts.filter(n => atab === 'All' || n.needs).map(n => ({ ...n, fw: n.unread ? 700 : 500, bg: n.unread ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)', bd: n.unread ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-        approve:() => n.ap && this.decide(n.ap, true), deny:() => n.ap && this.decide(n.ap, false) })),
+        approve:() => n.ap && this.decide(n.ap, true), deny:() => n.ap && this.decide(n.ap, false),
+        cur: n.tid || n.go ? 'pointer' : 'default', open:() => { if (n.tid) this.openTask(D.taskById(n.tid) || { id:n.tid }); else if (n.go) this.go(n.go); else return; if (this.isPhone()) this.setState({ rp:null }); } })),
       ...this.summaryVals(),
       rpAnim: isDesk ? 'denRise .22s cubic-bezier(.2,.7,.3,1)' : 'denSlideR .28s cubic-bezier(.2,.7,.3,1)', rpPos: isDesk ? 'relative' : 'absolute', rpRight: isPhone ? '0' : isDesk ? 'auto' : '60px', rpW: isPhone ? '100%' : (s.rpWpx || 360) + 'px',
       rp: cur ? { ...cur, sub: subs[cur.id] || cur.sub, isSummary: cur.id === 'summary', isAlerts: cur.id === 'alerts', isQueue: cur.id === 'queue', isMsg: cur.id === 'messages', isCal: cur.id === 'calendar', isTodo: cur.id === 'todo', isVault: cur.id === 'vault', isRem: cur.id === 'reminders', isNotes: cur.id === 'notes' } : { label:'', sub:'', icon:'' },
@@ -2712,8 +2738,12 @@ class Component extends DCLogic {
           return { title:D.taskTitle(t), project:D.projName(p), pc:D.projColor(p), when:(acc ? acc.name + ' at limit · ' : '') + (t.resume_at ? 'resumes ' + D.clock(t.resume_at) : 'waiting for the limit'), open:() => this.openTask(t),
             retry:e => { e.stopPropagation(); D.act(() => this.post('/tasks/' + t.id + '/requeue', { front:true }), { ok:['Retrying #' + t.id, D.taskTitle(t), C.violet] }); } }; }) }; })(),
       stopQ:e => e.stopPropagation(), rpNext: nextBase.map((r, i) => ({ ...r, tid:r.tid, ...prio(r.prio), pos:String(i + 1), chips:this.qChips(s, r.task), z: (s.qMenu || '').startsWith(r.tid + ':') ? '5' : '1', open:() => { this.openTask(r.task); if (!this.isDesk()) this.setState({ rp:null }); } })),
+      rpHead: !(cur && cur.id === 'messages' && s.rpMsg != null), rpQ:s.rpQ || '', rpOnQ:e => { const v = e.target.value; this.setState({ rpQ:v }); clearTimeout(this.rpQt); this.rpQt = setTimeout(() => this.setState({ rpQLive:v.trim() }), 300); }, rpNoMatch: !!msgList && !chats.length && !!rpQL,
+      rpTsOpen: !!s.rpTsOpen, rpTsQ:s.rpTsQ || '', rpTsBg: s.rpTsOpen ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', rpTsBd: s.rpTsOpen ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.07)', rpTsFocus:el => { if (el && !el._f) { el._f = 1; el.focus(); } },
+      rpTsToggle:() => this.setState({ rpTsOpen:!s.rpTsOpen, rpTsQ:'' }), rpTsOn:e => this.setState({ rpTsQ:e.target.value }), rpTsKey:e => { if (e.key === 'Escape') this.setState({ rpTsOpen:false, rpTsQ:'' }); },
       msgListView: s.rpMsg == null && !s.rpNew, msgNewView: s.rpMsg == null && !!s.rpNew, showAskBar: !isPhone && ((s.rp === 'messages' && s.rpMsg == null && !!s.rpNew) || !(s.active === 'projects' && s.projTab === 'chats')),   /* rpNew only counts while the new-chat pane is open: many ways of closing the pane leave it set */ msgThreadView: s.rpMsg != null, newChat:() => this.newChat(), projTabFn:t => this.setState({ projTab:t }), msgOpenDetails:() => { if (s.rpMsg == null) return;   // the full chat, on its details; "Back to chat" has Run now / Retry / Edit
         this.openTask(D.taskById(s.rpMsg) || { id:s.rpMsg }, { full:true }); this.setState({ chatDet:true, cdFor:s.rpMsg, cdTitle:null }); }, msgBack:() => this.rpBack(), msgBackTitle:this.rpBackTitle(), msgExpand:() => this.msgFull(s.rpMsg), msgFullAll:() => this.msgFull(s.rpMsg),
+      rpTsCount: rpTq ? (n => n === 1 ? '1 match' : n + ' matches')(((msgTh && msgTh.tasks) || []).reduce((n, t) => n + [t.prompt, t.result_summary, t.error_message].filter(x => String(x || '').toLowerCase().includes(rpTq)).length, 0)) : '',
       msgCur: !curMsg ? { title:'', meta:'', thread:[] } : { title:curMsg.title || ('#' + curMsg.id), meta:['#' + curMsg.id, curMsg.project_name, curMsg.model_id && D.modelLabel(curMsg.model_id)].filter(Boolean).join(' · '),
         thread: ((msgTh && msgTh.tasks) || []).flatMap(t => { const acc = this.accts().find(a => a.id === t.claude_account) || null;
           const st = t.status === 'rate_limited' ? { text:'Paused · usage limit' + (acc ? ' on ' + acc.name : '') + (t.resume_at ? ' · resumes ' + D.clock(t.resume_at) : ''), dot:C.violet }
@@ -2722,7 +2752,7 @@ class Component extends DCLogic {
           return [(f => ({ you:true, bot:false, step:false, text:t.prompt || '', files:f, hasFiles:f.length > 0 }))(this.fileTiles(t.images || [])),
             ...(st ? [st.live ? st : { you:false, bot:false, step:true, text:st.text, dot:st.dot }] : []),
             ...(t.result_summary || t.error_message ? [{ you:false, bot:true, step:false, text:(t.result_summary || t.error_message), newStart: t.id === pmNew, newMark: t.id === pmNew ? '1' : '' }] : []),
-            ...(t.status === 'done' && t.awaiting_reply ? [{ you:false, bot:false, step:true, text:'Waiting for your answer · reply below', dot:C.amber }] : [])]; }) },
+            ...(t.status === 'done' && t.awaiting_reply ? [{ you:false, bot:false, step:true, text:'Waiting for your answer · reply below', dot:C.amber }] : [])]; }).filter(x => !rpTq || String(x.text || '').toLowerCase().includes(rpTq)) },
       msgText: s.rpMsgText || '', msgOnText:e => this.setState({ rpMsgText:e.target.value }), msgSend:sendMsg, msgKey:e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } },
       messages: chats.slice(0, 20).map(m => { const pv = m.preview || {}; const needs = m.needs_you; const err = m.status === 'error';
         return { title:m.title || ('#' + m.id), preview:D.firstLine(pv.text || pv.result || m.snippet || '', 90), meta:(m.project_name || 'General') + ' · ' + D.modelLabel(m.model_id), when:D.ago(m.last_at), dot: needs ? C.amber : err ? C.err : m.unread ? C.blue : 'rgba(255,255,255,0.15)', fw: needs || m.unread ? 700 : 500, open:() => this.setState({ rpMsg:m.id }) }; }),
@@ -2969,9 +2999,9 @@ class Component extends DCLogic {
     const projs = D.visibleProjects();
     const sched = D.need('schedules', '/schedules', 30000) || [];
     const recipes = D.need('recipes', '/recipes', 60000) || [];
-    const pinItems = pins.map(p => { if (p.type === 'project') { const pr = D.projectById(p.id); return pr ? { id:'pin:p' + p.id, label:pr.name, icon:I.folder, run:() => this.go('projects', { route:[String(pr.id)] }) } : null; }
+    const pinItems = pins.map(p => { if (p.type === 'project') { const pr = D.projectById(p.id); return pr ? { id:'pin:p' + p.id, label:pr.name, icon:I.folder, href:this.hrefFor('projects', [D.projSlug(pr)]), run:() => this.go('projects', { route:[String(pr.id)] }) } : null; }
       if (p.type === 'chat') { const t = D.taskById(p.id); return { id:'pin:c' + p.id, label:'#' + p.id + ' ' + (t ? D.taskTitle(t) : (p.label || 'Chat')), icon:I.chat, run:() => this.openTask(t || p.id) }; }
-      if (p.type === 'view') return { id:'pin:v' + p.id, label:p.label, icon:'M4 5h16l-6 8v6l-4-2v-4z', run:() => this.go(p.page || 'activity', { route:p.route || [] }) };
+      if (p.type === 'view') return { id:'pin:v' + p.id, label:p.label, icon:'M4 5h16l-6 8v6l-4-2v-4z', href:this.hrefFor(p.page || 'activity', p.route || []), run:() => this.go(p.page || 'activity', { route:p.route || [] }) };
       return null; }).filter(Boolean);
     const badge = { home: needsN ? String(needsN) : '', projects: String(projs.filter(p => !p.is_general).length), recipes: String(recipes.length + sched.filter(x => x.enabled).length), review: (n => n ? String(n) : '')(D.store.tasks.filter(t => t.status === 'needs_review' && !t.error_message && !t.thread_hidden).length) };
     const modsOff = new Set(D.prefs().modulesOff || []);   // Settings › Modules: pages switched off leave the menu
@@ -2980,7 +3010,7 @@ class Component extends DCLogic {
       return { name:g.name, open, sep: rail && gi > 0, chev: open ? 'rotate(0deg)' : 'rotate(-90deg)',
         toggle:() => this.setPref('navCollapsed', { ...this.pref('navCollapsed', {}), [g.id]: !this.pref('navCollapsed', {})[g.id] }),
         items:g.items.map(it => { const on = s.active === it.id; const tone = it.id === 'home' && needsN ? C.amber : null;
-          return { ...it, go:() => it.run ? it.run() : this.go(it.id), bg: on ? 'rgba(255,123,92,0.12)' : 'transparent', bd: on ? 'rgba(255,123,92,0.22)' : 'transparent', fg: on ? '#FFFFFF' : '#C2CDD8', ic: on ? C.coral : '#93A1B0', fw: on ? 650 : 500,
+          return { ...it, href: it.href || this.hrefFor(it.id), go:e => this.linkGo(e, () => it.run ? it.run() : this.go(it.id)), bg: on ? 'rgba(255,123,92,0.12)' : 'transparent', bd: on ? 'rgba(255,123,92,0.22)' : 'transparent', fg: on ? '#FFFFFF' : '#C2CDD8', ic: on ? C.coral : '#93A1B0', fw: on ? 650 : 500,
             badge: badge[it.id] && badge[it.id] !== '0' ? badge[it.id] : '', badgeBg: tone ? tint(tone, 0.16) : 'rgba(255,255,255,0.07)', badgeFg: tone || '#A3B0BE', key: it.key || '', railDot: rail && !!tone }; }) };
     });
     if (rail) navGroups.forEach(g => g.items.forEach(i => { if (i.railDot) i.badgeBg = i.badgeFg; }));
@@ -3061,9 +3091,9 @@ class Component extends DCLogic {
       contentMax: wide ? '2400px' : '1480px', palPad: isPhone ? '12px' : '10vh 20px 20px',
       eyebrow: s.active === 'home' ? (isPhone ? "TUSHAR'S" : new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'short' }).replace(',', ' ·').toUpperCase()) : (NAV.find(g => g.items.some(i => i.id === s.active)) || { name:'Den' }).name.toUpperCase(),
       pageTitle: s.active === 'home' ? (isPhone ? 'Workspace' : 'Den Home') : (ALLNAV.find(x => x.id === s.active) || VAULT_PAGES.find(x => x.id === s.active) || { label:'' }).label,
-      pgHome: s.active === 'home', pgProjects: s.active === 'projects', pgActivity: s.active === 'activity', pg: Object.fromEntries(['devices', 'email', 'crm', 'crmx', 'review', 'clients', 'contacts', 'team', 'notes', 'recipes', 'usage', 'accounts', 'providers', 'routing', 'connections', 'voice', 'settings', 'bin', 'briefing', 'calendar', 'about', 'setup', 'guides', 'updates'].map(k => [k, s.active === k]).concat([['hidden', s.active === 'hidden' && !!this._vTok]])),
+      pgHome: s.active === 'home', pgProjects: s.active === 'projects', pgActivity: s.active === 'activity', pg: Object.fromEntries(['devices', 'email', 'crm', 'crmx', 'review', 'clients', 'contacts', 'team', 'notes', 'recipes', 'usage', 'accounts', 'providers', 'routing', 'connections', 'voice', 'settings', 'bin', 'briefing', 'calendar', 'about', 'setup', 'guides', 'updates', 'analytics', 'sharing'].map(k => [k, s.active === k]).concat([['hidden', s.active === 'hidden' && !!this._vTok]])),
       route: s.route || [], routeId: (s.route || [])[0] || '', routeArg: (s.route || [])[1] || '', routeChat: (s.route || [])[2] || '',
-      ...(() => { const known = s.active !== 'home' && BUILT.includes(s.active); const KIND = { devices:'cards', messages:'split', email:'split', notes:'split', bin:'split', clients:'split', contacts:'split', team:'split', crm:'board', projects:'cards', usage:'cards', accounts:'cards', providers:'cards', connections:'cards', voice:'cards', activity:'list', recipes:'list', routing:'list', settings:'list', briefing:'list', calendar:'list', about:'cards', setup:'list', guides:'cards', updates:'list' }; const k = KIND[s.active] || 'cards'; const rdy = !!(s.ready || {})[s.active];
+      ...(() => { const known = s.active !== 'home' && BUILT.includes(s.active); const KIND = { devices:'cards', messages:'split', email:'split', notes:'split', bin:'split', clients:'split', contacts:'split', team:'split', crm:'board', projects:'cards', usage:'cards', accounts:'cards', providers:'cards', connections:'cards', voice:'cards', activity:'list', recipes:'list', routing:'list', settings:'list', briefing:'list', calendar:'list', about:'cards', setup:'list', guides:'cards', updates:'list', analytics:'cards', sharing:'cards' }; const k = KIND[s.active] || 'cards'; const rdy = !!(s.ready || {})[s.active];
         return { showSkel: known && !rdy && !s.pageCrash, pgDisp: rdy && !s.pageCrash ? 'block' : 'none', readyFn:this.readyFn, skel:{ cards:k === 'cards', split:k === 'split', board:k === 'board', list:k === 'list' } }; })(),
       pgMessages: s.active === 'messages', msgInitial: s.msgInitial || '', frameWidth: s.w, msgCollapse:this.msgCollapse,
       pgSoon: !BUILT.includes(s.active),
@@ -3095,9 +3125,9 @@ class Component extends DCLogic {
       scopes:['All', 'Work', 'Personal'].map(x => ({ label:x, pick:() => this.setState({ scope:x }), bg: s.scope === x ? 'rgba(255,255,255,0.1)' : 'transparent', fg: s.scope === x ? '#FFFFFF' : '#93A1B0' })),
       navGroups,
       footItems:[
-        { id:'settings', label:'Settings', title:'Settings', icon:I.sliders, live:false, bg:'rgba(255,255,255,0.03)', bd:'rgba(255,255,255,0.06)', fg:'#A3B0BE', go:() => this.go('settings') },
-        { id:'help', label:'', title:'Help & tours', icon:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01', live:false, bg: ['about', 'setup', 'guides', 'updates'].includes(s.active) ? 'rgba(255,123,92,0.12)' : 'rgba(255,255,255,0.03)', bd:'rgba(255,255,255,0.06)', fg:'#A3B0BE', go:() => this.go('guides') },
-        { id:'voice', label: s.voice ? 'Listening' : 'Voice', title:'Voice chat', icon:I.mic, live:!!s.voice, bg: s.voice ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', bd: s.voice ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.06)', fg: s.voice ? '#FFA48C' : '#A3B0BE', go:() => this.toggleVoice() }
+        { id:'settings', label:'Settings', title:'Settings', icon:I.sliders, live:false, bg:'rgba(255,255,255,0.03)', bd:'rgba(255,255,255,0.06)', fg:'#A3B0BE', href:this.hrefFor('settings'), go:e => this.linkGo(e, () => this.go('settings')) },
+        { id:'help', label:'', title:'Help & tours', icon:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01', live:false, bg: ['about', 'setup', 'guides', 'updates'].includes(s.active) ? 'rgba(255,123,92,0.12)' : 'rgba(255,255,255,0.03)', bd:'rgba(255,255,255,0.06)', fg:'#A3B0BE', href:this.hrefFor('guides'), go:e => this.linkGo(e, () => this.go('guides')) },
+        { id:'voice', label: s.voice ? 'Listening' : 'Voice', title:'Voice chat', icon:I.mic, live:!!s.voice, bg: s.voice ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', bd: s.voice ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.06)', fg: s.voice ? '#FFA48C' : '#A3B0BE', href:'#', go:e => this.linkGo(e, () => this.toggleVoice()) }
       ],
       ...this.rightPanel(s, isPhone, isDesk, nextBase, prio, el, counts),
       ...this.wsVals(s),
@@ -3198,7 +3228,7 @@ class Component extends DCLogic {
       askExpanded: !isPhone && askFull && (!!s.ask.trim() || !!s.attached), askCollapsed: !isPhone && !s.ask.trim() && !s.attached,
       tabbar:[{ label:'Home', icon:I.home, id:'home', badge: needsN ? String(needsN) : '' }, { label:'Projects', icon:I.folder, id:'projects' }, { fab:true }, { label:'Messages', icon:I.chat, id:'messages', badge: counts.unread ? String(counts.unread) : '' }, { label:'Queue', icon:'M4 6h16M4 12h16M4 18h10', id:'queue', badge: String(run.length + nextBase.length || '') }].map(t => ({ fab:!!t.fab, plain:!t.fab, label:t.label || '', icon:t.icon || '', badge:t.badge && t.badge !== '0' ? t.badge : '', fg: (s.rp ? s.rp === t.id : s.active === t.id) ? C.coral : '#93A1B0',
         go:() => t.fab ? this.openPalette() : t.id === 'queue' ? this.setState({ rp:'queue', drawer:false }) : t.id === 'messages' ? this.setState({ rp:'messages' }) : this.go(t.id) })),
-      toast:s.toast, closeToast:() => { clearTimeout(this.tt); this.setState({ toast:null }); },
+      toast:s.toast, closeToast:() => { const o = s.toast && s.toast.open; clearTimeout(this.tt); this.setState({ toast:null }); if (o) { o(); if (this.isPhone()) this.setState({ rp:null }); } },
       ...this.apPopVals(),
       palette:s.palette, q:s.q, onQ:e => this.setState({ q:e.target.value, sel:0 }),
       cats: CATS.map(c => ({ label:c, pick:() => { this.setState({ cat:c, sel:0 }); this.palEl?.focus(); }, bg: s.cat === c ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', fg: s.cat === c ? '#FFA48C' : '#A3B0BE', bd: s.cat === c ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.07)' })),

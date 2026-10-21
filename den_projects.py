@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import db
+import den_platform
 import providers
 import router
 
@@ -484,9 +485,9 @@ def reveal(project_id: int, env_id: Optional[int] = None) -> dict[str, Any]:
     """Open the project's folder in Finder on this Mac."""
     root = _root(_project(project_id), env_id)
     try:
-        subprocess.run(["open", str(root)], timeout=5, check=False)
+        den_platform.open_path(str(root))
     except (OSError, subprocess.TimeoutExpired) as e:
-        raise HTTPException(status_code=500, detail=f"Couldn't open Finder: {e}")
+        raise HTTPException(status_code=500, detail=f"Couldn't open {den_platform.file_manager_name()}: {e}")
     return {"ok": True, "path": short_path(str(root))}
 
 

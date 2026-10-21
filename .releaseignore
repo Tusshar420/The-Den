@@ -11,3 +11,10 @@ CLAUDE.md
 *.bak
 *.bak-*
 queue.db*
+installer/
+den.env
+den-keys.json
+mcp-config.local.json
+dist/
+.den-stop
+.den-service.lock

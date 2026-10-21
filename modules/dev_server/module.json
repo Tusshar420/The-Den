@@ -1,0 +1,16 @@
+{
+  "name": "dev_server",
+  "version": "1.0.0",
+  "description": "Start and stop a project's local website (localhost) from its card, without opening VS Code.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "first_port": {"type": "integer", "default": 4100},
+    "log_lines": {"type": "integer", "default": 60}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

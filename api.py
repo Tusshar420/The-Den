@@ -30,6 +30,7 @@ import crm
 import crm_reports
 import db
 import den_bin
+import den_platform
 import den_projects
 import den_recipes
 import den_inbox
@@ -3031,7 +3032,8 @@ def pause_task(task_id: int):
     if task["status"] not in db.PAUSABLE:
         raise HTTPException(status_code=409, detail=f"A {task['status']} task can't be paused")
     if task["status"] == "running" and not worker.pause_task(task_id):
-        raise HTTPException(status_code=409, detail="Only a running Claude Code task can be paused")
+        raise HTTPException(status_code=409, detail=den_platform.PAUSE_UNSUPPORTED if not den_platform.can_pause()
+                            else "Only a running Claude Code task can be paused")
     if not db.set_paused(task_id, True):
         worker.resume_task(task_id)  # it finished in the meantime
         raise HTTPException(status_code=409, detail="It finished before it could be paused")

@@ -1,0 +1,19 @@
+{
+  "name": "den_collab",
+  "version": "1.0.0",
+  "description": "Share a project or a chat with other Den users: they see the same tasks and data and can chat at the same time, while this Den does the work.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "serve": {"type": "boolean", "default": false},
+    "serve_host": {"type": "string", "default": "0.0.0.0"},
+    "serve_port": {"type": "integer", "default": 8791},
+    "public_url": {"type": "string", "default": ""},
+    "host_name": {"type": "string", "default": ""}
+  },
+  "secrets": ["API_KEY"],
+  "capabilities": [],
+  "hot_reload": true
+}

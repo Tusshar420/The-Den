@@ -34,6 +34,7 @@ import accounts
 import activities
 import approval_links
 import db
+import den_platform
 import documents
 import providers
 import mailer
@@ -133,7 +134,7 @@ def notify(kind: str, project_id: Optional[int], title: str, message: str) -> No
 # not on PATH for the launchd/login-item environment (launchd agents get
 # a minimal PATH - you may need the full path, e.g. /usr/local/bin/claude
 # or wherever `which claude` points).
-CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+CLAUDE_BIN = den_platform.claude_bin()   # CLAUDE_BIN, or `claude` (looked up in full on Windows)
 
 # Extra flags for the Claude Code invocation. `--permission-mode acceptEdits`
 # is what lets this run fully unattended for file edits (Edit/Write) - it
@@ -166,7 +167,7 @@ CLAUDE_EXTRA_ARGS = shlex.split(os.environ.get(
 # `approvals` table, notifies your phone, and blocks until the dashboard
 # decides it. Each task run gets its own THE_DEN_TASK_ID so the
 # server knows which task a given request belongs to (set in run_claude_task).
-MCP_CONFIG_PATH = Path(__file__).parent / "mcp-config.json"
+MCP_CONFIG_PATH = den_platform.mcp_config_path(Path(__file__).parent)   # mcp-config.json, or this install's own copy of it
 PERMISSION_PROMPT_TOOL = "mcp__approval__approval_prompt"
 
 POLL_INTERVAL_SECONDS = int(os.environ.get("POLL_INTERVAL_SECONDS", "10"))
@@ -502,8 +503,15 @@ def inject_message(task_id: int, text: str) -> bool:
 
 
 def _kill_tree(proc: asyncio.subprocess.Process) -> None:
-    """Claude Code runs in its own process group (start_new_session), so this
-    also takes down whatever it launched - a test run, the approval server."""
+    """Claude Code runs in its own process group (start_new_session; on Windows its own process
+    group too), so this also takes down whatever it launched - a test run, the approval server."""
+    if den_platform.IS_WINDOWS:
+        if not den_platform.kill_tree(proc.pid):
+            try:
+                proc.kill()
+            except (ProcessLookupError, PermissionError):
+                pass
+        return
     try:
         os.killpg(proc.pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
@@ -513,10 +521,12 @@ def _kill_tree(proc: asyncio.subprocess.Process) -> None:
             pass
 
 
-_frozen: set[int] = set()  # running tasks whose process is SIGSTOPped
+_frozen: set[int] = set()  # running tasks whose process is SIGSTOPped (never on Windows: it can't pause)
 
 
 def _signal_tree(proc: asyncio.subprocess.Process, sig: int) -> bool:
+    if den_platform.IS_WINDOWS:
+        return False
     try:
         os.killpg(proc.pid, sig)
         return True
@@ -528,7 +538,7 @@ def pause_task(task_id: int) -> bool:
     """Freeze a running Claude Code task (and anything it launched) where it
     is; resume_task picks it up again exactly there."""
     proc = _running.get(task_id)
-    if not proc or not _signal_tree(proc, signal.SIGSTOP):
+    if not proc or not _signal_tree(proc, getattr(signal, "SIGSTOP", 0)):
         return False
     _frozen.add(task_id)
     return True
@@ -537,7 +547,7 @@ def pause_task(task_id: int) -> bool:
 def resume_task(task_id: int) -> bool:
     proc = _running.get(task_id)
     _frozen.discard(task_id)
-    return bool(proc) and _signal_tree(proc, signal.SIGCONT)
+    return bool(proc) and _signal_tree(proc, getattr(signal, "SIGCONT", 0))
 
 
 def stop_task(task_id: int) -> bool:
@@ -705,7 +715,7 @@ async def run_claude_task(prompt: str, project_path: str, task_id: int,
             # A tool result line can carry a whole file; the default 64 KiB
             # line limit would abort the read.
             limit=32 * 1024 * 1024,
-            start_new_session=True,
+            **den_platform.spawn_kwargs(),   # its own process group, so stopping it stops what it launched
         )
     except FileNotFoundError:
         return TaskResult(False, error=f"Could not find '{CLAUDE_BIN}' on PATH. Set CLAUDE_BIN to its full path.")

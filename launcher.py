@@ -1,7 +1,7 @@
 """
 Starts a Den that was given to someone (an "install"), and puts updates in place.
 
-launchd runs this instead of main.py on an install. Every start:
+launchd (Mac) or den_service.py (Windows) runs this instead of main.py on an install. Every start:
 
 1. If an update is waiting (.den-update/pending.json + .den-update/staged/, left there by the
    Updates page once the download was checked), it goes in: every file it replaces or removes is
@@ -15,7 +15,8 @@ launchd runs this instead of main.py on an install. Every start:
    Python packages); launchd then starts the old version again. Either way the result is written
    to .den-update/history.json, which the Updates page shows.
 
-The Den restarts by exiting; this exits with it, and launchd (KeepAlive) starts this again.
+The Den restarts by exiting; this exits with it, and launchd (KeepAlive) - or den_service.py on
+Windows - starts this again.
 Stdlib only - it has to work before anything is installed.
 """
 
@@ -38,7 +39,7 @@ HEALTH_SECONDS = 120
 
 # Never written or removed by an update, whatever a bundle says.
 KEEP_NAMES = {"queue.db", "accounts.json", "login.json", "api_keys.json", "restart_held.json",
-              "restart_requested.json"}
+              "restart_requested.json", "den.env", "den-keys.json", "mcp-config.local.json"}
 KEEP_DIRS = {".venv", ".approval-venv", ".den-update", ".git", "workspace", "vault", "backups", "releases",
              "static/project-images"}
 
@@ -232,13 +233,21 @@ def run(root: Path = ROOT, health_seconds: int = HEALTH_SECONDS) -> int:
             paths.pending.unlink(missing_ok=True)
             record(paths, {"to": "", "ok": False, "detail": f"The update wasn't used: {e}"})
     env = {**os.environ, "DEN_LAUNCHER": "1"}
-    child = subprocess.Popen([sys.executable, str(root / "main.py")], cwd=root, env=env)
+    extra: dict[str, Any] = {}
+    if os.name == "nt":      # files are read as UTF-8 (not the Windows code page), and no console window pops up
+        env.setdefault("PYTHONUTF8", "1")
+        extra["creationflags"] = 0x08000000
+    child = subprocess.Popen([sys.executable, str(root / "main.py")], cwd=root, env=env, **extra)
 
     def forward(signum: int, _frame: Any) -> None:
         if child.poll() is None:
-            child.send_signal(signum)
-    for s in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        signal.signal(s, forward)
+            if os.name == "nt":              # Windows can only be asked to stop, not sent a particular signal
+                child.terminate()
+            else:
+                child.send_signal(signum)
+    for s in (signal.SIGTERM, signal.SIGINT, getattr(signal, "SIGHUP", None), getattr(signal, "SIGBREAK", None)):
+        if s is not None:
+            signal.signal(s, forward)
 
     verify = _read(paths.verify)
     if isinstance(verify, dict):

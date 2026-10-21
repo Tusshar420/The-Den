@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared on The Den</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0E141B;color:#E8EEF3;font-size:15px;line-height:1.5}
+button,input,textarea{font:inherit;color:inherit}
+.app{display:flex;flex-direction:column;height:100%}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #1E2935;background:#121A23}
+header .logo{font-weight:800;letter-spacing:-.01em}
+header .sp{flex:1}
+header .who{font-size:13px;color:#93A1B0}
+.banner{padding:9px 18px;font-size:13.5px;background:#3A2A12;color:#FFD08A;display:none}
+.banner.on{display:block}
+.main{flex:1;display:flex;min-height:0}
+nav{width:250px;flex:none;border-right:1px solid #1E2935;padding:14px;overflow:auto;background:#0F161E}
+nav h4{margin:14px 0 6px;font-size:11px;letter-spacing:.12em;color:#6B7A8A;font-weight:600}
+nav h4:first-child{margin-top:0}
+nav button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:9px 11px;border-radius:10px;cursor:pointer;color:#C2CDD8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav button:hover{background:#17212C}
+nav button.on{background:#1C2A3A;color:#fff}
+.content{flex:1;min-width:0;overflow:auto;padding:22px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:#93A1B0;font-size:13.5px;margin-bottom:16px}
+.tabs{display:flex;gap:4px;margin:14px 0;flex-wrap:wrap}
+.tabs button{border:1px solid #243242;background:#121A23;border-radius:10px;padding:7px 14px;cursor:pointer;color:#C2CDD8}
+.tabs button.on{background:#FF7B5C;border-color:#FF7B5C;color:#1A0A05;font-weight:700}
+.card{background:#121A23;border:1px solid #1E2935;border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;cursor:pointer}
+.row:hover .t{text-decoration:underline}
+.row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.meta{font-size:12.5px;color:#93A1B0}
+.chip{font-size:11.5px;padding:2px 9px;border-radius:99px;background:#1C2A3A;color:#9CC4FF;white-space:nowrap}
+.chip.working{background:#2B2A12;color:#FFD66B}.chip.done{background:#12301F;color:#7FDDA4}.chip.failed{background:#3A1520;color:#FF8AA0}.chip.waiting{background:#1C2A3A;color:#9CC4FF}.chip.held{background:#3A2A12;color:#FFD08A}
+.btn{border:0;border-radius:10px;padding:9px 16px;background:#FF7B5C;color:#1A0A05;font-weight:700;cursor:pointer}
+.btn.ghost{background:#1C2A3A;color:#E8EEF3;font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=email],select,textarea{width:100%;background:#0E141B;border:1px solid #243242;border-radius:10px;padding:10px 12px}
+textarea{resize:vertical;min-height:70px}
+.msgs{display:flex;flex-direction:column;gap:14px;margin:12px 0 130px}
+.u{align-self:flex-end;max-width:85%;background:#1C2A3A;border-radius:14px 14px 4px 14px;padding:10px 14px}
+.a{align-self:flex-start;max-width:92%;background:#121A23;border:1px solid #1E2935;border-radius:14px 14px 14px 4px;padding:10px 14px}
+.who2{font-size:12px;color:#93A1B0;margin-bottom:3px}
+.txt{white-space:pre-wrap;word-wrap:break-word}
+.composer{position:sticky;bottom:0;background:linear-gradient(transparent,#0E141B 25%);padding:20px 0 4px;margin-top:-110px}
+.composer .box{background:#121A23;border:1px solid #243242;border-radius:14px;padding:10px}
+.composer textarea{border:0;background:transparent;min-height:54px;padding:4px}
+.composer .bar{display:flex;gap:8px;align-items:center;margin-top:6px}
+.here{font-size:12.5px;color:#7FDDA4;min-height:18px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7FDDA4;margin-right:5px}
+.empty{color:#93A1B0;text-align:center;padding:40px 10px}
+.pill{display:inline-block;margin:2px 4px 2px 0;padding:3px 10px;border-radius:99px;background:#1C2A3A;font-size:12.5px}
+a{color:#9CC4FF}
+.note{white-space:pre-wrap}
+.login{max-width:420px;margin:80px auto;padding:0 20px;text-align:center}
+@media(max-width:760px){nav{display:none}.content{padding:14px}.mobnav{display:block!important}}
+.mobnav{display:none;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header><span class="logo">The Den</span><span class="who" id="host"></span><span class="sp"></span><span class="who" id="me"></span></header>
+  <div class="banner" id="banner"></div>
+  <div class="main" id="main"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'den_collab_token';
+  var token = '';
+  var me = null, view = { page: 'home' }, offline = false, pollGen = 0, timers = [];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'text') e.textContent = attrs[k];
+      else if (k === 'class') e.className = attrs[k];
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function api(method, path, body, signal) {
+    return fetch(path, { method: method, headers: { 'X-Collab-Token': token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: signal })
+      .then(function (r) {
+        setOffline(false);
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) { var e = new Error(j.error || 'Something went wrong'); e.status = r.status; throw e; }
+          return j;
+        });
+      }, function (e) { if (e.name !== 'AbortError') setOffline(true); throw e; });
+  }
+  function setOffline(v) {
+    offline = v; var b = $('banner');
+    b.textContent = v ? "The owner's Den is off or can't be reached right now. You can keep reading what's on screen; sending will work again when it's back." : '';
+    b.className = 'banner' + (v ? ' on' : '');
+  }
+  function ago(iso) {
+    if (!iso) return '';
+    var s = (Date.now() - Date.parse(iso)) / 1000;
+    if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago';
+    if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' days ago';
+  }
+  function stopPolling() { pollGen++; timers.forEach(clearTimeout); timers = []; }
+
+  // ------------------------------------------------------------ start
+  function boot() {
+    var m = /[#&]join=([^&]+)/.exec(location.hash);
+    if (m) { try { localStorage.setItem(KEY, decodeURIComponent(m[1])); } catch (e) {} history.replaceState(null, '', location.pathname); }
+    try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
+    if (!token) return noToken();
+    load();
+  }
+  function noToken(msg) {
+    $('main').textContent = '';
+    $('main').appendChild(el('div', { class: 'login' }, [
+      el('h1', { text: 'Open your invite link' }),
+      el('p', { class: 'sub', text: msg || 'Paste the link the owner sent you.' }),
+      el('input', { type: 'text', id: 'lnk', placeholder: 'http://...:8791/#join=...' }),
+      el('p', {}, [el('button', { class: 'btn', text: 'Open', onclick: function () {
+        var v = /join=([^&\s]+)/.exec($('lnk').value); if (!v) return;
+        try { localStorage.setItem(KEY, decodeURIComponent(v[1])); } catch (e) {} token = decodeURIComponent(v[1]); load();
+      } })])
+    ]));
+  }
+  function load() {
+    api('GET', '/api/me').then(function (r) {
+      me = r; $('host').textContent = r.host ? '· ' + r.host + "'s Den" : ''; $('me').textContent = 'You are ' + r.name;
+      document.title = 'Shared by ' + (r.host || 'The Den');
+      layout();
+      if (me.projects.length) openProject(me.projects[0].id); else if (me.chats.length) openChat(me.chats[0].id); else home();
+    }, function (e) {
+      if (e.status === 401) { try { localStorage.removeItem(KEY); } catch (x) {} token = ''; noToken(e.message); }
+      else $('main').textContent = 'Could not load. Trying again…', timers.push(setTimeout(load, 4000));
+    });
+  }
+
+  // ----------------------------------------------------------- layout
+  function layout() {
+    var nav = el('nav', {});
+    nav.appendChild(el('h4', { text: 'PROJECTS' }));
+    me.projects.forEach(function (p) { nav.appendChild(el('button', { text: p.name, 'data-p': p.id, onclick: function () { openProject(p.id); } })); });
+    if (me.chats.length) nav.appendChild(el('h4', { text: 'SHARED CHATS' }));
+    me.chats.forEach(function (c) { nav.appendChild(el('button', { text: c.title, 'data-c': c.id, onclick: function () { openChat(c.id); } })); });
+    if (!me.projects.length && !me.chats.length) nav.appendChild(el('div', { class: 'meta', text: 'Nothing shared yet.' }));
+    var content = el('div', { class: 'content', id: 'content' });
+    $('main').textContent = ''; $('main').appendChild(nav); $('main').appendChild(content);
+  }
+  function mark(sel) {
+    Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) { b.className = (sel && b.getAttribute(sel.k) == sel.v) ? 'on' : ''; });
+  }
+  function mobileSwitcher() {
+    var s = el('select', { class: 'mobnav', onchange: function () { var v = this.value.split(':'); v[0] === 'p' ? openProject(+v[1]) : openChat(+v[1]); } });
+    me.projects.forEach(function (p) { s.appendChild(el('option', { value: 'p:' + p.id, text: p.name })); });
+    me.chats.forEach(function (c) { s.appendChild(el('option', { value: 'c:' + c.id, text: 'Chat: ' + c.title })); });
+    return s;
+  }
+  function content() { var c = $('content'); c.textContent = ''; var w = el('div', { class: 'wrap' }); c.appendChild(w); w.appendChild(mobileSwitcher()); return w; }
+  function home() { stopPolling(); var w = content(); w.appendChild(el('div', { class: 'empty', text: 'Nothing has been shared with you yet.' })); }
+
+  // ---------------------------------------------------------- project
+  function openProject(id, tab) {
+    stopPolling(); mark({ k: 'data-p', v: id }); view = { page: 'project', id: id, tab: tab || 'tasks' };
+    api('GET', '/api/projects/' + id).then(function (p) { renderProject(p); }, function (e) { var w = content(); w.appendChild(el('div', { class: 'empty', text: e.message })); });
+  }
+  function renderProject(p) {
+    var w = content();
+    w.appendChild(el('h1', { text: p.name }));
+    var sub = [p.status ? p.status.replace('_', ' ') : '', p.due_date ? 'due ' + p.due_date : '', 'you can ' + (p.role === 'viewer' ? 'read' : p.role === 'admin' ? 'edit and manage people' : 'edit')].filter(Boolean).join(' · ');
+    w.appendChild(el('div', { class: 'sub', text: sub }));
+    if (p.description) w.appendChild(el('p', { class: 'txt', text: p.description }));
+    var tabs = [['tasks', 'Tasks & chats'], ['notes', 'Notes'], ['calendar', 'Calendar'], ['files', 'Files'], ['people', 'People']];
+    var bar = el('div', { class: 'tabs' });
+    tabs.forEach(function (t) { bar.appendChild(el('button', { text: t[1], class: view.tab === t[0] ? 'on' : '', onclick: function () { openProject(p.id, t[0]); } })); });
+    w.appendChild(bar);
+    var body = el('div', {}); w.appendChild(body);
+    var f = { tasks: tasksTab, notes: notesTab, calendar: calTab, files: filesTab, people: peopleTab }[view.tab];
+    f(body, p);
+  }
+  function chipFor(status, held) { return el('span', { class: 'chip ' + (held ? 'held' : status), text: held ? 'waiting for the owner' : status }); }
+
+  function tasksTab(body, p) {
+    if (p.role !== 'viewer') {
+      var ta = el('textarea', { placeholder: 'What should be done, or what do you want to ask?' });
+      var kind = el('select', { style: 'width:auto' }, [el('option', { value: '', text: 'Do the work' }), el('option', { value: 'message', text: 'Just ask a question' })]);
+      var go = el('button', { class: 'btn', text: 'Send', onclick: function () {
+        if (!ta.value.trim()) return; go.disabled = true;
+        api('POST', '/api/projects/' + p.id + '/tasks', { prompt: ta.value, kind: kind.value || undefined })
+          .then(function (r) { openChat(r.id); }, function (e) { alert(e.message); go.disabled = false; });
+      } });
+      body.appendChild(el('div', { class: 'card' }, [ta, el('div', { class: 'bar', style: 'display:flex;gap:8px;margin-top:8px;align-items:center' }, [kind, go])]));
+    }
+    if (p.here.length) body.appendChild(el('div', { class: 'here', text: p.here.map(function (x) { return x.name; }).join(', ') + ' here now' }));
+    var list = el('div', {}, [el('div', { class: 'meta', text: 'Loading…' })]); body.appendChild(list);
+    api('GET', '/api/projects/' + p.id + '/tasks').then(function (r) {
+      list.textContent = '';
+      if (!r.items.length) list.appendChild(el('div', { class: 'empty', text: 'No tasks or chats yet.' }));
+      r.items.forEach(function (t) {
+        list.appendChild(el('div', { class: 'card' }, [
+          el('div', { class: 'row', onclick: function () { openChat(t.id); } }, [el('span', { class: 't', text: t.title }), chipFor(t.status), el('span', { class: 'meta', text: ago(t.updated) })]),
+          el('div', { class: 'meta', text: (t.by ? t.by + ' · ' : '') + t.messages + (t.messages === 1 ? ' message' : ' messages') + (t.last ? ' · ' + t.last : '') })
+        ]));
+      });
+    }, function () {});
+    if (p.activity.length) {
+      body.appendChild(el('h4', { class: 'meta', text: 'RECENT ACTIVITY' }));
+      p.activity.slice(0, 8).forEach(function (a) { body.appendChild(el('div', { class: 'meta', text: a.who + ' ' + a.what + ' · ' + ago(a.created_at) })); });
+    }
+  }
+  function notesTab(body, p) {
+    api('GET', '/api/projects/' + p.id + '/notes').then(function (r) {
+      if (!r.notes.length) body.appendChild(el('div', { class: 'empty', text: 'No notes.' }));
+      r.notes.forEach(function (n) { body.appendChild(el('div', { class: 'card' }, [el('div', { class: 'note', text: n.text }), el('div', { class: 'meta', text: n.kind + ' · ' + ago(n.at) })])); });
+    }, function () {});
+  }
+  function calTab(body, p) {
+    api('GET', '/api/projects/' + p.id + '/timeline').then(function (r) {
+      if (r.health && r.health.label) body.appendChild(el('div', { class: 'sub', text: r.health.label + (r.health.reason ? ' — ' + r.health.reason : '') }));
+      if (!r.events.length) body.appendChild(el('div', { class: 'empty', text: 'Nothing scheduled.' }));
+      r.events.forEach(function (e) { body.appendChild(el('div', { class: 'card' }, [el('div', { text: e.title || 'Event', style: 'font-weight:600' }), el('div', { class: 'meta', text: [e.kind, e.when || e.date, e.location].filter(Boolean).join(' · ') })])); });
+    }, function () {});
+  }
+  function filesTab(body, p) {
+    api('GET', '/api/projects/' + p.id + '/documents').then(function (r) {
+      if (!r.documents.length) body.appendChild(el('div', { class: 'empty', text: 'No files.' }));
+      r.documents.forEach(function (d) {
+        body.appendChild(el('div', { class: 'card' }, [el('div', { class: 'row' }, [el('span', { class: 't', text: d.name }), el('span', { class: 'meta', text: Math.max(1, Math.round(d.size / 1024)) + ' KB' }),
+          el('button', { class: 'btn ghost', text: 'Download', onclick: function () { download(d); } })])]));
+      });
+    }, function () {});
+  }
+  function download(d) {
+    fetch('/api/documents/' + d.id, { headers: { 'X-Collab-Token': token } }).then(function (r) { if (!r.ok) throw new Error('Could not download'); return r.blob(); })
+      .then(function (b) { var a = el('a', { href: URL.createObjectURL(b), download: d.name }); document.body.appendChild(a); a.click(); a.remove(); }, function (e) { alert(e.message); });
+  }
+  function peopleTab(body, p) {
+    p.people.forEach(function (x) { body.appendChild(el('div', { class: 'card' }, [el('div', { class: 'row' }, [el('span', { class: 't', text: x.name }), el('span', { class: 'chip', text: x.role }), x.online ? el('span', { class: 'meta', text: '● online' }) : null])])); });
+    body.appendChild(el('div', { class: 'meta', text: "The owner's Den runs all the work. If it is off, you can read but not send." }));
+    if (p.role !== 'admin') return;
+    var nm = el('input', { type: 'text', placeholder: 'Their name' });
+    var rl = el('select', {}, [el('option', { value: 'viewer', text: 'Can read' }), el('option', { value: 'editor', text: 'Can edit' })]);
+    var out = el('div', {});
+    body.appendChild(el('h4', { class: 'meta', text: 'INVITE SOMEONE' }));
+    body.appendChild(el('div', { class: 'card' }, [nm, el('div', { style: 'display:flex;gap:8px;margin-top:8px' }, [rl, el('button', { class: 'btn', text: 'Create invite link', onclick: function () {
+      api('POST', '/api/projects/' + p.id + '/people', { name: nm.value, role: rl.value }).then(function (r) {
+        out.textContent = ''; out.appendChild(el('div', { class: 'meta', text: 'Send this link to ' + r.name + ' (it only works for them):' }));
+        out.appendChild(el('input', { type: 'text', readonly: 'readonly', value: location.origin + '/#join=' + r.token, onclick: function () { this.select(); } }));
+      }, function (e) { alert(e.message); });
+    } })]), out]));
+  }
+
+  // -------------------------------------------------------------- chat
+  function openChat(id) {
+    stopPolling(); mark({ k: 'data-c', v: id }); view = { page: 'chat', id: id };
+    var gen = pollGen, w = content(), sig = '', first = true, sentTyping = 0;
+    var title = el('h1', { text: 'Chat' }), sub = el('div', { class: 'sub' }), msgs = el('div', { class: 'msgs' }), here = el('div', { class: 'here' });
+    w.appendChild(title); w.appendChild(sub); w.appendChild(here); w.appendChild(msgs);
+    var ta = el('textarea', { placeholder: 'Write a message… (Ctrl/Cmd+Enter to send)' }), send = el('button', { class: 'btn', text: 'Send' });
+    var comp = el('div', { class: 'composer' }, [el('div', { class: 'box' }, [ta, el('div', { class: 'bar', style: 'display:flex;justify-content:flex-end;margin-top:6px' }, [send])])]);
+    w.appendChild(comp);
+    function doSend() {
+      var t = ta.value.trim(); if (!t) return; send.disabled = true;
+      api('POST', '/api/chats/' + id + '/messages', { prompt: t }).then(function () { ta.value = ''; send.disabled = false; sig = ''; poll(0); }, function (e) { alert(e.message); send.disabled = false; });
+    }
+    send.addEventListener('click', doSend);
+    ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); doSend(); } });
+    ta.addEventListener('input', function () { var n = Date.now(); if (n - sentTyping > 3000) { sentTyping = n; api('POST', '/api/presence', { chat: id, typing: true }).catch(function () {}); } });
+
+    function paint(c) {
+      title.textContent = c.title; sub.textContent = (c.role === 'viewer' ? 'You can read this chat.' : 'Everyone here can write at the same time.');
+      if (c.role === 'viewer') comp.style.display = 'none';
+      var others = c.here.filter(function (x) { return !x.me; });
+      here.textContent = '';
+      if (others.length) { here.appendChild(el('span', { class: 'dot' })); here.appendChild(document.createTextNode(others.map(function (x) { return x.name + (x.typing ? ' is typing…' : ''); }).join(', ') + (others.some(function (x) { return x.typing; }) ? '' : ' here now'))); }
+      var nearBottom = (window.innerHeight + $('content').scrollTop) > $('content').scrollHeight - 160;
+      msgs.textContent = '';
+      c.messages.forEach(function (m) {
+        msgs.appendChild(el('div', { class: 'u' }, [el('div', { class: 'who2', text: (m.by || 'Owner') + ' · ' + ago(m.at) }), el('div', { class: 'txt', text: m.prompt })]));
+        if (m.reply) msgs.appendChild(el('div', { class: 'a' }, [el('div', { class: 'who2', text: 'Octopus' }), el('div', { class: 'txt', text: m.reply })]));
+        else msgs.appendChild(el('div', { class: 'a' }, [el('div', { class: 'who2', text: 'Octopus' }), chipFor(m.status, m.held)]));
+      });
+      if (first || nearBottom) { first = false; setTimeout(function () { $('content').scrollTop = $('content').scrollHeight; }, 0); }
+    }
+    function poll(wait) {
+      if (gen !== pollGen) return;
+      api('GET', '/api/chats/' + id + '?sig=' + encodeURIComponent(sig) + '&wait=' + wait).then(function (c) {
+        if (gen !== pollGen) return; sig = c.sig; paint(c); timers.push(setTimeout(function () { poll(20); }, 50));
+      }, function (e) { if (gen !== pollGen) return; if (e.status === 404) { msgs.textContent = 'This chat is no longer shared with you.'; return; } timers.push(setTimeout(function () { poll(0); }, 4000)); });
+    }
+    poll(0);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Written by installer/mac/install.sh. Keeps The Den running in the background and starts it when you sign in. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>@LABEL@</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@APP@/.venv/bin/python3</string>
+        <string>@APP@/launcher.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>@APP@</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>@PATH@</string>
+        <key>HOST</key>
+        <string>@HOST@</string>
+        <key>PORT</key>
+        <string>@PORT@</string>
+        <key>API_KEY</key>
+        <string>@API_KEY@</string>
+        <key>CLAUDE_BIN</key>
+        <string>@CLAUDE_BIN@</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>@LOGS@/den-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>@LOGS@/den-stderr.log</string>
+</dict>
+</plist>

@@ -1,0 +1,15 @@
+{
+  "name": "den_analytics",
+  "version": "1.0.0",
+  "description": "Analytics for the owner: which features and AI models are used, accounts and providers connected, emails sent, tasks run, cost and more.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "default_days": {"type": "integer", "default": 30}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

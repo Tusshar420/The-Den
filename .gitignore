@@ -33,3 +33,11 @@ login.json.tmp
 releases/
 # Downloaded updates and the backup of the version before them (launcher.py).
 .den-update/
+
+# An install's own settings, key file and approval-helper config (den_platform.py, installer/) - never commit them.
+den.env
+den-keys.json
+mcp-config.local.json
+dist/
+.den-stop
+.den-service.lock

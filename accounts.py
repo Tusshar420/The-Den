@@ -37,11 +37,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 import db
+import den_platform
 
 FILE = Path(__file__).parent / "accounts.json"
 MAC = "mac"
 TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"
-CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+CLAUDE_BIN = den_platform.claude_bin()
 PROBE_CWD = Path(__file__).parent / "workspace" / "assistant"
 
 # What a failed run says when the account's login is bad (a revoked or expired token, or a logged-out Mac).

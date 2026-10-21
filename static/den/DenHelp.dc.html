@@ -558,10 +558,12 @@ class Component extends DCLogic {
         cmds:[c('Install', 'npm install -g @anthropic-ai/claude-code'), c('Sign in', 'claude'), c('Or make a sign-in code for the Den', 'claude setup-token'), c('Check', 'claude --version')],
         ...found(L.has('claude'), verOf('claude')) },
       { id:'tailscale', title:'Install Tailscale and sign in', why:'Tailscale is a private network between your own devices. It lets your phone reach the Den safely from anywhere.', notes:[
-        'Install it, open Tailscale from your Applications folder, and sign in.',
+        'Run the install command below. It can ask for your Mac password.',
+        'Open Tailscale from your Applications folder. Its small icon appears at the top of the screen. Click “Log in” and sign in in the browser. If macOS asks to allow a VPN or system extension, press Allow.',
         'Tell the Den’s owner the email you signed in with. They add this Mac to the shared private network.',
-        'Install the Tailscale app on your phone too, and sign in with the same account.'],
-        cmds:[c('Install', 'brew install --cask tailscale')], ...found(L.svc('tailscale')) },
+        'Install the Tailscale app on your phone too (App Store), and sign in with the same account.',
+        'Check: the Tailscale icon should say “Connected”, and the second command should list this Mac and your phone.'],
+        cmds:[c('Install', 'brew install --cask tailscale'), c('Check your devices', 'tailscale status')], ...found(L.svc('tailscale')) },
       { id:'files', title:'Get the Den files', why:'The Den’s owner gives you a release bundle: one file with the whole Den inside.', notes:[
         'Double-click the bundle to unpack it. Move the folder into your home folder (the one with your name) and rename it TheDen.',
         'If you get stuck, ask the owner; this is the only step that depends on how they sent it.'],
@@ -581,6 +583,13 @@ class Component extends DCLogic {
         'On the Mac, open Safari or Chrome at the address below.',
         'The first time, it asks for your Den’s key. The second box prints it. Then pick a username and password.'],
         cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard'), c('Show your Den’s key', KEY_CMD)], ...found(L.login ? true : null) },
+      { id:'dock', title:'Add the Den to your Dock (Safari)', why:'This puts the Den in your Dock as its own app icon, so it opens in one click, in its own window.', notes:[
+        'Needs macOS Sonoma (14) or newer and Safari.',
+        'Open Safari and go to the dashboard address below. Sign in.',
+        'In the menu bar at the top, click File, then “Add to Dock…”.',
+        'Give it the name “The Den” and press Add. The icon now sits in your Dock.',
+        'Click the icon any time to open the Den. To remove it later, drag the icon out of the Dock.'],
+        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard')] },
       { id:'accounts', title:'Add your AI accounts', why:'Octopus needs at least one Claude account to work.', notes:[
         'Open AI accounts and add your Claude account. Use this Mac’s own Claude sign-in, or paste the code from claude setup-token.',
         'Add a second account if you have one: Octopus moves to the one with room when a limit is reached.'],

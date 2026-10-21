@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:16px; padding:{{ pad }}; box-sizing:border-box; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <sc-if value="{{ isOff }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:48px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <span style="width:52px; height:52px; display:grid; place-items:center; border-radius:15px; background:rgba(127,178,255,0.12); color:#7FB2FF;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M4 19l4-4 3 3 5-6 4 4M4 5h16v14H4z"></path></svg></span>
+      <div style="font-size:18px; font-weight:750;">Analytics isn't switched on on this Den</div>
+      <div style="font-size:13.5px; line-height:1.6; color:#93A1B0; max-width:420px;">This page needs the analytics module. It comes with the owner's Den.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isOn }}" hint-placeholder-val="{{ true }}">
+    <!-- header + range -->
+    <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+      <div style="flex:1 1 260px; min-width:0;">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6B7A8A;">ANALYTICS</div>
+        <div style="font-size:{{ titleSize }}; font-weight:800; letter-spacing:-.02em; margin-top:4px;">How the Den is being used</div>
+        <div style="font-size:13px; color:#93A1B0; margin-top:4px;">{{ rangeNote }}</div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="4"><button onClick="{{ r.pick }}" style="height:34px; padding:0 13px; border-radius:10px; border:1px solid {{ r.bd }}; background:{{ r.bg }}; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:{{ r.fg }};">{{ r.label }}</button></sc-for>
+      </div>
+    </div>
+
+    <!-- tabs -->
+    <div style="display:flex; gap:4px; padding:4px; border-radius:13px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06); align-self:flex-start; max-width:100%; overflow:auto;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.pick }}" style="height:34px; padding:0 16px; border-radius:9px; border:0; cursor:pointer; white-space:nowrap; font-family:inherit; font-size:13px; font-weight:650; background:{{ t.bg }}; color:{{ t.fg }};">{{ t.label }}</button></sc-for>
+    </div>
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+        <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="6">
+          <div style="display:flex; flex-direction:column; gap:3px; padding:14px; border-radius:16px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06);">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#6B7A8A;">{{ t.k }}</span>
+            <span style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:{{ t.c }};">{{ t.v }}</span>
+            <span style="font-size:11.5px; color:#93A1B0;">{{ t.sub }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:baseline; gap:10px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">TASKS PER DAY</span><span style="font-size:12px; color:#93A1B0;">{{ trendTotal }}</span></div>
+        <div style="display:flex; align-items:flex-end; gap:{{ barGap }}; height:120px;">
+          <sc-for list="{{ trend }}" as="b" hint-placeholder-count="30"><div title="{{ b.title }}" style="flex:1; min-width:0; height:100%; display:flex; align-items:flex-end;"><div style="width:100%; height:{{ b.h }}; border-radius:3px 3px 0 0; background:{{ b.c }};"></div></div></sc-for>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:10px; color:#6B7A8A;"><span>{{ trendFrom }}</span><span>today</span></div>
+      </section>
+
+      <div style="display:grid; grid-template-columns:{{ twoCols }}; gap:16px; align-items:start;">
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">AI MODELS · BY TASKS</span>
+          <sc-if value="{{ noModels }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">Nothing in this period.</div></sc-if>
+          <sc-for list="{{ models }}" as="m" hint-placeholder-count="6">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="display:flex; align-items:baseline; gap:8px; font-size:13px;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600;">{{ m.model }}</span><span style="color:#C2CDD8;">{{ m.tasks }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ m.cost }}</span></div>
+              <div style="height:7px; border-radius:5px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ m.w }}; border-radius:5px; background:{{ m.c }};"></div></div>
+            </div>
+          </sc-for>
+        </section>
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">AI ACCOUNTS · WORK RUN ON EACH</span>
+          <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="display:flex; align-items:baseline; gap:8px; font-size:13px;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600;">{{ a.label }}</span><span style="color:#C2CDD8;">{{ a.tasks }} tasks</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ a.cost }}</span></div>
+              <div style="height:7px; border-radius:5px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ a.w }}; border-radius:5px; background:{{ a.c }};"></div></div>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <div style="display:grid; grid-template-columns:{{ threeCols }}; gap:16px; align-items:start;">
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">CONNECTED PROVIDERS</span>
+          <sc-if value="{{ noProviders }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">None connected.</div></sc-if>
+          <sc-for list="{{ providers }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:9px; min-height:34px;"><span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ p.c }};"></span><div style="flex:1; min-width:0;"><div style="font-size:13px; font-weight:600;">{{ p.provider }}</div><div style="font-size:11.5px; color:#93A1B0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ p.account }}</div></div><span style="font-size:11px; color:{{ p.c }};">{{ p.status }}</span></div>
+          </sc-for>
+        </section>
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">EMAIL</span>
+          <div style="display:flex; align-items:baseline; gap:8px;"><span style="font-size:28px; font-weight:800; color:#45E0C8;">{{ emailsSent }}</span><span style="font-size:12.5px; color:#93A1B0;">sent</span></div>
+          <sc-for list="{{ emailActions }}" as="e" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="flex:1; color:#C2CDD8;">{{ e.action }}</span><span style="color:#93A1B0;">{{ e.count }}</span><sc-if value="{{ e.failed }}" hint-placeholder-val="{{ false }}"><span style="color:#FF8FA2;">{{ e.failedText }}</span></sc-if></div>
+          </sc-for>
+        </section>
+        <section style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MOST-USED TOOLS</span>
+          <sc-if value="{{ noTools }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#93A1B0;">Nothing yet.</div></sc-if>
+          <sc-for list="{{ tools }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="flex:1; font-weight:600;">{{ t.tool }}</span><div style="flex:none; width:90px; height:6px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ t.w }}; border-radius:4px; background:#A58BFF;"></div></div><span style="width:28px; text-align:right; color:#93A1B0;">{{ t.count }}</span></div>
+          </sc-for>
+        </section>
+      </div>
+
+      <section style="display:flex; flex-direction:column; gap:8px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MODULES</span>
+        <sc-for list="{{ modules }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:9px; min-height:30px;"><span style="flex:none; width:8px; height:8px; border-radius:50%; background:{{ m.c }};"></span><span style="flex:1; min-width:0; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.name }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:#6B7A8A;">{{ m.version }}</span><span style="font-size:11px; color:{{ m.c }};">{{ m.state }}</span></div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <!-- ===================== SECTIONS & TIME ===================== -->
+    <sc-if value="{{ isUsage }}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{ usageEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; padding:40px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="width:46px; height:46px; display:grid; place-items:center; border-radius:14px; background:rgba(111,207,151,0.12); color:#6FCF97;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path></svg></span>
+          <div style="font-size:16px; font-weight:700;">Nothing to show yet</div>
+          <div style="font-size:13px; color:#93A1B0; max-width:420px;">Usage is counted as you move around the Den — which sections you open and how long you spend. Come back after using it a while.</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ usageHas }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+          <sc-for list="{{ uTiles }}" as="t" hint-placeholder-count="5">
+            <div style="display:flex; flex-direction:column; gap:3px; padding:14px; border-radius:16px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.06);">
+              <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; color:#6B7A8A;">{{ t.k }}</span>
+              <span style="font-size:24px; font-weight:800; letter-spacing:-.02em; color:{{ t.c }};">{{ t.v }}</span>
+              <span style="font-size:11.5px; color:#93A1B0;">{{ t.sub }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MOST-USED SECTIONS · BY TIME</span>
+          <sc-for list="{{ sections }}" as="s" hint-placeholder-count="8">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="display:flex; align-items:baseline; gap:8px; font-size:13px;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600;">{{ s.label }}</span><span style="color:#C2CDD8;">{{ s.time }}</span><span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ s.opens }} opens</span></div>
+              <div style="height:8px; border-radius:5px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ s.w }}; border-radius:5px; background:{{ s.c }};"></div></div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex; align-items:baseline; gap:10px;"><span style="flex:1; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">TIME IN THE DEN · PER DAY</span><span style="font-size:12px; color:#93A1B0;">{{ uTrendTotal }}</span></div>
+          <div style="display:flex; align-items:flex-end; gap:{{ barGap }}; height:110px;">
+            <sc-for list="{{ uTrend }}" as="b" hint-placeholder-count="30"><div title="{{ b.title }}" style="flex:1; min-width:0; height:100%; display:flex; align-items:flex-end;"><div style="width:100%; height:{{ b.h }}; border-radius:3px 3px 0 0; background:{{ b.c }};"></div></div></sc-for>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:10px; color:#6B7A8A;"><span>{{ uTrendFrom }}</span><span>today</span></div>
+        </section>
+
+        <section style="display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">FEATURES TAKEN UP · {{ adoptionLine }}</span>
+          <div style="display:flex; flex-wrap:wrap; gap:7px;">
+            <sc-for list="{{ adoption }}" as="a" hint-placeholder-count="12"><span style="display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px; border-radius:9px; font-size:12px; font-weight:600; background:{{ a.bg }}; color:{{ a.fg }}; border:1px solid {{ a.bd }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ a.dot }};"></span>{{ a.label }}</span></sc-for>
+          </div>
+        </section>
+      </sc-if>
+    </sc-if>
+
+    <!-- ===================== PEOPLE ===================== -->
+    <sc-if value="{{ isPeople }}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{ noPeople }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; padding:40px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <span style="width:46px; height:46px; display:grid; place-items:center; border-radius:14px; background:rgba(127,178,255,0.12); color:#7FB2FF;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.9"></path></svg></span>
+          <div style="font-size:16px; font-weight:700;">No one added yet</div>
+          <div style="font-size:13px; color:#93A1B0; max-width:440px;">People you give the Den to show up here. Once licences are set up, each person's Den sends a daily summary — sections used and time spent, never their content.</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasPeople }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12.5px; color:#93A1B0;">{{ peopleNote }}</div>
+        <section style="display:flex; flex-direction:column; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+          <sc-for list="{{ people }}" as="p" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:12px; min-height:52px; padding:10px 16px; border-top:1px solid rgba(255,255,255,0.04);">
+              <span style="flex:none; width:9px; height:9px; border-radius:50%; background:{{ p.c }};"></span>
+              <div style="flex:1 1 180px; min-width:0;"><div style="font-size:13.5px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ p.name }}</div><div style="font-size:11.5px; color:#93A1B0;">{{ p.detail }}</div></div>
+              <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#6B7A8A;">{{ p.version }}</span>
+              <span style="height:22px; padding:0 9px; display:flex; align-items:center; border-radius:6px; background:{{ p.chipBg }}; font-size:11px; font-weight:600; color:{{ p.c }};">{{ p.state }}</span>
+            </div>
+          </sc-for>
+        </section>
+      </sc-if>
+    </sc-if>
+
+    <div style="text-align:center; font-family:'JetBrains Mono', monospace; font-size:10px; color:#6B7A8A;">{{ footer }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:900},&quot;isPhone&quot;:{&quot;editor&quot;:&quot;bool&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onReady&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
+// Analytics (Den 2.2): the owner's view of how the Den is used. Three tabs:
+//   Overview        - tasks, models, accounts, providers, emails, tools, modules (from den-analytics)
+//   Sections & time - which sections used most, time spent, sessions, adoption (from den-usage)
+//   People          - given-away Dens (from den-analytics installs); per-person detail comes with licences
+// All numbers come from modules; if a module isn't loaded the page says so calmly. Read-only.
+const D = window.Den;
+const PAL = ['#FF7B5C', '#7FB2FF', '#45E0C8', '#A58BFF', '#FFB547', '#6FCF97', '#FF8FA2', '#9AA7B4'];
+const money = n => !n ? '$0' : n < 1 ? '$' + n.toFixed(2) : n < 1000 ? '$' + n.toFixed(n < 100 ? 1 : 0) : '$' + (n / 1000).toFixed(1) + 'k';
+const big = n => !n ? '0' : n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(1) + 'k' : (n / 1e6).toFixed(1) + 'M';
+const niceDay = iso => { try { return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short' }); } catch (e) { return iso; } };
+const dur = m => { if (!m) return '0m'; if (m < 60) return Math.round(m) + 'm'; const h = Math.floor(m / 60), r = Math.round(m % 60); return r ? h + 'h ' + r + 'm' : h + 'h'; };
+
+class Component extends DCLogic {
+  state = { days:30, tab:'overview', data:null, usage:null, off:false, busy:false };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.loadAll(30); }
+  componentWillUnmount() { this._dead = true; }
+
+  loadAll(days) { this.setState({ busy:true, days }); this.load('den-analytics', 'data', { days }); this.load('den-usage', 'usage', { days }); }
+  load(cmd, key, payload) {
+    D.api('/modules/commands/' + cmd, { method:'POST', body:{ arg: JSON.stringify(payload) } })
+      .then(r => { if (this._dead) return; const d = r && r.result ? r.result : r; this.setState({ [key]:d, busy:false }); },
+            e => { if (this._dead) return; const o = {}; if (key === 'data' && e && e.status === 404) o.off = true; o.busy = false; this.setState(o); });
+  }
+  bars(list, key, color) { const max = Math.max(1, ...list.map(x => x[key] || 0)); return list.map((x, i) => ({ ...x, w: Math.round((x[key] || 0) / max * 100) + '%', c: typeof color === 'function' ? color(i) : color })); }
+
+  renderVals() {
+    const s = this.state; const d = s.data; const u = s.usage; const isPhone = !!this.props.isPhone;
+    const ranges = [[7, '7 days'], [30, '30 days'], [90, '90 days'], [365, '1 year']].map(([n, label]) => ({
+      label, pick:() => this.loadAll(n), bg: s.days === n ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.03)', bd: s.days === n ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)', fg: s.days === n ? '#FF7B5C' : '#C2CDD8' }));
+    const tabs = [['overview', 'Overview'], ['usage', 'Sections & time'], ['people', 'People']].map(([id, label]) => ({
+      label, pick:() => this.setState({ tab:id }), bg: s.tab === id ? '#FF7B5C' : 'transparent', fg: s.tab === id ? '#1A0A05' : '#C2CDD8' }));
+    const base = { pad: isPhone ? '4px 0 40px' : '4px 0 48px', titleSize: isPhone ? '22px' : '26px', ranges, tabs,
+      twoCols: isPhone ? '1fr' : '1fr 1fr', threeCols: isPhone ? '1fr' : '1fr 1fr 1fr',
+      isOff: s.off, isOn: !s.off, isOverview: s.tab === 'overview', isUsage: s.tab === 'usage', isPeople: s.tab === 'people',
+      rangeNote: 'Last ' + s.days + ' days' + (s.busy ? ' · loading…' : ''), footer: 'Read-only · nothing here changes your Den',
+      tiles:[], trend:[], models:[], accounts:[], providers:[], emailActions:[], tools:[], modules:[],
+      uTiles:[], sections:[], uTrend:[], adoption:[], people:[] };
+
+    // ---- Overview (den-analytics) ----
+    if (d) {
+      const ov = d.overview;
+      const tiles = [
+        { k:'TASKS RUN', v: big(ov.tasks), sub: ov.success_rate != null ? ov.success_rate + '% finished' : 'in this period', c:'#E8EEF3' },
+        { k:'FINISHED', v: big(ov.done), sub: ov.failed ? ov.failed + ' failed' : 'none failed', c:'#6FCF97' },
+        { k:'SPENT', v: money(ov.cost_usd), sub: big(ov.tokens) + ' tokens', c:'#FFB547' },
+        { k:'EMAILS SENT', v: big(ov.emails_sent), sub:'by the assistant', c:'#45E0C8' },
+        { k:'AI ACCOUNTS', v: String(ov.accounts_used), sub:'did work', c:'#7FB2FF' },
+        { k:'PROVIDERS', v: String(ov.providers_connected), sub:'connected', c:'#A58BFF' } ];
+      if (ov.installs_active) tiles.push({ k:'ACTIVE DENS', v: String(ov.installs_active), sub:'checking in', c:'#FF7B5C' });
+      const tMax = Math.max(1, ...d.trend.map(t => t.count));
+      base.tiles = tiles;
+      base.trend = d.trend.map(t => ({ h: Math.max(t.count ? 4 : 1, Math.round(t.count / tMax * 100)) + '%', c: t.count ? 'linear-gradient(180deg, #FF9478, #FF7B5C)' : 'rgba(255,255,255,0.05)', title: niceDay(t.day) + ': ' + t.count + (t.count === 1 ? ' task' : ' tasks') }));
+      base.barGap = d.trend.length > 60 ? '1px' : '3px';
+      base.trendTotal = d.trend.reduce((a, t) => a + t.count, 0) + ' tasks'; base.trendFrom = d.trend.length ? niceDay(d.trend[0].day) : '';
+      base.models = this.bars(d.by_model.slice(0, 7), 'tasks', i => PAL[i % PAL.length]).map(m => ({ ...m, cost: money(m.cost) })); base.noModels = !base.models.length;
+      base.accounts = this.bars(d.by_account.slice(0, 6), 'tasks', i => PAL[i % PAL.length]).map(a => ({ ...a, cost: money(a.cost) }));
+      const pc = st => st === 'connected' ? '#6FCF97' : st === 'error' ? '#FF5470' : '#FFB547';
+      base.providers = d.providers.map(p => ({ ...p, c: pc(p.status) })); base.noProviders = !base.providers.length;
+      base.emailsSent = big(d.emails.sent); base.emailActions = d.emails.by_action.map(e => ({ ...e, failedText: e.failed + ' failed' }));
+      base.tools = this.bars(d.tools.slice(0, 7), 'count', '#A58BFF'); base.noTools = !base.tools.length;
+      base.modules = d.modules.map(m => ({ name: m.name.replace(/_/g, ' '), version: m.version ? 'v' + m.version : '', state: m.enabled ? 'on' : 'off', c: m.enabled ? '#6FCF97' : '#6B7A8A' }));
+      // People from installs
+      const inst = (d.installs && d.installs.list) || [];
+      base.noPeople = !inst.length; base.hasPeople = inst.length > 0;
+      base.peopleNote = 'Per-person section usage appears here once each Den is sending summaries. For now: version and when last seen.';
+      base.people = inst.map(p => ({ name: p.name || 'A Den', version: p.version && p.version !== '—' ? 'v' + p.version : '', detail: p.last_seen ? 'Last seen ' + (D.ago ? D.ago(p.last_seen, false) : p.last_seen) : 'Not seen yet', c: p.recent ? '#6FCF97' : '#6B7A8A', chipBg: p.recent ? 'rgba(111,207,151,0.12)' : 'rgba(255,255,255,0.05)', state: p.recent ? 'active' : 'quiet' }));
+    } else {
+      base.noPeople = !s.off; base.hasPeople = false;
+    }
+
+    // ---- Sections & time (den-usage) ----
+    if (u && u.totals) {
+      const t = u.totals;
+      base.usageEmpty = !t.opens && !t.sessions; base.usageHas = !!(t.opens || t.sessions);
+      base.uTiles = [
+        { k:'TIME IN DEN', v: dur(t.minutes), sub:'this period', c:'#FF7B5C' },
+        { k:'SESSIONS', v: big(t.sessions), sub:'times opened', c:'#7FB2FF' },
+        { k:'ACTIVE DAYS', v: String(t.active_days), sub:'of ' + s.days, c:'#6FCF97' },
+        { k:'AVG SESSION', v: dur(t.avg_session_min), sub:'each time', c:'#45E0C8' },
+        { k:'SECTIONS USED', v: t.sections_used + '/' + t.sections_total, sub:'taken up', c:'#A58BFF' } ];
+      base.sections = this.bars(u.by_section.slice(0, 10), 'seconds', i => PAL[i % PAL.length]).map(x => ({ ...x, time: dur(x.minutes) }));
+      const mMax = Math.max(1, ...u.trend.map(x => x.minutes));
+      base.uTrend = u.trend.map(x => ({ h: Math.max(x.minutes ? 4 : 1, Math.round(x.minutes / mMax * 100)) + '%', c: x.minutes ? 'linear-gradient(180deg, #8FD0FF, #7FB2FF)' : 'rgba(255,255,255,0.05)', title: niceDay(x.day) + ': ' + dur(x.minutes) }));
+      base.uTrendTotal = dur(u.trend.reduce((a, x) => a + x.minutes, 0)); base.uTrendFrom = u.trend.length ? niceDay(u.trend[0].day) : '';
+      const usedN = u.adoption.filter(a => a.used).length;
+      base.adoptionLine = usedN + ' OF ' + u.adoption.length + ' TRIED';
+      base.adoption = u.adoption.map(a => ({ label: a.label, bg: a.used ? 'rgba(111,207,151,0.1)' : 'rgba(255,255,255,0.03)', fg: a.used ? '#CDEBD9' : '#6B7A8A', bd: a.used ? 'rgba(111,207,151,0.25)' : 'rgba(255,255,255,0.06)', dot: a.used ? '#6FCF97' : '#4A5663' }));
+    } else {
+      base.usageEmpty = true; base.usageHas = false;
+    }
+    return base;
+  }
+}
+</script>
+</body>
+</html>

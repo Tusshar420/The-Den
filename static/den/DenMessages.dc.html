@@ -66,9 +66,11 @@
             </div>
           </sc-if>
         </div>
+        <button onClick="{{ toggleSearch }}" title="Search in this chat" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid {{ tsBd }}; background:{{ tsBg }}; cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.9; stroke-linecap:round;"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-4-4"></path></svg>Search</button>
         <button onClick="{{ toggleNote }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; border:1px solid {{ noteBtnBd }}; background:{{ noteBtnBg }}; cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M12 10v6"></path></svg>Note</button>
         <button onClick="{{ openProject }}" style="height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); cursor:pointer; font-size:12.5px; font-weight:650; color:#DCE4EB;">Open in project</button>
       </div>
+      <sc-if value="{{ tsOpen }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:10px; padding:8px 16px; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);"><input ref="{{ tsFocus }}" value="{{ tsQ }}" onInput="{{ onTsQ }}" onKeyDown="{{ tsKey }}" placeholder="Search in this chat" style="flex:1; min-width:0; height:34px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13.5px; outline:none;"><span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:#93A1B0;">{{ tsCount }}</span><button onClick="{{ toggleSearch }}" title="Close search" style="flex:none; width:30px; height:30px; border-radius:9px; border:0; background:transparent; cursor:pointer; color:#93A1B0; font-size:16px;">×</button></div></sc-if>
       <div ref="{{ threadRef }}" style="position:relative; flex:1; min-height:0; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:12px;">
         <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="4">
           <sc-if value="{{ m.you }}" hint-placeholder-val="{{ false }}"><div data-msg="1" style="align-self:flex-end; max-width:78%; padding:10px 14px; border-radius:16px 16px 4px 16px; background:rgba(255,123,92,0.14); border:1px solid rgba(255,123,92,0.25); font-size:14px; line-height:1.55; overflow-wrap:anywhere;">{{ m.text }}</div></sc-if>
@@ -119,7 +121,7 @@ const KC = { Note:['#93A1B0', 'note'], 'Follow-up':[C.amber, 'follow-up'], Decis
 const KIND_LABEL = { note:'Note', 'follow-up':'Follow-up', decision:'Decision' };
 
 class Component extends DCLogic {
-  state = { q:'', qLive:'', f:'All', sel:null, phoneOpen:false, text:'', noteOpen:null, listOpen:null, nTitle:'', nBody:'', nKind:'Note' };
+  state = { q:'', qLive:'', f:'All', sel:null, phoneOpen:false, text:'', noteOpen:null, listOpen:null, nTitle:'', nBody:'', nKind:'Note', tsOpen:false, tsQ:'' };
   componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); const init = this.props.initial ? +String(this.props.initial).replace('#', '') : null; if (init) this.setState({ sel:init, phoneOpen:true }); this.setState({ noteOpen: !this.props.isPhone && (this.props.width || 1400) >= 1280 }); }
   componentWillUnmount() { clearTimeout(this.qt); if (this.ro) this.ro.disconnect(); }
   /* Chat list 340px, notes 300px, gaps 14px; the chat itself needs at least MIN_T to be readable. */
@@ -165,6 +167,8 @@ class Component extends DCLogic {
       if (t.status === 'running') msgs.push(['live', t.current_step, C.teal]);
       if (t.status === 'queued') msgs.push(['step', 'Waiting in line', C.blue]);
       if (t.result_summary) msgs.push(['bot', t.result_summary, null, t.id]); else if (t.error_message) msgs.push(['step', t.error_message, C.err]); });
+    const tq = s.tsOpen ? s.tsQ.trim().toLowerCase() : '';
+    const shown = tq ? msgs.filter(m => (m[0] === 'you' || m[0] === 'bot' || m[0] === 'step') && String(m[1] || '').toLowerCase().includes(tq)) : msgs;
     const reload = ['thread:' + curId, 'mc:' + s.f + ':' + s.qLive];
     // Where the first new reply is, worked out once when the chat opens; see D.chatScroll for the scrolling.
     if (!this._new || this._new.root !== curId) this._new = (th && th.tasks && th.tasks.length) ? { root:curId, id:D.firstUnread(curId, th.tasks) } : null;
@@ -173,6 +177,9 @@ class Component extends DCLogic {
     return { ...this.shareVals(s, root), threadRef:this.threadRef, boxRef:this.boxRef, jump: (s.jumpN || 0) > 0, jumpLabel:(s.jumpN || 0) + ' new ' + ((s.jumpN || 0) === 1 ? 'reply' : 'replies'), jumpGo:() => D.chatToEnd(this.thEl),
       isPhone, isNarrow: narrow, showList: isPhone ? !s.phoneOpen : this.listOn(s), listHidden: !isPhone && !this.listOn(s), canHideList: !isPhone,
       toggleList:() => { const open = !this.listOn(s); const upd = { listOpen:open }; this._autoList = false; if (open && s.noteOpen && (this._w || 9999) < 354 + 314 + 420) { upd.noteOpen = false; this._autoNote = true; } D.setPref('msgList', open); this.setState(upd); }, showThread: !isPhone || s.phoneOpen, listFlex:'0 0 340px', back:() => this.setState({ phoneOpen:false }),
+      tsOpen: !!s.tsOpen, tsQ:s.tsQ, tsBg: s.tsOpen ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', tsBd: s.tsOpen ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)',
+      tsCount: tq ? (shown.length === 1 ? '1 match' : shown.length + ' matches') : '', tsFocus:el => { if (el && !el._f) { el._f = 1; el.focus(); } },
+      toggleSearch:() => this.setState({ tsOpen:!s.tsOpen, tsQ:'' }), onTsQ:e => this.setState({ tsQ:e.target.value }), tsKey:e => { if (e.key === 'Escape') this.setState({ tsOpen:false, tsQ:'' }); },
       showNotes: !!s.noteOpen && (!isPhone || s.phoneOpen), toggleNote:() => { const open = !s.noteOpen; const upd = { noteOpen:open }; this._autoNote = false; if (open && !isPhone && this.listOn(s) && (this._w || 9999) < 354 + 314 + 420) { upd.listOpen = false; this._autoList = true; } this.setState(upd); },
       noteBtnBg: s.noteOpen ? 'rgba(255,123,92,0.14)' : 'rgba(255,255,255,0.04)', noteBtnBd: s.noteOpen ? 'rgba(255,123,92,0.4)' : 'rgba(255,255,255,0.08)',
       collapse:() => this.props.onCollapse && this.props.onCollapse(curId),
@@ -185,7 +192,7 @@ class Component extends DCLogic {
       empty: !!data && !chats.length,
       cur:{ id: root ? '#' + root.id : '', title: root ? D.taskTitle(root) : 'No chat selected', project: p ? p.name : 'General', model: last ? D.laneLabel(last) : '', status: curChat ? statusOf(curChat) : last ? statusOf({ status:st, needs_you: !!ap || failed }) : '', dot: curChat ? dotOf(curChat) : '#93A1B0',
         isApproval: !!ap, code: ap ? D.commandOf(ap) : '' },
-      msgs: msgs.map(([k, text, dot, tid]) => ({ newStart: k === 'bot' && !!newId && tid === newId, newMark: k === 'bot' && !!newId && tid === newId ? '1' : '', you: k === 'you', bot: k === 'bot', step: k === 'step', ...(k === 'live' ? D.liveStep(text, dot) : {}), person:false, typing:false, who:'', init:'', pc:'#C2CDD8', tint:'transparent', bd:'transparent', text, dot: dot || '#93A1B0', save:() => { addN(root ? D.taskTitle(root) : 'Note', text, 'Note'); this.setState({ noteOpen:true }); } })),
+      msgs: shown.map(([k, text, dot, tid]) => ({ newStart: k === 'bot' && !!newId && tid === newId, newMark: k === 'bot' && !!newId && tid === newId ? '1' : '', you: k === 'you', bot: k === 'bot', step: k === 'step', ...(k === 'live' ? D.liveStep(text, dot) : {}), person:false, typing:false, who:'', init:'', pc:'#C2CDD8', tint:'transparent', bd:'transparent', text, dot: dot || '#93A1B0', save:() => { addN(root ? D.taskTitle(root) : 'Note', text, 'Note'); this.setState({ noteOpen:true }); } })),
       approve:() => ap && D.act(() => D.api('/approvals/' + ap.id + '/decide', { method:'POST', body:{ approved:true } }), { ok:['Approved ✓', D.commandOf(ap).slice(0, 60), C.green], reload }),
       deny:() => ap && D.act(() => D.api('/approvals/' + ap.id + '/decide', { method:'POST', body:{ approved:false } }), { ok:['Denied', 'Octopus will work around it', C.err], reload }),
       openProject:() => p && D.go('projects', { route: root ? [String(p.id), 'chats', String(root.id)] : [String(p.id)] }),
