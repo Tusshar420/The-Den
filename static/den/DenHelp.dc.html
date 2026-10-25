@@ -89,8 +89,12 @@
   <sc-if value="{{ isSetup }}" hint-placeholder-val="{{ false }}">
     <section style="display:flex; flex-direction:column; gap:10px; padding:{{ heroPad }}; border-radius:22px; background:rgba(20,28,38,0.5); border:1px solid rgba(255,255,255,0.07); backdrop-filter:blur(22px); animation:denRise .35s cubic-bezier(.2,.7,.3,1);">
       <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#FF7B5C;">SETUP GUIDE</div>
-      <div style="font-size:{{ heroSize }}; font-weight:800; letter-spacing:-.02em; line-height:1.1;">Set up the Den on a new Mac</div>
-      <div style="font-size:14.5px; line-height:1.65; color:#C2CDD8; max-width:720px;">Plan on 30 to 45 minutes. You will copy a few commands into <b style="color:#E8EEF3;">Terminal</b>, the Mac’s app for typing commands. To open it, press ⌘ and Space together, type Terminal, and press Return. Paste a command with ⌘V, then press Return.</div>
+      <div style="font-size:{{ heroSize }}; font-weight:800; letter-spacing:-.02em; line-height:1.1;">{{ setupTitle }}</div>
+      <div data-tour="setup-os" style="display:flex; gap:3px; padding:3px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); align-self:flex-start;">
+        <sc-for list="{{ osTabs }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="flex:none; height:34px; display:inline-flex; align-items:center; gap:7px; padding:0 16px; border-radius:9px; border:0; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650; white-space:nowrap; background:{{ o.bg }}; color:{{ o.fg }};"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="{{ o.icon }}"></path></svg>{{ o.label }}</button></sc-for>
+      </div>
+      <div style="font-size:14.5px; line-height:1.65; color:#C2CDD8; max-width:720px;">Plan on 30 to 45 minutes. You will copy a few commands into <b style="color:#E8EEF3;">{{ shellName }}</b>, {{ shellIntro }}</div>
+      <sc-if value="{{ winTip }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px; line-height:1.6; color:#FFD9A0; max-width:720px; padding:10px 12px; border-radius:12px; background:rgba(255,181,71,0.08); border:1px solid rgba(255,181,71,0.2);">{{ winTip }}</div></sc-if>
       <div style="font-size:13.5px; line-height:1.6; color:#93A1B0; max-width:720px;">Every command has a Copy button. Tick each step when you finish it; your ticks are saved. Steps marked “Found on this Den” were checked for you on the Den you are looking at now.</div>
       <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
         <div style="flex:1; height:8px; border-radius:8px; background:rgba(255,255,255,0.08); overflow:hidden;"><div style="height:100%; width:{{ setupPct }}; border-radius:8px; background:linear-gradient(90deg, #FF7B5C, #FFB547); transition:width .4s;"></div></div>
@@ -350,7 +354,7 @@ const I = {
   mic:'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3M5 11a7 7 0 0 0 14 0M12 18v3', shield:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z', bell:'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4', phone:'M8 3h8v18H8zM11 18h2',
   net:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18', lock:'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', key:'M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 1 15 7zM17 9h.01',
   trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', puzzle:'M4 8h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4z', help:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01', mac:'M3 5h18v11H3zM8 20h8M12 16v4',
-  sliders:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', refresh:'M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4'
+  sliders:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4', win:'M3 5l8-1v8H3zM13 4l8-1v9h-8zM3 13h8v7l-8-1zM13 13h8v8l-8-1z', refresh:'M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4'
 };
 const KEY_CMD = 'plutil -extract EnvironmentVariables.API_KEY raw ~/Library/LaunchAgents/com.tushar.claudequeue.plist';
 // The background service file. New installs start launcher.py (it applies a waiting update, then starts main.py).
@@ -382,6 +386,29 @@ const PLIST_CMD = [
   '</dict></plist>',
   'EOF',
   'echo "Service file written."'
+].join('\n');
+// Windows (PowerShell) versions. Same layout as installer/windows/install.ps1: the Den lives in %LOCALAPPDATA%\TheDen\app,
+// its settings in den.env there, and a Scheduled Task called "The Den" keeps den_service.py running.
+const WIN_APP = '$env:LOCALAPPDATA\\TheDen\\app';
+const WIN_KEY_CMD = 'Select-String API_KEY ' + WIN_APP + '\\den.env';
+const WIN_ENV_CMD = [
+  'cd ' + WIN_APP,
+  '$b = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)',
+  '$key = -join ($b | % { $_.ToString(\'x2\') })',
+  '$claude = (Get-Command claude).Source',
+  '$bash = @("$env:ProgramFiles\\Git\\bin\\bash.exe", "$env:LOCALAPPDATA\\Programs\\Git\\bin\\bash.exe") | ? { Test-Path $_ } | Select -First 1',
+  '[IO.File]::WriteAllLines("$PWD\\den.env", @("API_KEY=$key", "HOST=127.0.0.1", "PORT=8787", "CLAUDE_BIN=$claude", "CLAUDE_CODE_GIT_BASH_PATH=$bash", "PYTHONUTF8=1"))',
+  'icacls den.env /inheritance:r /grant:r "$env:USERDOMAIN\\${env:USERNAME}:F"',
+  'echo "Settings written."'
+].join('\n');
+const WIN_TASK_CMD = [
+  '$app = "' + WIN_APP + '"',
+  '$me = "$env:USERDOMAIN\\$env:USERNAME"',
+  '$action = New-ScheduledTaskAction -Execute "$app\\.venv\\Scripts\\pythonw.exe" -Argument "`"$app\\den_service.py`"" -WorkingDirectory $app',
+  '$trigger = New-ScheduledTaskTrigger -AtLogOn -User $me',
+  '$set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -MultipleInstances IgnoreNew -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)',
+  'Register-ScheduledTask -TaskName "The Den" -Action $action -Trigger $trigger -Settings $set -Force',
+  'Start-ScheduledTask -TaskName "The Den"'
 ].join('\n');
 const TOUR_ICON = { home:I.home, projects:I.folder, queue:I.rows, crm:I.brief, mail:I.mail, recipes:I.bolt, settings:I.sliders, updates:I.refresh };
 const TOUR_TONE = { home:C.coral, projects:C.blue, queue:C.amber, crm:'#E6C07B', mail:C.teal, recipes:C.amber, settings:'#C2CDD8', updates:C.green };
@@ -502,7 +529,7 @@ class Component extends DCLogic {
           it(null, 'Modules', I.puzzle, 'Optional add-ons, like approval reminder emails. They switch on and off without restarting the Den.'),
           it('settings', 'Settings', I.sliders, 'Your choices for the whole Den: notifications, safety, budget, quick buttons and shortcuts.')]),
         grp('Help', '#C2CDD8', [
-          it('setup', 'Setup guide', I.mac, 'Every step to set up the Den on a new Mac, with commands to copy.'),
+          it('setup', 'Setup guide', I.mac, 'Every step to set up the Den on a new Mac or Windows PC, with commands to copy.'),
           it('guides', 'Guides & tours', I.help, 'A getting-started checklist and short tours of each area.'),
           it('updates', 'Updates', I.refresh, 'Which version you have, what changed, and how to update.')])
       ],
@@ -532,12 +559,88 @@ class Component extends DCLogic {
 
   // ---------------------------------------------------------------- Setup guide
   setupVals() {
-    const s = this.state; const L = this.live(); const ticks = D.prefs().setupDone || {};
+    const s = this.state; const L = this.live(); const ticks = D.prefs().setupDone || {}; const os = this.setupOs();
     const verOf = id => { const t = L.tool(id); return t && t.status !== 'missing' ? (t.version && t.version !== '?' ? ' ' + t.version : '') : ''; };
     const found = (ok, label) => ok === true ? { live:'Found on this Den ✓' + (label || ''), liveBg:'rgba(111,207,151,0.12)', liveFg:C.green, auto:true }
       : ok === false ? { live:'Not found on this Den yet', liveBg:'rgba(255,181,71,0.1)', liveFg:C.amber, auto:false } : { live:'', auto:false };
     const c = (label, text, maxH) => ({ label, text, maxH: maxH || 'none' });
-    const STEPS = [
+    const win = os === 'win', pc = win ? 'PC' : 'Mac';
+    const WIN_STEPS = [
+      { id:'win-need', title:'What you need', why:'Check you have these before you start.', notes:[
+        'A Windows 10 or 11 PC that is switched on (or wakes up) when you want work done.',
+        'A Claude subscription (Pro or Max), or a Claude API key. Optional: OpenAI or Gemini keys for extra models.',
+        'An internet connection, and the Den files from the Den’s owner.'], cmds:[] },
+      { id:'win-winget', title:'Check the app installer (winget)', why:'winget is Windows’ own free helper that installs the other tools for you. It is already part of Windows 10 and 11, so there is nothing to install.', notes:[
+        'If it says “not recognized”, install App Installer from the Microsoft Store, then try again.'],
+        cmds:[c('Check: this should print a version number', 'winget --version')] },
+      { id:'win-tools', title:'Install Python 3 and Git', why:'The Den is written in Python. Git keeps track of changes in your projects. (Node isn’t needed on Windows: Claude Code has its own installer.)', notes:[
+        'If Windows asks “Do you want to allow this app to make changes?”, press Yes.',
+        'When both are done, close PowerShell and open it again, so it can find the new tools.'],
+        cmds:[c('Install both', 'winget install -e --id Python.Python.3.12 --scope user\nwinget install -e --id Git.Git'), c('Check: each line should show a version', 'py --version; git --version')],
+        ...found(L.has('git') && L.has('python') ? true : L.tools ? false : null, L.tools ? ' · Git' + verOf('git') : '') },
+      { id:'win-claude', title:'Install Claude Code and sign in', why:'Claude Code is the AI assistant that does the work inside your projects.', notes:[
+        'The first box downloads Claude’s official installer and runs it. Then close PowerShell and open it again.',
+        'Type claude and press Enter. It opens a browser so you can sign in with your Claude account.',
+        'Or create a long-lasting sign-in code with claude setup-token. Keep it private; you will paste it into the Den later (AI accounts).'],
+        cmds:[c('Install', 'irm https://claude.ai/install.ps1 | iex'), c('Sign in', 'claude'), c('Or make a sign-in code for the Den', 'claude setup-token'), c('Check', 'claude --version')],
+        ...found(L.has('claude'), verOf('claude')) },
+      { id:'win-tailscale', title:'Install Tailscale and sign in', why:'Tailscale is a private network between your own devices. It lets your phone reach the Den safely from anywhere.', notes:[
+        'Run the install command below. If Windows asks to allow changes, press Yes.',
+        'Open Tailscale from the Start menu. Its small icon appears near the clock, bottom right. Click it, choose “Log in”, and sign in in the browser.',
+        'Tell the Den’s owner the email you signed in with. They add this PC to the shared private network.',
+        'Install the Tailscale app on your phone too, and sign in with the same account.',
+        'Check: the second command should list this PC and your phone.'],
+        cmds:[c('Install', 'winget install -e --id Tailscale.Tailscale'), c('Check your devices', 'tailscale status')], ...found(L.svc('tailscale')) },
+      { id:'win-files', title:'Get the Den files', why:'The Den’s owner gives you a release bundle: one zip file with the whole Den inside.', notes:[
+        'Right-click the zip and choose “Extract All”. Put what’s inside into this folder: C:\\Users\\<your name>\\AppData\\Local\\TheDen\\app',
+        'Tip: paste %LOCALAPPDATA% into the File Explorer address bar to jump to the AppData\\Local folder. Make the TheDen and app folders if they aren’t there.',
+        'If you get stuck, ask the owner; this is the only step that depends on how they sent it.'],
+        cmds:[c('Check: you should see files like main.py and den_service.py', 'dir ' + WIN_APP)] },
+      { id:'win-venv', title:'Create the Python environment', why:'This gives the Den its own private copy of the pieces it needs, so it never clashes with anything else on your PC.', notes:[
+        'The last line sets up the small helper that lets Octopus stop and ask you before risky commands.'],
+        cmds:[c('Run all four lines', 'cd ' + WIN_APP + '\npy -3.12 -m venv .venv\n.venv\\Scripts\\python -m pip install -r requirements.txt\n.venv\\Scripts\\python -m pip install "mcp<2"')] },
+      { id:'win-settings', title:'Write the settings file', why:'This makes your Den’s secret key, finds Claude Code and Git, and saves it all in a file called den.env. Only you can read that file.', notes:[
+        'Paste the whole box at once. It should end with “Settings written.”'],
+        cmds:[c('Write the settings', WIN_ENV_CMD, '220px')] },
+      { id:'win-service', title:'Start the Den as a background service', why:'This tells Windows to start the Den when you sign in, and to restart it if it ever stops.', notes:[
+        'The first box adds a task called “The Den” to Windows’ Task Scheduler and starts it.',
+        'Wait about a minute, then run the second box. You should see ok: True.'],
+        cmds:[c('1 · Add the task and start it', WIN_TASK_CMD, '220px'),
+          c('2 · Check it is running', 'Invoke-RestMethod http://127.0.0.1:8787/health'),
+          c('If something goes wrong, the last lines of the log say why', 'Get-Content $env:LOCALAPPDATA\\TheDen\\logs\\stdout.log -Tail 30')] },
+      { id:'win-login', title:'Open the dashboard and create your login', why:'The dashboard is this page. A username and password keep it private.', notes:[
+        'On the PC, open Edge or Chrome at the address below.',
+        'The first time, it asks for your Den’s key. The second box prints it (the part after API_KEY=). Then pick a username and password.'],
+        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard'), c('Show your Den’s key', WIN_KEY_CMD)], ...found(L.login ? true : null) },
+      { id:'win-pin', title:'Pin the Den to your taskbar (Edge)', why:'This gives the Den its own app icon on the taskbar, so it opens in one click, in its own window.', notes:[
+        'Open Edge and go to the dashboard address below. Sign in.',
+        'Click the ⋯ menu (top right), then Apps, then “Install this site as an app”. Name it “The Den” and press Install.',
+        'Right-click the new icon on the taskbar and choose “Pin to taskbar”.',
+        'In Chrome it’s the ⋮ menu, then “Cast, save and share”, then “Install page as app”.'],
+        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard')] }
+    ];
+    const SHARED = [
+      { id:'accounts', title:'Add your AI accounts', why:'Octopus needs at least one Claude account to work.', notes:[
+        'Open AI accounts and add your Claude account. Use this ' + pc + '’s own Claude sign-in, or paste the code from claude setup-token.',
+        'Add a second account if you have one: Octopus moves to the one with room when a limit is reached.'],
+        cmds:[], links:[['Open AI accounts', 'accounts']], ...found(L.accts ? true : null, L.accts ? ' · ' + L.accts + (L.accts === 1 ? ' account' : ' accounts') : '') },
+      { id:'providers', title:'Add other AI providers (optional)', why:'OpenAI or Gemini keys let quick questions, pictures and research go to those models.', notes:[
+        'Open AI providers, pick the provider, and add a key. The Den checks it once, then only shows its last four characters.'],
+        cmds:[], links:[['Open AI providers', 'providers']], ...found(L.otherModels ? true : null) },
+      { id:'google', title:'Connect Google', why:'Lets Octopus read your calendar, search and draft email, and keep backups in Drive. Sending always asks you first.', notes:[
+        'Do this in a browser on the ' + pc + ' itself: the Google sign-in comes back to the ' + pc + '.',
+        'Open Connections and press Connect on Gmail or Google Calendar. If it says it needs setting up first, follow the steps it shows, or ask the Den’s owner.'],
+        cmds:[], links:[['Open Connections', 'connections']], ...found(L.svc('google:email') || L.svc('google:calendar') ? true : null) },
+      { id:'phone', title:'Add the Den to your phone', why:'Use the Den from anywhere, with notifications that have Approve / Deny buttons.', notes:[
+        'On the ' + pc + ', run the command below once. It gives the Den a secure (https) address inside your private network. If ' + (win ? 'PowerShell' : 'Terminal') + ' says the command isn’t found, ask the Den’s owner.',
+        'On your phone (with Tailscale on), open Safari at https://<your-' + pc.toLowerCase() + '-name>.<your-network>.ts.net/dashboard. Tap Share, then “Add to Home Screen”.',
+        'Open the Den from the new icon, then go to Settings › Notifications › This device › Turn on here.'],
+        cmds:[c('Turn on the secure address', 'tailscale serve --bg 8787'), c('See the address', 'tailscale serve status')], links:[['Open Smart devices', 'devices']], ...found(L.phone ? true : null) },
+      { id:'updates', title:'Set the update address', why:'So your Den can get new versions from the Den’s owner.', notes:[
+        'The owner gives you an address and a key. Open Updates and paste them under “Update address”.'],
+        cmds:[], links:[['Open Updates', 'updates']], ...found(L.updConfigured) }
+    ];
+    const MAC_STEPS = [
       { id:'need', title:'What you need', why:'Check you have these before you start.', notes:[
         'A Mac that is switched on (or wakes up) when you want work done.',
         'Your Mac’s password. Installing tools asks for it. Nothing shows while you type it; that’s normal.',
@@ -589,27 +692,9 @@ class Component extends DCLogic {
         'In the menu bar at the top, click File, then “Add to Dock…”.',
         'Give it the name “The Den” and press Add. The icon now sits in your Dock.',
         'Click the icon any time to open the Den. To remove it later, drag the icon out of the Dock.'],
-        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard')] },
-      { id:'accounts', title:'Add your AI accounts', why:'Octopus needs at least one Claude account to work.', notes:[
-        'Open AI accounts and add your Claude account. Use this Mac’s own Claude sign-in, or paste the code from claude setup-token.',
-        'Add a second account if you have one: Octopus moves to the one with room when a limit is reached.'],
-        cmds:[], links:[['Open AI accounts', 'accounts']], ...found(L.accts ? true : null, L.accts ? ' · ' + L.accts + (L.accts === 1 ? ' account' : ' accounts') : '') },
-      { id:'providers', title:'Add other AI providers (optional)', why:'OpenAI or Gemini keys let quick questions, pictures and research go to those models.', notes:[
-        'Open AI providers, pick the provider, and add a key. The Den checks it once, then only shows its last four characters.'],
-        cmds:[], links:[['Open AI providers', 'providers']], ...found(L.otherModels ? true : null) },
-      { id:'google', title:'Connect Google', why:'Lets Octopus read your calendar, search and draft email, and keep backups in Drive. Sending always asks you first.', notes:[
-        'Do this in a browser on the Mac itself: the Google sign-in comes back to the Mac.',
-        'Open Connections and press Connect on Gmail or Google Calendar. If it says it needs setting up first, follow the steps it shows, or ask the Den’s owner.'],
-        cmds:[], links:[['Open Connections', 'connections']], ...found(L.svc('google:email') || L.svc('google:calendar') ? true : null) },
-      { id:'phone', title:'Add the Den to your phone', why:'Use the Den from anywhere, with notifications that have Approve / Deny buttons.', notes:[
-        'On the Mac, run the command below once. It gives the Den a secure (https) address inside your private network. If Terminal says “command not found”, ask the Den’s owner.',
-        'On your phone (with Tailscale on), open Safari at https://<your-mac-name>.<your-network>.ts.net/dashboard. Tap Share, then “Add to Home Screen”.',
-        'Open the Den from the new icon, then go to Settings › Notifications › This device › Turn on here.'],
-        cmds:[c('Turn on the secure address', 'tailscale serve --bg 8787'), c('See the address', 'tailscale serve status')], links:[['Open Smart devices', 'devices']], ...found(L.phone ? true : null) },
-      { id:'updates', title:'Set the update address', why:'So your Den can get new versions from the Den’s owner.', notes:[
-        'The owner gives you an address and a key. Open Updates and paste them under “Update address”.'],
-        cmds:[], links:[['Open Updates', 'updates']], ...found(L.updConfigured) }
+        cmds:[c('Dashboard address', 'http://127.0.0.1:8787/dashboard')] }
     ];
+    const STEPS = (win ? WIN_STEPS : MAC_STEPS).concat(SHARED);
     const isDone = st => !!ticks[st.id] || !!st.auto;
     const n = STEPS.filter(isDone).length;
     const steps = STEPS.map((st, i) => { const done = isDone(st); const open = s.open[st.id] != null ? !!s.open[st.id] : !done;
@@ -621,8 +706,17 @@ class Component extends DCLogic {
         links: (st.links || []).map(([label, id]) => ({ label, run:() => this.nav(id) })),
         tickLabel: st.auto ? 'Done' : ticks[st.id] ? 'Done · tap to undo' : 'Mark done', tickBg: done ? 'rgba(111,207,151,0.14)' : 'rgba(255,255,255,0.04)', tickBd: done ? 'rgba(111,207,151,0.35)' : 'rgba(255,255,255,0.1)', tickFg: done ? C.green : '#DCE4EB',
         tick:() => { if (st.auto) return this.say('Already done', 'The Den found this one for you', C.green); const next = { ...(D.prefs().setupDone || {}) }; if (next[st.id]) delete next[st.id]; else next[st.id] = new Date().toISOString(); D.setPref('setupDone', next); if (!next[st.id]) return; this.setState(x => ({ open:{ ...x.open, [st.id]:false } })); } }; });
-    return { steps, setupPct: Math.round(n / STEPS.length * 100) + '%', setupCount: n + ' of ' + STEPS.length + ' done' };
+    const osTabs = [['mac', 'Mac', I.mac], ['win', 'Windows', I.win]].map(([id, label, icon]) => ({ label, icon, pick:() => { D.setPref('setupOs', id); this.forceUpdate(); },
+      bg: os === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: os === id ? '#FFFFFF' : '#93A1B0' }));
+    return { steps, osTabs, setupPct: Math.round(n / STEPS.length * 100) + '%', setupCount: n + ' of ' + STEPS.length + ' done',
+      setupTitle: win ? 'Set up the Den on a new Windows PC' : 'Set up the Den on a new Mac',
+      shellName: win ? 'PowerShell' : 'Terminal',
+      shellIntro: win ? 'Windows’ app for typing commands. To open it, click Start, type PowerShell, and press Enter. Use your normal account, not “Run as administrator”. Paste a command with Ctrl+V (or a right-click), then press Enter.'
+        : 'the Mac’s app for typing commands. To open it, press ⌘ and Space together, type Terminal, and press Return. Paste a command with ⌘V, then press Return.',
+      winTip: win ? 'Easier way: the Windows installer does every step up to “Open the dashboard” for you. Ask the Den’s owner for TheDen-Windows.zip, extract it, and double-click Install-The-Den.bat. Use the steps below if you’d rather do it by hand.' : '' };
   }
+  /* Which tab of the setup guide to show: the last one picked, else the kind of computer this browser is on. */
+  setupOs() { const p = D.prefs().setupOs; if (p === 'win' || p === 'mac') return p; return /Windows/i.test(navigator.userAgent || '') ? 'win' : 'mac'; }
 
   // ---------------------------------------------------------------- Guides & tours
   guidesVals() {
