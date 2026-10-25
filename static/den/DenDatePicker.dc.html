@@ -48,21 +48,23 @@ const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'Au
 const pad = n => String(n).padStart(2, '0');
 const ds = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 const parse = v => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
-const TODAY = new Date(2026, 9, 6);
+const TODAY = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); })();
 class Component extends DCLogic {
   state = { open:false, view:null, yearMode:false, up:false, right:false };
   rootRef = el => { if (el === this.root) return; this.root = el; this.ro && this.ro.disconnect(); if (!el) return; const m = () => { const n = el.clientWidth < 210; if (n !== this.state.narrow) this.setState({ narrow:n }); }; this.ro = new ResizeObserver(m); this.ro.observe(el); m(); };
   popRef = el => { this.pop = el; };
   componentDidMount() { this.pd = e => { if (this.state.open && this.root && !this.root.contains(e.target)) this.close(); }; document.addEventListener('pointerdown', this.pd, true); }
-  componentWillUnmount() { this.ro && this.ro.disconnect(); document.removeEventListener('pointerdown', this.pd, true); window.removeEventListener('scroll', this.onScroll, true); }
-  lift(on) { const sec = this.root && this.root.closest('section'); if (!sec) return; if (on) { this._z = sec.style.zIndex; this._p = sec.style.position; sec.style.position = sec.style.position || 'relative'; sec.style.zIndex = '40'; } else if (this._z !== undefined) { sec.style.zIndex = this._z; this._z = undefined; } }
-  openIt() { const r = this.root.getBoundingClientRect(); const v = parse(this.props.value) || TODAY; const VH = window.innerHeight, VW = window.innerWidth; const W = 288, H = 380;
-    const below = VH - r.bottom - 8, above = r.top - 8; const up = below < H && above > below; const maxH = Math.max(200, Math.min(H, up ? above : below) - 6);
-    const top = up ? Math.max(8, r.top - 6 - maxH) : r.bottom + 6; const left = Math.max(8, Math.min(r.left, VW - W - 8));
+  componentWillUnmount() { this.ro && this.ro.disconnect(); document.removeEventListener('pointerdown', this.pd, true); window.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); this.lift(false); }
+  lift(on) { if (on) { const sec = this.root && this.root.closest('section'); if (!sec || this._sec) return; this._sec = sec; this._z = sec.style.zIndex; this._p = sec.style.position; sec.style.position = sec.style.position || 'relative'; sec.style.zIndex = '40'; } else if (this._sec) { this._sec.style.zIndex = this._z; this._sec.style.position = this._p; this._sec = null; } }
+  openIt() { const r = this.root.getBoundingClientRect(); const v = parse(this.props.value) || TODAY; const W = 288, H = 380;
     let cb = this.root.parentElement, ox = 0, oy = 0; while (cb && cb !== document.body) { const cs = getComputedStyle(cb); if ((cs.transform && cs.transform !== 'none') || (cs.backdropFilter && cs.backdropFilter !== 'none') || (cs.webkitBackdropFilter && cs.webkitBackdropFilter !== 'none') || (cs.filter && cs.filter !== 'none') || /paint|layout|strict|content/.test(cs.contain || '')) { const cr = cb.getBoundingClientRect(); ox = cr.left - cb.scrollLeft + cb.clientLeft; oy = cr.top - cb.scrollTop + cb.clientTop; break; } cb = cb.parentElement; }
-    this.setState({ open:true, view:new Date(v.getFullYear(), v.getMonth(), 1), yearMode:false, pTop:top - oy, pLeft:left - ox, maxH });
+    /* inside a blurred card the popup is no longer pinned to the window, so any scrolling box above that card cuts it off: keep it inside them too */
+    let bT = 0, bL = 0, bB = window.innerHeight, bR = window.innerWidth; for (let a = cb && cb !== document.body ? cb.parentElement : null; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') { const ar = a.getBoundingClientRect(); bT = Math.max(bT, ar.top); bL = Math.max(bL, ar.left); bB = Math.min(bB, ar.bottom); bR = Math.min(bR, ar.right); } }
+    const below = bB - r.bottom - 8, above = r.top - bT - 8; const up = below < H && above > below; const maxH = Math.max(200, Math.min(H, up ? above : below) - 6);
+    const top = up ? Math.max(bT + 8, r.top - 6 - maxH) : r.bottom + 6; const left = Math.max(bL + 8, Math.min(r.left, bR - W - 8));
+    this.lift(true); this.setState({ open:true, view:new Date(v.getFullYear(), v.getMonth(), 1), yearMode:false, pTop:top - oy, pLeft:left - ox, maxH });
     this.onScroll = e => { if (this.pop && e.target && this.pop.contains && this.pop.contains(e.target)) return; this.close(); }; window.addEventListener('scroll', this.onScroll, true); window.addEventListener('resize', this.onScroll); }
-  close() { this.setState({ open:false }); window.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); }
+  close() { this.lift(false); this.setState({ open:false }); window.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('resize', this.onScroll); }
   emit(v) { this.props.onChange && this.props.onChange({ target:{ value:v } }); }
   renderVals() {
     const s = this.state; const val = parse(this.props.value); const view = s.view || new Date((val || TODAY).getFullYear(), (val || TODAY).getMonth(), 1);

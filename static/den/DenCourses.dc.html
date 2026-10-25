@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="max-width:1400px; margin:0 auto; display:flex; flex-direction:column; gap:12px; padding:{{ pad }}; box-sizing:border-box; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <!-- header -->
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div style="flex:1 1 260px; min-width:0;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6B7A8A;">COURSE STUDIO</div>
+      <div style="font-size:15px; font-weight:700; margin-top:2px;">Course pages &amp; registration forms</div>
+    </div>
+    <sc-if value="{{ isRunning }}" hint-placeholder-val="{{ false }}">
+      <span style="font-size:12px; color:#6B7A8A;">Blank? Course Studio only opens on the Mac it runs on.</span>
+      <a href="{{ url }}" target="_blank" rel="noopener" style="height:36px; display:inline-flex; align-items:center; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; font-size:12.5px; font-weight:650; text-decoration:none;">Open in its own tab</a>
+      <button onClick="{{ stopIt }}" style="height:36px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-size:12.5px; font-weight:650;">Stop</button>
+    </sc-if>
+  </div>
+
+  <!-- starting -->
+  <sc-if value="{{ isBusy }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; padding:56px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:16px; font-weight:750;">{{ busyText }}</div>
+      <div style="font-size:13px; color:#93A1B0;">This takes a few seconds.</div>
+    </div>
+  </sc-if>
+
+  <!-- not available / error -->
+  <sc-if value="{{ isProblem }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:48px 20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,181,71,0.25);">
+      <div style="font-size:18px; font-weight:750;">{{ problemTitle }}</div>
+      <div style="font-size:13.5px; line-height:1.6; color:#93A1B0; max-width:460px;">{{ problemText }}</div>
+      <sc-if value="{{ canRetry }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ startIt }}" style="height:40px; padding:0 18px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-size:13.5px; font-weight:700;">Start Course Studio</button>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- the studio -->
+  <sc-if value="{{ isRunning }}" hint-placeholder-val="{{ false }}">
+    <iframe src="{{ url }}" title="Course Studio" style="width:100%; height:{{ frameHeight }}; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:#F4F6F5;"></iframe>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:900},&quot;isPhone&quot;:{&quot;editor&quot;:&quot;bool&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onReady&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
+// Course Studio page: shows the AFI India course maker (a small app that runs on this Mac) inside the Den.
+// The course_studio module starts/stops it; this page asks for it to be started when it opens.
+const D = window.Den;
+
+class Component extends DCLogic {
+  state = { phase:'loading', info:null, error:'' };   // loading | starting | running | stopped | error
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.check(true); }
+  componentWillUnmount() { this._dead = true; }
+
+  cmd(name) {
+    return D.api('/modules/commands/' + name, { method:'POST', body:{ arg:'' } }).then(r => (r && r.result) ? r.result : r);
+  }
+  // the studio only listens on this Mac, so it can only be shown when the Den is opened here
+  isLocal() { return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname); }
+
+  check(autoStart) {
+    this.cmd('course-studio-status').then(info => {
+      if (this._dead) return;
+      if (info.running) this.setState({ phase:'running', info });
+      else if (!info.installed) this.setState({ phase:'error', info, error:'Course Studio is not installed at ' + info.project + '.' });
+      else if (autoStart) this.startIt();
+      else this.setState({ phase:'stopped', info });
+    }, e => { if (!this._dead) this.setState({ phase:'error', error: e && e.status === 404 ? 'The course_studio module is not switched on in this Den.' : 'Could not reach The Den.' }); });
+  }
+
+  startIt = () => {
+    this.setState({ phase:'starting', error:'' });
+    this.cmd('course-studio-start').then(info => { if (!this._dead) this.setState({ phase:'running', info }); },
+      e => { if (!this._dead) this.setState({ phase:'error', error:(e && e.message) || 'Course Studio did not start. Details are in ~/Library/Logs/TheDen/course-studio.log' }); });
+  };
+  stopIt = () => {
+    this.cmd('course-studio-stop').then(info => { if (!this._dead) this.setState({ phase:'stopped', info }); }, () => {});
+  };
+
+  renderVals() {
+    const s = this.state; const isPhone = !!this.props.isPhone; const p = s.phase;
+    const problem = p === 'remote' ? ['Open this on the Mac', 'Course Studio runs on the Mac, so this page only works when you open The Den on that Mac (not from a phone or another computer).']
+      : p === 'error' ? ['Course Studio is not available', s.error]
+      : p === 'stopped' ? ['Course Studio is stopped', 'Start it to see your courses and make new ones.'] : ['', ''];
+    return {
+      pad: '0 0 24px', titleSize: '15px',
+      isBusy: p === 'loading' || p === 'starting', busyText: p === 'starting' ? 'Starting Course Studio…' : 'Checking Course Studio…',
+      isRunning: p === 'running', url: (s.info && s.info.url) || 'http://127.0.0.1:8790/',
+      isProblem: ['remote', 'error', 'stopped'].includes(p), problemTitle: problem[0], problemText: problem[1], canRetry: p === 'error' || p === 'stopped',
+      frameHeight: isPhone ? 'max(520px, calc(100vh - 300px))' : 'max(560px, calc(100vh - 360px))', startIt: this.startIt, stopIt: this.stopIt,
+    };
+  }
+}
+</script>
+</body>
+</html>

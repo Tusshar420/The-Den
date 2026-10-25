@@ -118,10 +118,13 @@ class Accounts(Base):
             den_system.set_policy("claude", auto=True, at=95)
             self.assertEqual(den_system.auto_switch_claude(), "a")              # 95% counts as reached
         activate.assert_called_once_with("a")
-        listed = [acct("mac", five=50, active=True), acct("a")]                 # percent, not a fraction
+        listed = [acct("mac", five=0.5, active=True), acct("a")]                # under the line
         with mock.patch.object(accounts, "public_list", return_value=listed), mock.patch.object(accounts, "activate") as activate:
             self.assertIsNone(den_system.auto_switch_claude())
         activate.assert_not_called()
+        listed = [acct("mac", five=1.03, active=True), acct("a")]               # past the limit is 103%, not 1%
+        with mock.patch.object(accounts, "public_list", return_value=listed), mock.patch.object(accounts, "activate") as activate:
+            self.assertEqual(den_system.auto_switch_claude(), "a")
 
     def test_auto_switch_skips_logged_out_and_limited_accounts(self):
         den_system.set_policy("claude", auto=True, at=80)

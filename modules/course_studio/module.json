@@ -1,0 +1,16 @@
+{
+  "name": "course_studio",
+  "version": "1.0.0",
+  "description": "Starts and stops Course Studio (the AFI India course-page maker) so the Courses page in the dashboard can show it.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "project_path": {"type": "string", "default": "/Users/work/Data/Other/KodeAura7/Projects/AFI-India"},
+    "port": {"type": "integer", "default": 8790}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

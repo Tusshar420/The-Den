@@ -208,7 +208,7 @@ const mb = n => (n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? Math.round
 const host = u => String(u || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 const copy = t => { try { navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
 const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
-const pctOf = w => (w && w.utilization != null ? Math.round(w.utilization <= 1 ? w.utilization * 100 : w.utilization) : 0);
+const pctOf = w => (w && w.utilization != null ? Math.min(100, Math.round(w.utilization * 100)) : 0);
 
 // A request that must not trip the shell's "API key needed" screen: the PIN routes answer 403 for a
 // wrong PIN, the sign-in check sends a key that isn't saved yet, and files come back as blobs.

@@ -1,0 +1,13 @@
+{
+  "name": "doc_export",
+  "version": "1.0.0",
+  "description": "Export a project document in another format: PDF or text to Word/text, PDF page to image, text to Word. Used by the Export button on the Documents tab.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {},
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

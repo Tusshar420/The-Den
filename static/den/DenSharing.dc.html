@@ -78,7 +78,7 @@
             <div style="font-size:13px; font-weight:650; color:#CDEBD9;">{{ linkFor }}</div>
             <div style="font-size:12.5px; color:#93A1B0;">Send this link to them. It only works for them. They can open it in a browser, or paste it in their own Den under Sharing, then "Shared with me".</div>
             <sc-for list="{{ links }}" as="l" hint-placeholder-count="2">
-              <div style="display:flex; gap:8px; align-items:center;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,0.25); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8;">{{ l.text }}</span><button onClick="{{ l.copy }}" style="height:30px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; background:#6FCF97; color:#06190F;">Copy</button></div>
+              <div style="display:flex; gap:8px; align-items:center;"><span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,0.25); font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#C2CDD8;">{{ l.text }}</span><button onClick="{{ l.copy }}" style="height:30px; padding:0 12px; border-radius:8px; border:0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700; background:{{ l.bg }}; color:#06190F; transition:background .15s;">{{ l.label }}</button></div>
             </sc-for>
           </div>
         </sc-if>
@@ -139,12 +139,17 @@
 // Den owners shared with this person (Shared with me). Everything goes through the den_collab module's two commands.
 const D = window.Den;
 const ROLES = ['viewer', 'editor', 'admin'];
+// Copy that also works over plain http (Tailscale / LAN addresses), where the clipboard API is missing.
+function copyText(t) {
+  try { if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t); return true; } } catch (e) {}
+  try { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed; left:-9999px; top:0;'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (e) { return false; }
+}
 const ROLE_HELP = { viewer: 'Viewer: can read the tasks, chats, notes, calendar and files.', editor: 'Editor: can also add tasks and chat. This Den runs the work.', admin: 'Admin: can also invite and remove people on that project.' };
 
 class Component extends DCLogic {
-  state = { tab:'mine', data:null, conns:null, off:false, name:'', project:0, role:'editor', hold:false, link:'', msg:'', msgTone:'ok', fresh:null };
+  state = { tab:'mine', data:null, conns:null, off:false, name:'', project:0, role:'editor', hold:false, link:'', msg:'', msgTone:'ok', fresh:null, copied:'' };
   componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this.refresh(); this._t = setInterval(() => this.refresh(true), 20000); }
-  componentWillUnmount() { this._dead = true; clearInterval(this._t); }
+  componentWillUnmount() { this._dead = true; clearInterval(this._t); clearTimeout(this._ct); }
 
   cmd(name, payload) { return D.api('/modules/commands/' + name, { method:'POST', body:{ arg: JSON.stringify(payload) } }).then(r => { const x = r && r.result !== undefined ? r.result : r; if (x && x.error) throw { detail: x.error }; return x; }); }
   say(text, tone) { this.setState({ msg:text, msgTone: tone || 'ok' }); clearTimeout(this._mt); this._mt = setTimeout(() => !this._dead && this.setState({ msg:'' }), 6000); }
@@ -170,7 +175,10 @@ class Component extends DCLogic {
       if (!serving) this.say('Invite created. Turn sharing on above so they can open it.', 'warn');
     }, () => {});
   };
-  copy(text) { try { navigator.clipboard.writeText(text).then(() => this.say('Copied.'), () => this.say('Select the link and copy it by hand.', 'warn')); } catch (e) { this.say('Select the link and copy it by hand.', 'warn'); } }
+  copy(text) {
+    if (!copyText(text)) return this.say('Select the link and copy it by hand.', 'warn');
+    this.setState({ copied:text }); clearTimeout(this._ct); this._ct = setTimeout(() => !this._dead && this.setState({ copied:'' }), 2000);
+  }
   addLink = () => {
     const l = this.state.link.trim();
     if (!l) return;
@@ -213,7 +221,7 @@ class Component extends DCLogic {
     }
     if (s.fresh) {
       base.hasLink = true; base.linkFor = 'Invite link for ' + s.fresh.name;
-      base.links = s.fresh.links.map(l => ({ text:l, copy:() => this.copy(l) }));
+      base.links = s.fresh.links.map(l => ({ text:l, copy:() => this.copy(l), label: s.copied === l ? 'Copied ✓' : 'Copy', bg: s.copied === l ? '#A8E6C1' : '#6FCF97' }));
     }
     const conns = s.conns || [];
     base.noConns = conns.length === 0;

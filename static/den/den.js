@@ -14,6 +14,16 @@
   const keepError = (msg, stack) => { errors.push({ at: new Date().toISOString(), text: String(stack || msg || 'Unknown error').slice(0, 4000) + '\n    ' + location.hash + ' · ' + navigator.userAgent }); if (errors.length > 20) errors.shift(); };
   window.addEventListener('error', e => keepError(e.message, e.error && e.error.stack));
   window.addEventListener('unhandledrejection', e => { const r = e.reason; keepError(r && r.message ? r.message : String(r), r && r.stack); });
+  // A page that failed to draw (support.js catches it and shows a red line): keep it here and send it once
+  // per page load to the ui_errors module, so it can be looked into from the Den, not only from this tab.
+  const sentRender = new Set();
+  window.__dcRenderError = (page, e) => {
+    const message = String((e && e.message) || e || 'Unknown error'), key = page + '|' + message;
+    if (sentRender.has(key)) return; sentRender.add(key);
+    const stack = String((e && e.stack) || '').slice(0, 6000);
+    keepError(page + ': ' + message, stack);
+    api('/modules/commands/den-ui-error', { method: 'POST', body: { arg: JSON.stringify({ page, message, stack, hash: location.hash, agent: navigator.userAgent }) } }).catch(() => {});
+  };
 
   const subs = new Set();
   let emitQueued = false;
@@ -153,8 +163,10 @@
   // The workspace switcher: lists that belong to projects only show the chosen workspace's (General is in all).
   // The result is remembered per workspace so the same array comes back until the data or the workspace changes.
   const byProject = (list, f = x => x.project_id) => (Array.isArray(list) ? list.filter(x => inArea(f(x) == null ? null : projectById(f(x)))) : list);
+  const SCOPED = new Set(['timeline', 'schedules', 'followups', 'wkfu', 'activity', 'rpMessages', 'pad', 'checklist', 'wkruns']);
   function scoped(name, data) {
-    if (!data || area() === 'all') return data;
+    /* only the lists above: area() reads 'areas' through need(), so filtering every name looped forever once a workspace was picked */
+    if (!data || !SCOPED.has(name) || area() === 'all') return data;
     const c = cache[name];
     if (c.scopedFrom === data && c.scopedArea === area() && c.scopedN === store.projects.length) return c.scopedOut;
     let out = data;
@@ -212,8 +224,10 @@
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
   }
   const clock = iso => { const d = parseT(iso); return d ? pad2(d.getHours()) + ':' + pad2(d.getMinutes()) : ''; };
+  // 14:32 today, "Yesterday 14:32", "Mon 14:32" within a week either way, else "12 Oct 14:32".
   const dayClock = iso => { const d = parseT(iso); if (!d) return ''; const today = new Date(); const same = d.toDateString() === today.toDateString();
-    return same ? clock(iso) : d.toLocaleDateString([], { weekday: 'short' }) + ' ' + clock(iso); };
+    if (same) return clock(iso); if (d.toDateString() === new Date(today.getTime() - 864e5).toDateString()) return 'Yesterday ' + clock(iso);
+    return (Math.abs(today - d) < 6 * 864e5 ? d.toLocaleDateString([], { weekday: 'short' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' })) + ' ' + clock(iso); };
   const dur = ms => { if (!ms && ms !== 0) return ''; const s = Math.round(ms / 1000); if (s < 60) return s + 's'; const m = Math.round(s / 60); if (m < 60) return m + 'm'; return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; };
   // Settings › Money: one currency symbol for the whole Den (symbol only - amounts are never converted).
   // A deal stored in another currency than USD keeps its own symbol.
@@ -282,10 +296,17 @@
   // Runs that ended by asking you something (awaiting_reply) aren't finished - they wait for your answer.
   const waitingOnYou = () => store.tasks.filter(t => t.status === 'done' && t.awaiting_reply && taskInArea(t));
   const finished = () => store.tasks.filter(t => ['done', 'error', 'needs_review'].includes(t.status) && !t.awaiting_reply && taskInArea(t)).sort((a, b) => (b.finished_at || b.created_at || '').localeCompare(a.finished_at || a.created_at || ''));
+  // The Stop button (modules/stop_reply): a chat is busy while a message in it runs or waits in line.
+  const BUSY = ['running', 'queued', 'rate_limited'];
+  const chatBusy = tasks => (tasks || []).some(t => t && BUSY.includes(t.status));
+  // Stops everything under way in the chat task t belongs to, so no more tokens are spent on it.
+  const stopChat = (t, o = {}) => act(() => api('/modules/commands/stop-reply', { method: 'POST', body: { arg: JSON.stringify({ task_id: t.id }) } }).then(r => {
+    const x = r && r.result; if (!x || x.error) throw new Error((x && x.error) || 'The stop_reply module isn’t running'); return x; }),
+  { ok: x => ['Stopped', x.stopped.length ? 'No more tokens are spent on this reply' : 'The waiting message won’t run', C.err], fail: 'Couldn’t stop it', ...o });
   const accounts = () => (store.settings && store.settings.claude_accounts) || [];
   const acctName = a => (a ? a.alias || (a.kind === 'mac' ? a.org || 'Mac login' : a.label || a.email || 'Account') : '');
   const acctWin = (a, k) => { const u = a && a.usage && a.usage.windows ? a.usage.windows[k] : null; return u || null; };
-  const pct = w => (w && w.utilization != null ? Math.round(w.utilization <= 1 ? w.utilization * 100 : w.utilization) : 0);
+  const pct = w => (w && w.utilization != null ? Math.min(100, Math.round(w.utilization * 100)) : 0);
   const usageColor = n => (n >= 95 ? C.violet : n >= 80 ? C.amber : C.teal);
   const resetLabel = (iso, weekly) => { const d = parseT(iso); if (!d) return '—'; return (weekly ? d.toLocaleDateString([], { weekday: 'short' }) + ' ' : '') + clock(iso); };
 
@@ -363,6 +384,108 @@
   // Call when you send a message: jumps to the bottom now, and again when your message lands (for up to 15s).
   const chatSent = el => { if (!el) return; el.scrollTop = el.scrollHeight; const st = el.__denChat; if (st) { st.pin = Date.now() + 15000; st.near = true; if (st.jump) { st.jump = 0; st.onJump && st.onJump(0); } } };
   const chatToEnd = el => { if (!el) return; el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); const st = el.__denChat; if (st) { st.jump = 0; st.near = true; st.onJump && st.onJump(0); } };
+
+  // ---------------------------------------------------------- edit a sent message, quote a reply
+  // Like ChatGPT: a message you sent can be edited and sent again once nothing in its chat is under
+  // way. modules/chat_edit bins it and everything after it (restorable) and drops the Claude Code
+  // session, then the edited text goes out like any reply. A chat's first message can't be binned on
+  // its own, so editing that one starts the chat again as a new chat and bins the old one.
+  // One message is edited at a time, Den-wide; its box is uncontrolled (read on send), so typing
+  // doesn't redraw the whole page.
+  const msgEdit = { id: null, el: null };
+  const EDITABLE = ['done', 'error', 'needs_review', 'cancelled'];
+  const rewindChat = id => api('/modules/commands/chat-rewind', { method: 'POST', body: { arg: JSON.stringify({ task_id: id }) } }).then(r => r.result || {});
+  async function rerunEdited(t, tasks, text, extras) {
+    const root = tasks[0] || t; const imgs = (t.images || []).length ? { images: t.images } : {};
+    if (t.id !== root.id) {
+      const rw = await rewindChat(t.id); if (rw.error) throw new Error(rw.error);
+      const task = await api('/projects/' + t.project_id + '/tasks', { method: 'POST', body: { prompt: text, thread_id: root.id, ...imgs, ...extras } });
+      return { task, newChat: false };
+    }
+    // New chat first, then bin the old one, so a failed send loses nothing.
+    const kind = root.lane === 'api' && root.model_id ? { kind: 'message', model: root.model_id } : {};
+    const task = await api('/projects/' + t.project_id + '/tasks', { method: 'POST', body: { prompt: text, ...(root.env_id ? { env_id: root.env_id } : {}), ...(root.permission_mode ? { permission_mode: root.permission_mode } : {}), ...imgs, ...kind, ...extras } });
+    if (root.important) api('/tasks/' + task.id + '/important?important=true', { method: 'POST', body: {} }).catch(() => {});
+    const rw = await rewindChat(root.id).catch(e => ({ error: e.message }));
+    if (rw.error) Den.say('Sent as a new chat', 'The old chat stayed: ' + rw.error, C.amber);
+    return { task, newChat: true };
+  }
+  // A message you sent can start with quoted passages ("> …" lines, from Quote); shown apart from what you wrote.
+  function quoteSplit(text) {
+    const m = /^((?:>[^\n]*(?:\n|$))+)\s*([\s\S]*)$/.exec(String(text || ''));
+    return m ? { quote: m[1].replace(/^> ?/gm, '').trim(), body: m[2] } : { quote: '', body: String(text || '') };
+  }
+  // The fields a "you" message needs for Edit and for showing its quote. opts: extras() = the reply
+  // box's model/mode picks, reload = cache keys to refresh, at = the panel for the toast, onNew(task)
+  // = open the new chat when the first message was edited.
+  function msgEditVals(t, tasks, opts = {}) {
+    const { quote, body } = quoteSplit(t.prompt);
+    const root = (tasks && tasks[0]) || t; const first = t.id === root.id;
+    const canEdit = !!t.id && !!t.project_id && EDITABLE.includes(t.status) && !(tasks || []).some(x => x.status === 'running' || x.status === 'rate_limited')
+      && (!first || ['agent', 'api'].includes(root.lane || 'agent'));
+    const editing = canEdit && msgEdit.id === t.id;
+    const cancel = () => { msgEdit.id = null; msgEdit.el = null; emit(); };
+    const send = () => {
+      const el = msgEdit.el; const text = (el && el.__denEditFor === t.id ? el.value : '').trim();
+      if (!text) return Den.say('Write something first', '', C.amber);
+      cancel();
+      act(() => rerunEdited(t, tasks || [t], text, opts.extras ? opts.extras() : {}), { ok: r => [r.newChat ? 'Started again as a new chat' : 'Sent again', firstLine(text, 50), C.coral],
+        reload: ['thread:' + root.id, ...(opts.reload || [])], at: opts.at }).then(r => { if (r && r.newChat && opts.onNew) opts.onNew(r.task); }).catch(() => {});
+    };
+    return { text: body, quote, hasQuote: !!quote, canEdit, editing, editBtn: canEdit && !editing, shown: !editing, boxW: editing ? '85%' : 'auto',
+      editNote: first ? 'Starts this chat again as a new chat. The old one goes to the recycle bin.' : 'This message and everything after it go to the recycle bin.',
+      startEdit: () => { msgEdit.id = t.id; msgEdit.el = null; emit(); },
+      editRef: el => { if (!el) return; msgEdit.el = el; if (el.__denEditFor !== t.id) { el.__denEditFor = t.id; el.value = t.prompt || ''; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } },
+      editKey: e => { if (e.key === 'Escape') { e.preventDefault(); cancel(); } else if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } },
+      editCancel: cancel, editSend: send };
+  }
+  // Select part of a reply (anything marked data-reply="1") and a "Quote" button appears; it puts the
+  // passage, as "> " lines, at the top of that chat's reply box (the data-composer textarea in the
+  // reply's panel), after any quotes already there.
+  function quoteInto(ta, passage) {
+    const q = passage.replace(/\n{3,}/g, '\n\n').split('\n').map(l => '> ' + l).join('\n') + '\n';
+    const m = /^((?:>[^\n]*\n)*)\s*([\s\S]*)$/.exec(ta.value || '');
+    const val = (m[1] || '') + q + '\n' + m[2];
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, val);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));               // React's onChange, and the box's auto-grow
+    ta.focus(); ta.setSelectionRange(val.length, val.length);
+  }
+  if (typeof document !== 'undefined') {
+    let btn = null, pending = null, t = null;
+    const hide = () => { pending = null; if (btn) btn.style.display = 'none'; };
+    const composerFor = el => { for (let p = el.parentElement; p; p = p.parentElement) { const ta = p.querySelector('textarea[data-composer]'); if (ta) return ta; } return null; };
+    const check = () => {
+      const sel = window.getSelection(); const text = sel && !sel.isCollapsed ? sel.toString().trim() : '';
+      const at = n => n && (n.nodeType === 1 ? n : n.parentElement);
+      const reply = text && at(sel.anchorNode) && at(sel.anchorNode).closest('[data-reply="1"]');
+      const box = reply && at(sel.focusNode) && at(sel.focusNode).closest('[data-reply="1"]') && composerFor(reply);
+      if (!box) return hide();
+      if (!btn) {
+        btn = document.createElement('button'); btn.type = 'button'; btn.title = 'Quote this in your reply';
+        btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M9 7H5v6h4v-2a4 4 0 0 1-4 4M19 7h-4v6h4v-2a4 4 0 0 1-4 4"></path></svg>Quote';
+        btn.style.cssText = 'position:fixed; z-index:9999; display:none; align-items:center; gap:6px; height:32px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,123,92,0.45); background:rgba(20,28,38,0.97); box-shadow:0 12px 30px -10px rgba(0,0,0,0.85); cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650; color:#FFA48C;';
+        btn.addEventListener('mousedown', e => e.preventDefault());       // keep the selection
+        btn.addEventListener('click', () => { const p = pending; hide(); if (p && p.box.isConnected) { quoteInto(p.box, p.text); window.getSelection().removeAllRanges(); } });
+        document.body.appendChild(btn);
+      }
+      pending = { text, box }; btn.style.fontFamily = getComputedStyle(box).fontFamily;
+      const r = sel.getRangeAt(0).getBoundingClientRect();
+      btn.style.display = 'inline-flex';
+      const w = btn.offsetWidth, top = r.bottom + 44 < innerHeight ? r.bottom + 8 : Math.max(8, r.top - 40);
+      btn.style.top = top + 'px'; btn.style.left = Math.min(innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2)) + 'px';
+    };
+    document.addEventListener('selectionchange', () => { clearTimeout(t); t = setTimeout(check, 180); });
+    // Reply boxes grow with what's in them (up to their max-height, else 200px), so a quote stays in
+    // view. Ones that size themselves (__grow, the project chat's) are left alone. The page clears a
+    // box after sending without an input event, so every box is re-fitted shortly after a click or Enter.
+    const fit = ta => { if (ta.__grow) return; const cs = getComputedStyle(ta); const pad = cs.boxSizing === 'border-box' ? 0 : parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      ta.style.height = 'auto'; ta.style.height = Math.min(parseFloat(cs.maxHeight) || 200, ta.scrollHeight) - pad + 'px'; };
+    const fitAll = () => setTimeout(() => document.querySelectorAll('textarea[data-composer]').forEach(fit), 60);
+    document.addEventListener('input', e => { if (e.target.matches && e.target.matches('textarea[data-composer]')) fit(e.target); }, true);
+    document.addEventListener('click', fitAll, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') fitAll(); }, true);
+    document.addEventListener('scroll', e => { if (pending && !(btn && btn.contains(e.target))) hide(); }, true);
+  }
 
   // What an approval wants to run, in words ("git push origin main", or an assistant's sentence).
   function commandOf(a) {
@@ -497,7 +620,7 @@
 
   const Den = {
     C, PALETTE, tint, store, api, refresh, start, need, load, invalidate, act, emit, track: usage.track,
-    commandOf, imgUrl, firstUnread, markSeen, chatScroll, chatToEnd, chatSent, lastError: () => errors[errors.length - 1] || null, prefs, setPref, keyFor, shortcut, SHORTCUT_DEFAULTS, workspaces, workspace, addWorkspace, updateWorkspace, useWorkspace, removeWorkspace, base,
+    commandOf, imgUrl, firstUnread, markSeen, chatScroll, chatToEnd, chatSent, msgEditVals, quoteSplit, lastError: () => errors[errors.length - 1] || null, prefs, setPref, keyFor, shortcut, SHORTCUT_DEFAULTS, workspaces, workspace, addWorkspace, updateWorkspace, useWorkspace, removeWorkspace, base,
     auth, key: () => { try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; } },
     setKey: k => { try { localStorage.setItem(KEY_STORAGE, k.trim()); } catch (e) {} store.needKey = false; start(); },
     on: fn => { subs.add(fn); return () => subs.delete(fn); },
@@ -509,7 +632,7 @@
     focusNote: null, openNote, openMeetingNote, meetingNotes, MEETING_KINDS,
     ago, clock, dayClock, dur, money, cur, currency, CURRENCIES, today, ymd, pad2, parseT, firstLine, plain, liveStep, isStuck, stuckFor, taskLive,
     projectById, projColor, projName, projSlug, projectFromSlug, visibleProjects, allVisibleProjects, areas, area, setArea, areaById, inArea, taskInArea, generalProject, taskTitle, taskById, modelById, modelLabel, laneLabel,
-    prioLabel, PRIO_N, pendingApprovals, roots, running, queued, finished, waitingOnYou, accounts, acctName, acctWin, pct, usageColor, resetLabel, row,
+    prioLabel, PRIO_N, pendingApprovals, roots, running, queued, finished, waitingOnYou, chatBusy, stopChat, accounts, acctName, acctWin, pct, usageColor, resetLabel, row,
   };
   window.Den = Den;
 

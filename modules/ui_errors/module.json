@@ -1,0 +1,13 @@
+{
+  "name": "ui_errors",
+  "version": "1.0.0",
+  "description": "Keeps the last dashboard errors (a page that failed to draw, with where it failed) so they can be looked into from here, not only from that browser.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {},
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

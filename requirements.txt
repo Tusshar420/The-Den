@@ -4,3 +4,7 @@ uvicorn>=0.29,<1.0
 cryptography>=42
 # Windows keeps its secret keys in the Credential Manager (den_platform.py); a Mac uses the Keychain
 keyring>=24; sys_platform == "win32"
+
+pypdf>=4
+python-docx>=1
+pdfminer.six>=20231228

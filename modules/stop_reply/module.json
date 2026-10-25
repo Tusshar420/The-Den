@@ -1,0 +1,13 @@
+{
+  "name": "stop_reply",
+  "version": "1.0.0",
+  "description": "A Stop button for any AI that is replying or working: it ends a running Claude Code task or model answer and cancels what's still waiting in that chat, so no more tokens are spent.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {},
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

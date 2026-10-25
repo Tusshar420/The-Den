@@ -85,12 +85,12 @@ def _save(**changes: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------- AI accounts
 
 def _pct(window: Optional[dict[str, Any]]) -> float:
-    """A usage window's utilization as a percentage (Claude Code reports 0-1 or 0-100)."""
+    """A usage window's utilization as a percentage. Claude Code reports a fraction that can go
+    past 1 once the limit is hit (1.03 = 103%), so it's never read as a percentage already."""
     u = (window or {}).get("utilization")
     if u is None:
         return 0.0
-    u = float(u)
-    return u * 100 if u <= 1 else u
+    return float(u) * 100
 
 
 def _used(account: dict[str, Any]) -> float:

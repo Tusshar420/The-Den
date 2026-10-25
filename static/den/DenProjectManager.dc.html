@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:14px; padding:0 0 24px; box-sizing:border-box; font-family:'Bricolage Grotesque', system-ui, sans-serif; color:#E8EEF3;">
+
+  <!-- header + steps -->
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div style="flex:1 1 260px; min-width:0;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6B7A8A;">PROJECT MANAGER</div>
+      <div style="font-size:15px; font-weight:700; margin-top:2px;">{{ headline }}</div>
+    </div>
+    <sc-if value="{{ canReset }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ reset }}" title="Clear the questions, brief and plan. Phases already made stay." style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#93A1B0; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600;">Start over</button>
+    </sc-if>
+  </div>
+  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+    <sc-for list="{{ steps }}" as="st" hint-placeholder-count="6">
+      <button onClick="{{ st.go }}" title="{{ st.tip }}" style="height:26px; padding:0 10px; display:inline-flex; align-items:center; gap:6px; border-radius:999px; font-family:inherit; font-size:12px; font-weight:650; cursor:{{ st.cur }}; background:{{ st.bg }}; color:{{ st.c }}; border:1px solid {{ st.bd }};">{{ st.label }}</button>
+    </sc-for>
+  </div>
+
+  <!-- looking back at a finished step (read only) -->
+  <sc-if value="{{ peeking }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(111,207,151,0.3);">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1 1 200px; min-width:0;">
+          <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#6FCF97;">LOOKING BACK · {{ peekLabel }}</div>
+          <div style="font-size:12.5px; color:#93A1B0; margin-top:2px;">{{ peekNote }}</div>
+        </div>
+        <button onClick="{{ unpeek }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,123,92,0.4); background:rgba(255,123,92,0.1); color:#FF7B5C; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650;">Back to {{ nowLabel }}</button>
+      </div>
+      <sc-if value="{{ peekChat }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <sc-for list="{{ chatRead }}" as="m" hint-placeholder-count="3">
+            <div style="align-self:{{ m.align }}; max-width:85%; display:flex; flex-direction:column; gap:4px; align-items:{{ m.align }};">
+              <div style="padding:10px 14px; border-radius:16px; background:{{ m.bg }}; border:1px solid {{ m.bd }}; font-size:14px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere;">{{ m.text }}</div>
+              <sc-if value="{{ m.hasSug }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px; color:#6B7A8A;">Suggested: {{ m.sug }}</div></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ peekBrief }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(6,9,13,0.5); font-family:'JetBrains Mono', monospace; font-size:13px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere;">{{ briefRead }}</div>
+      </sc-if>
+      <sc-if value="{{ peekPlan }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <sc-for list="{{ planRead }}" as="ph" hint-placeholder-count="3">
+            <div style="display:flex; flex-direction:column; gap:8px; padding:12px 14px; border-radius:16px; background:rgba(6,9,13,0.35); border:1px solid rgba(255,255,255,0.06);">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="flex:none; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(111,207,151,0.13); color:#6FCF97; font-size:12px; font-weight:700;">{{ ph.n }}</span>
+                <span style="flex:1; min-width:0; font-size:14.5px; font-weight:700;">{{ ph.name }}</span>
+              </div>
+              <sc-if value="{{ ph.hasGoal }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0; padding-left:34px;">{{ ph.goal }}</div></sc-if>
+              <sc-for list="{{ ph.tasks }}" as="t" hint-placeholder-count="3">
+                <div style="display:flex; gap:8px; align-items:flex-start; padding-left:34px;">
+                  <span style="flex:none; height:22px; padding:0 8px; display:inline-flex; align-items:center; border-radius:7px; background:rgba(69,224,200,0.08); color:#45E0C8; font-size:11.5px; font-weight:650; white-space:nowrap;">{{ t.role }}</span>
+                  <span style="flex:1; min-width:0; font-size:13px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere;">{{ t.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ peekEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; color:#6B7A8A;">Nothing was saved for this step.</div></sc-if>
+    </div>
+  </sc-if>
+
+  <!-- errors and warnings -->
+  <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 14px; border-radius:14px; background:rgba(255,84,112,0.08); border:1px solid rgba(255,84,112,0.35); font-size:13.5px; line-height:1.5; color:#FFB3C0;">{{ err }}</div>
+  </sc-if>
+  <sc-if value="{{ noFolder }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:12px 14px; border-radius:14px; background:rgba(255,181,71,0.08); border:1px solid rgba(255,181,71,0.35); font-size:13.5px; line-height:1.5; color:#FFD9A0;">This project has no folder yet, so the team has nowhere to work. You can still plan, but link a folder in the project's Settings before you approve the plan.</div>
+  </sc-if>
+
+  <!-- working -->
+  <sc-if value="{{ busyCard }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; padding:20px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,123,92,0.25);">
+      <div style="font-size:15px; font-weight:700;">{{ busy }}</div>
+      <div style="font-size:12.5px; color:#93A1B0;">The project manager is thinking. This can take up to a minute.</div>
+    </div>
+  </sc-if>
+
+  <!-- 1. interview -->
+  <sc-if value="{{ isInterview }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div ref="{{ chatRef }}" style="display:flex; flex-direction:column; gap:10px; max-height:{{ chatMax }}; overflow-y:auto; padding-right:4px;">
+      <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="3">
+        <div style="align-self:{{ m.align }}; max-width:85%; display:flex; flex-direction:column; gap:6px; align-items:{{ m.align }};">
+          <div style="padding:10px 14px; border-radius:16px; background:{{ m.bg }}; border:1px solid {{ m.bd }}; font-size:14px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere;">{{ m.text }}</div>
+          <sc-if value="{{ m.hasSug }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:#93A1B0;"><span>Suggested: {{ m.sug }}</span><sc-if value="{{ m.canUse }}" hint-placeholder-val="{{ false }}"><button onClick="{{ m.use }}" style="height:26px; padding:0 10px; border-radius:8px; border:1px solid rgba(69,224,200,0.4); background:rgba(69,224,200,0.08); color:#45E0C8; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650;">Use this</button></sc-if></div>
+          </sc-if>
+        </div>
+      </sc-for>
+      <sc-if value="{{ isBusy }}" hint-placeholder-val="{{ false }}">
+        <div style="align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,123,92,0.3); font-size:14px; line-height:1.5; color:#93A1B0; font-style:italic;">{{ busy }}</div>
+      </sc-if>
+      </div>
+        <div ref="{{ composerRef }}" style="display:flex; gap:8px; align-items:flex-end; padding:8px 10px; border-radius:14px; background:rgba(6,9,13,0.5); border:1px solid rgba(255,255,255,0.1);">
+          <textarea value="{{ text }}" onChange="{{ onText }}" onKeyDown="{{ textKey }}" rows="2" placeholder="{{ placeholder }}" style="flex:1; min-width:0; padding:6px 0; resize:vertical; border:0; outline:none; background:transparent; color:#E8EEF3; font-family:inherit; font-size:14.5px; line-height:1.5;"></textarea>
+          <button onClick="{{ send }}" style="flex:none; height:36px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:{{ sendCursor }}; opacity:{{ sendOp }}; font-family:inherit; font-size:13.5px; font-weight:700;">Send</button>
+        </div>
+        <sc-if value="{{ canEnough }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; justify-content:flex-end;"><button onClick="{{ enough }}" style="height:32px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:650;">That's enough questions - write the brief</button></div>
+        </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- 2. brief -->
+  <sc-if value="{{ isBrief }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:10px; padding:16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:13.5px; line-height:1.5; color:#93A1B0;">Here is the project brief. Change anything that's wrong, then confirm. Every AI on this project will read it.</div>
+      <textarea value="{{ briefText }}" onChange="{{ onBrief }}" rows="18" style="width:100%; box-sizing:border-box; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:13px; line-height:1.55; outline:none; resize:vertical;"></textarea>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button onClick="{{ redoBrief }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650;">Write it again</button>
+        <button onClick="{{ confirmBrief }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700;">Confirm brief and plan the work</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- 3. plan -->
+  <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <sc-if value="{{ noPlan }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:28px 16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:14px; color:#93A1B0;">The brief is saved, but there's no plan yet.</div>
+          <button onClick="{{ makePlan }}" style="height:38px; padding:0 16px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700;">Plan the work</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasPlan }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:13.5px; line-height:1.5; color:#93A1B0;">The work, split into phases. Each task goes to the specialist shown next to it. Edit, change the specialist, or remove tasks, then approve. Phases run one at a time and I'll check with you after each one.</div>
+        <sc-for list="{{ planPhases }}" as="ph" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column; gap:8px; padding:14px 16px; border-radius:18px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="flex:none; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,123,92,0.15); color:#FF7B5C; font-size:12.5px; font-weight:700;">{{ ph.n }}</span>
+              <input value="{{ ph.name }}" onChange="{{ ph.onName }}" style="flex:1; min-width:0; height:32px; padding:0 10px; border-radius:9px; border:1px solid transparent; background:transparent; color:#E8EEF3; font-family:inherit; font-size:15px; font-weight:700; outline:none;" style-hover="border-color:rgba(255,255,255,0.1);">
+            </div>
+            <sc-if value="{{ ph.hasGoal }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0; padding-left:36px;">{{ ph.goal }}</div></sc-if>
+            <sc-for list="{{ ph.tasks }}" as="t" hint-placeholder-count="3">
+              <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; padding-left:36px;">
+                <select ref="{{ fixSel }}" data-v="{{ t.role }}" value="{{ t.role }}" onChange="{{ t.onRole }}" style="flex:none; height:32px; padding:0 8px; border-radius:9px; border:1px solid rgba(69,224,200,0.35); background:#141B24; color:#45E0C8; font-family:inherit; font-size:12px; font-weight:650; cursor:pointer; color-scheme:dark;"><sc-for list="{{ t.opts }}" as="o" hint-placeholder-count="5"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select>
+                <textarea value="{{ t.text }}" onChange="{{ t.onText }}" rows="2" style="flex:1 1 260px; min-width:0; padding:6px 10px; border-radius:9px; border:1px solid rgba(255,255,255,0.08); background:rgba(6,9,13,0.4); color:#E8EEF3; font-family:inherit; font-size:13px; line-height:1.45; outline:none; resize:vertical;"></textarea>
+                <button onClick="{{ t.del }}" title="Remove this task" style="flex:none; width:32px; height:32px; border-radius:9px; border:0; background:transparent; color:#93A1B0; cursor:pointer; font-size:17px;">×</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:12px 14px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid rgba(255,255,255,0.06);">
+          <input value="{{ note }}" onInput="{{ onNote }}" placeholder="Want a different plan? Say what to change, e.g. 'no backend, keep it simple'" style="flex:1 1 260px; min-width:0; height:36px; padding:0 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13px; outline:none;">
+          <button onClick="{{ redoPlan }}" style="height:36px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650;">Re-plan</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+          <sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}"><button onClick="{{ savePlan }}" style="height:40px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650;">Save changes</button></sc-if>
+          <button onClick="{{ approve }}" style="height:40px; padding:0 18px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;">Approve plan and start phase 1</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- 5/6. review -->
+  <sc-if value="{{ hasReview }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:20px; background:rgba(20,28,38,0.45); border:1px solid rgba(69,224,200,0.3);">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.14em; color:#45E0C8;">REVIEW · {{ reviewPhase }}</div>
+      <div style="font-size:14.5px; line-height:1.6; white-space:pre-wrap;">{{ reviewText }}</div>
+      <sc-if value="{{ canNext }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; justify-content:flex-end;"><button onClick="{{ next }}" style="height:40px; padding:0 18px; border-radius:11px; border:0; background:#FF7B5C; color:#1A0A05; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;">{{ nextLabel }}</button></div>
+      </sc-if>
+      <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+        <textarea value="{{ change }}" onChange="{{ onChange }}" rows="2" placeholder="Not happy? Say what to change and the team will fix it in this phase." style="flex:1 1 260px; min-width:0; padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(6,9,13,0.5); color:#E8EEF3; font-family:inherit; font-size:13px; line-height:1.45; outline:none; resize:vertical;"></textarea>
+        <button onClick="{{ askChanges }}" style="height:38px; padding:0 14px; border-radius:11px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#C2CDD8; cursor:pointer; font-family:inherit; font-size:13px; font-weight:650;">Ask for changes</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- 4. building: the plan's phases -->
+  <sc-if value="{{ showPhases }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:13.5px; line-height:1.5; color:#93A1B0;">{{ buildNote }}</div>
+      <sc-for list="{{ phaseRows }}" as="r" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:8px; padding:12px 16px; border-radius:16px; background:rgba(20,28,38,0.45); border:1px solid {{ r.bd }};">
+          <div onClick="{{ r.toggle }}" title="{{ r.tip }}" style="display:flex; flex-direction:column; gap:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="flex:none; width:12px; color:#6B7A8A; font-size:11px; transform:rotate({{ r.rot }}); transition:transform .15s;">▶</span>
+              <span style="flex:1; min-width:0; font-size:14px; font-weight:700;">{{ r.n }}. {{ r.name }}</span>
+              <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; color:{{ r.c }};">{{ r.word }} · {{ r.count }}</span>
+            </div>
+            <div style="height:6px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden;"><div style="height:100%; width:{{ r.pct }}; background:{{ r.c }};"></div></div>
+          </div>
+          <sc-if value="{{ r.hasBlocked }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#FFB3C0;">{{ r.blocked }} - open the task below to see what happened, fix or retry it in its chat, and the phase carries on.</div></sc-if>
+          <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:8px; padding-top:2px;">
+              <sc-if value="{{ r.hasGoal }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#93A1B0;">Goal: {{ r.goal }}</div></sc-if>
+              <div style="display:flex; flex-direction:column; gap:2px; padding:4px; border-radius:13px; background:rgba(6,9,13,0.4);">
+                <sc-for list="{{ r.tasks }}" as="t" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:8px; padding:8px 10px; border-radius:10px; background:{{ t.bg }};">
+                    <div onClick="{{ t.toggle }}" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+                      <span style="flex:none; width:9px; height:9px; margin-top:6px; border-radius:50%; background:{{ t.dot }}; animation:{{ t.pulse }};"></span>
+                      <span style="flex:none; height:22px; padding:0 8px; display:inline-flex; align-items:center; border-radius:7px; background:rgba(69,224,200,0.08); color:#45E0C8; font-size:11.5px; font-weight:650; white-space:nowrap;">{{ t.role }}</span>
+                      <span style="flex:1; min-width:0; font-size:13px; line-height:1.5; color:{{ t.fg }}; overflow-wrap:anywhere;">{{ t.title }}</span>
+                      <span style="flex:none; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ t.dot }}; margin-top:3px; white-space:nowrap;">{{ t.word }}</span>
+                    </div>
+                    <sc-if value="{{ t.open }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; flex-direction:column; gap:8px; padding-left:19px;">
+                        <sc-if value="{{ t.hasMore }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px; line-height:1.55; color:#C2CDD8; white-space:pre-wrap; overflow-wrap:anywhere;">{{ t.text }}</div></sc-if>
+                        <sc-if value="{{ t.noDetail }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px; color:#6B7A8A;">{{ t.wait }}</div></sc-if>
+                        <sc-if value="{{ t.hasResult }}" hint-placeholder-val="{{ false }}">
+                          <div style="padding:10px 12px; border-radius:10px; background:rgba(111,207,151,0.06); border:1px solid rgba(111,207,151,0.2);">
+                            <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#6FCF97; margin-bottom:4px;">WHAT IT DID</div>
+                            <div style="font-size:13px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere;">{{ t.result }}</div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ t.hasError }}" hint-placeholder-val="{{ false }}">
+                          <div style="padding:10px 12px; border-radius:10px; background:rgba(255,84,112,0.06); border:1px solid rgba(255,84,112,0.25);">
+                            <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#FF8FA2; margin-bottom:4px;">WHAT WENT WRONG</div>
+                            <div style="font-size:13px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere;">{{ t.error }}</div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ t.canOpen }}" hint-placeholder-val="{{ false }}">
+                          <div><button onClick="{{ t.openChat }}" style="height:28px; padding:0 12px; border-radius:9px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#DCE4EB; cursor:pointer; font-family:inherit; font-size:12px; font-weight:650;">Open its chat</button></div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ r.noTasks }}" hint-placeholder-val="{{ false }}"><div style="padding:10px; font-size:12.5px; color:#6B7A8A;">No tasks in this phase.</div></sc-if>
+              </div>
+              <sc-if value="{{ r.hasReview }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:10px 12px; border-radius:12px; background:rgba(69,224,200,0.05); border:1px solid rgba(69,224,200,0.2);">
+                  <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; letter-spacing:.12em; color:#45E0C8; margin-bottom:4px;">MY REVIEW OF THIS PHASE</div>
+                  <div style="font-size:13px; line-height:1.55; white-space:pre-wrap;">{{ r.review }}</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100,&quot;height&quot;:900},&quot;projectId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;isPhone&quot;:{&quot;editor&quot;:&quot;bool&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onReady&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
+// Project Manager tab: an AI project manager asks what you want, writes a brief, plans phases with a
+// specialist per task, runs one phase at a time and reviews each with you. All the work is in the
+// project_manager module; this page talks to it only through its pm-* commands.
+const D = window.Den;
+const STEPS = [['interview', 'Questions'], ['brief', 'Brief'], ['plan', 'Plan'], ['building', 'Building'], ['review', 'Review'], ['finished', 'Done']];
+const OPENING = "Hi! I'm your project manager. What would you like to build? A sentence or two is enough - I'll ask about the details.";
+const STATUS = { planned:['Waiting', '#93A1B0'], active:['Working', '#FF7B5C'], paused:['Paused', '#FFB547'], done:['Done', '#6FCF97'] };
+const TASK = { pending:['Not started', '#6B7A8A'], queued:['Queued', '#93A1B0'], running:['Working', '#FF7B5C'], rate_limited:['Waiting for limits', '#FFB547'],
+  done:['Done', '#6FCF97'], error:['Failed', '#FF5470'], needs_review:['Needs you', '#FFB547'] };
+const PEEK_NOTE = { interview:'The questions I asked and your answers.', brief:'The brief you confirmed. Every AI on this project reads it.', plan:'The plan you approved, with the specialist for each task.' };
+const copy = x => JSON.parse(JSON.stringify(x));
+
+class Component extends DCLogic {
+  state = { data:null, busy:'', err:'', text:'', pending:'', brief:null, plan:null, dirty:false, note:'', change:'', peek:null, phOpen:{}, tOpen:{} };
+  componentDidMount() { D.use(this); this.props.onReady && this.props.onReady(); this._pid = this.props.projectId; this.load(); this._t = setInterval(() => this.poll(), 15000); }
+  componentWillUnmount() { this._dead = true; clearInterval(this._t); }
+  // Another project picked: start fresh for it. (No prevState here - the last id is kept on this.)
+  componentDidUpdate() {
+    if (this.props.projectId !== this._pid) {
+      this._pid = this.props.projectId;
+      this.setState({ data:null, brief:null, plan:null, dirty:false, text:'', note:'', change:'', err:'', pending:'', peek:null, phOpen:{}, tOpen:{} });
+      this.load();
+      return;
+    }
+    this.followChat();
+  }
+  // Something new in the chat (your message, the thinking bubble, a reply): show the newest line and the reply box.
+  chatRef = el => { this._chatEl = el; };
+  composerRef = el => { this._composerEl = el; };
+  followChat() {
+    const s = this.state; const key = ((s.data && s.data.chat) || []).length + '|' + s.pending + '|' + s.busy;
+    if (key === this._chatKey || !this._chatEl) return;
+    this._chatKey = key;
+    requestAnimationFrame(() => {
+      const el = this._chatEl; if (!el) return;
+      el.scrollTop = el.scrollHeight;
+      if (this._composerEl) this._composerEl.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    });
+  }
+  errText(e) { return e && e.status === 404 ? 'The project_manager module is not switched on in this Den.' : ((e && e.message) || 'Something went wrong'); }
+  fixSel = el => { if (el) requestAnimationFrame(() => { const v = el.getAttribute('data-v'); if (v != null && el.value !== v) el.value = v; }); };
+
+  cmd(name, extra) {
+    const arg = JSON.stringify({ project_id:Number(this._pid), ...(extra || {}) });
+    return D.api('/modules/commands/' + name, { method:'POST', body:{ arg } }).then(r => {
+      const res = r && r.result;
+      if (!res) throw new Error('No answer from the project manager');
+      if (res.error && !res.stage) throw new Error(res.error);
+      return res;
+    });
+  }
+  take(res) { if (!this._dead) this.setState({ data:res, brief:null, plan:null, dirty:false, err:res.error || '' }); }
+  run(name, extra, busy) {
+    if (this._running) return Promise.reject(new Error('busy'));
+    this._running = true;
+    this.setState({ busy:busy || '', err:'' });
+    return this.cmd(name, extra).then(res => { this._running = false; this.take(res); if (!this._dead) this.setState({ busy:'' }); return res; }, e => {
+      this._running = false;
+      if (!this._dead) this.setState({ busy:'', err:this.errText(e) });
+      throw e;
+    });
+  }
+  load() { this.run('pm-status').catch(() => {}); }
+  // While the team works, look again now and then so progress and the review show up by themselves.
+  poll() {
+    const d = this.state.data;
+    if (this.state.busy || !d || !['building', 'review'].includes(d.stage) || document.visibilityState !== 'visible') return;
+    this.cmd('pm-status').then(res => { if (!this.state.busy) this.setState({ data:res }); }, () => {});
+  }
+
+  // Your answer shows in the chat at once, with a thinking bubble under it, until the reply comes.
+  say(text) {
+    if (!text || this._running) return;
+    this._running = true;
+    this.setState({ text:'', pending:text, busy:'Thinking…', err:'' });
+    this.cmd('pm-chat', { text }).then(res => {
+      this._running = false;
+      if (!this._dead) this.setState({ data:res, pending:'', busy:'', err:res.error || '' });
+    }, e => { this._running = false; if (!this._dead) this.setState({ pending:'', busy:'', text:text, err:this.errText(e) }); });
+  }
+  send = () => this.say(this.state.text.trim());
+  textKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); } };
+  enough = () => this.run('pm-brief', {}, 'Writing the project brief…').catch(() => {});
+  redoBrief = () => this.run('pm-brief', {}, 'Writing the brief again…').catch(() => {});
+  confirmBrief = () => {
+    const d = this.state.data; const brief = this.state.brief != null ? this.state.brief : d.brief;
+    this.run('pm-confirm-brief', { brief }, 'Saving the brief and planning the work…').catch(() => {});
+  };
+  makePlan = () => this.run('pm-plan', {}, 'Planning the work…').catch(() => {});
+  redoPlan = () => this.run('pm-plan', { note:this.state.note.trim() }, 'Re-planning…').then(() => this.setState({ note:'' }), () => {});
+
+  plan() { return this.state.plan || (this.state.data && this.state.data.plan); }
+  edit(fn) { const p = copy(this.plan()); fn(p); p.phases = p.phases.filter(ph => ph.tasks.length); this.setState({ plan:p, dirty:true }); }
+  savePlan = () => this.run('pm-save-plan', { plan:this.plan() }, 'Saving the plan…').catch(() => {});
+  approve = () => {
+    if (!confirm('Approve the plan? The phases are added to this project and phase 1 starts now. This project is switched to "manual" autopilot, so each next phase only starts when you say so.')) return;
+    const go = () => this.run('pm-approve', {}, 'Setting up the phases and starting phase 1…');
+    (this.state.dirty ? this.run('pm-save-plan', { plan:this.plan() }, 'Saving the plan…').then(go) : go()).catch(() => {});
+  };
+  next = () => this.run('pm-next', {}, 'Starting the next phase…').catch(() => {});
+  askChanges = () => {
+    const note = this.state.change.trim();
+    if (!note) { this.setState({ err:'Say what should change first.' }); return; }
+    this.run('pm-changes', { note }, 'Sending your changes to the team…').then(() => this.setState({ change:'' }), () => {});
+  };
+  reset = () => {
+    if (!confirm('Start over with the project manager? The questions, brief and plan here are cleared. Phases and tasks already made, and the saved brief in Guidelines, stay.')) return;
+    this.run('pm-reset', {}, 'Starting over…').catch(() => {});
+  };
+
+  renderVals() {
+    const s = this.state; const d = s.data; const stage = d ? d.stage : 'loading';
+    const at = STEPS.findIndex(x => x[0] === stage);
+    const idle = !s.busy;
+    /* A finished step (Questions, Brief, Plan) can be opened to read again; the current one brings you back. */
+    const peekAt = STEPS.findIndex(x => x[0] === s.peek);
+    const peek = peekAt >= 0 && peekAt < at && peekAt <= 2 ? s.peek : null;
+    const steps = STEPS.map(([id, label], i) => {
+      const now = i === at, past = i < at, canPeek = past && i <= 2, viewing = peek ? id === peek : now;
+      return { label:(i + 1) + '. ' + label, cur:canPeek || (now && peek) ? 'pointer' : 'default',
+        tip:canPeek ? 'Look back at the ' + label.toLowerCase() : now && peek ? 'Back to where the project is now' : '',
+        go:() => { if (canPeek) this.setState({ peek:id }); else if (now) this.setState({ peek:null }); },
+        bg:viewing ? (now ? 'rgba(255,123,92,0.15)' : 'rgba(111,207,151,0.13)') : 'transparent',
+        c:now ? '#FF7B5C' : past ? '#6FCF97' : '#6B7A8A', bd:viewing ? (now ? 'rgba(255,123,92,0.4)' : 'rgba(111,207,151,0.45)') : 'rgba(255,255,255,0.08)' };
+    });
+    const live = !peek;
+    const chat = (d && d.chat) || [];
+    const lastPm = chat.length && chat[chat.length - 1].role === 'assistant' ? chat.length - 1 : -1;
+    const msgs = [{ role:'assistant', text:OPENING }].concat(chat, s.pending ? [{ role:'user', text:s.pending }] : []).map((m, i) => {
+      const pm = m.role === 'assistant';
+      return { text:m.text, align:pm ? 'flex-start' : 'flex-end', bg:pm ? 'rgba(255,255,255,0.04)' : 'rgba(255,123,92,0.14)', bd:pm ? 'rgba(255,255,255,0.08)' : 'rgba(255,123,92,0.25)',
+        hasSug:!!(pm && m.suggestion), sug:m.suggestion || '', canUse:idle && i - 1 === lastPm, use:() => this.say(m.suggestion) };
+    });
+    const roleOpts = ((d && d.roles) || []).map(r => ({ v:r.id, l:r.label }));
+    const plan = this.plan();
+    const planPhases = plan ? plan.phases.map((ph, pi) => ({
+      n:pi + 1, name:ph.name, goal:ph.goal || '', hasGoal:!!ph.goal,
+      onName:e => { const v = e.target.value; this.edit(p => { p.phases[pi].name = v; }); },
+      tasks:ph.tasks.map((t, ti) => ({ text:t.text, role:t.role, opts:roleOpts,
+        onText:e => { const v = e.target.value; this.edit(p => { p.phases[pi].tasks[ti].text = v; }); },
+        onRole:e => { const v = e.target.value; this.edit(p => { p.phases[pi].tasks[ti].role = v; }); },
+        del:() => this.edit(p => { p.phases[pi].tasks.splice(ti, 1); }) })),
+    })) : [];
+    const views = (d && d.phases) || [];
+    const ci = views.findIndex(v => d && v.id === d.current);
+    const nextPhase = views.slice(ci + 1).find(v => v.status !== 'done');
+    const phaseRows = views.map((v, i) => {
+      const [word, c] = STATUS[v.status] || ['', '#93A1B0'];
+      const open = s.phOpen[v.id] ?? (i === ci && stage === 'building');
+      const tasks = (v.tasks || []).filter(t => t.state !== 'cancelled').map(t => {
+        const [tw, tc] = TASK[t.state] || [t.state, '#93A1B0']; const tOpen = !!s.tOpen[t.id];
+        const title = D.firstLine(t.text, 160);
+        return { role:t.role || 'Task', title, text:t.text, hasMore:t.text.trim() !== title, word:tw, dot:tc, fg:t.state === 'done' ? '#93A1B0' : '#E8EEF3',
+          pulse:t.state === 'running' ? 'denPulse 1.4s ease-in-out infinite' : 'none', bg:tOpen ? 'rgba(255,255,255,0.03)' : 'transparent',
+          open:tOpen, toggle:() => this.setState(st => ({ tOpen:{ ...st.tOpen, [t.id]:!tOpen } })),
+          hasResult:!!t.result, result:D.plain(t.result), hasError:!!t.error && t.state !== 'done', error:t.error || '',
+          noDetail:!t.result && !(t.error && t.state !== 'done'), wait:t.state === 'pending' ? 'This task hasn\'t started yet. It runs after the ones above it.' : t.state === 'running' ? 'Working on it now. What it did shows here when it finishes.' : 'No report yet.',
+          canOpen:!!t.task_id, openChat:() => D.go('projects', { route:[String(this._pid), 'chats', String(t.task_id)] }) };
+      });
+      return { n:i + 1, name:v.name, word, c:v.blocked_note ? '#FF5470' : c, count:(v.counts.done || 0) + '/' + v.total + ' tasks',
+        pct:(v.progress || 0) + '%', bd:i === ci ? 'rgba(255,123,92,0.35)' : 'rgba(255,255,255,0.06)', hasBlocked:!!v.blocked_note, blocked:v.blocked_note || '',
+        open, rot:open ? '90deg' : '0deg', tip:open ? 'Hide the tasks' : 'Show the tasks', toggle:() => this.setState(st => ({ phOpen:{ ...st.phOpen, [v.id]:!open } })),
+        hasGoal:!!v.goal, goal:v.goal || '', tasks, noTasks:!tasks.length, hasReview:!!(v.review && v.review.text), review:v.review ? v.review.text : '' };
+    });
+    const roleName = id => (((d && d.roles) || []).find(r => r.id === id) || {}).label || id;
+    const saved = d && d.plan;
+    const planRead = peek === 'plan' && saved ? saved.phases.map((ph, pi) => ({ n:pi + 1, name:ph.name, goal:ph.goal || '', hasGoal:!!ph.goal,
+      tasks:ph.tasks.map(t => ({ role:roleName(t.role), text:t.text })) })) : [];
+    const chatRead = peek === 'interview' ? [{ role:'assistant', text:OPENING }].concat(chat).map(m => { const pm = m.role === 'assistant';
+      return { text:m.text, align:pm ? 'flex-start' : 'flex-end', bg:pm ? 'rgba(255,255,255,0.04)' : 'rgba(255,123,92,0.14)', bd:pm ? 'rgba(255,255,255,0.08)' : 'rgba(255,123,92,0.25)',
+        hasSug:!!(pm && m.suggestion), sug:m.suggestion || '' }; }) : [];
+    const peekEmpty = (peek === 'interview' && !chat.length) || (peek === 'brief' && !(d && d.brief)) || (peek === 'plan' && !planRead.length);
+    const cur = ci >= 0 ? views[ci] : null;
+    const headline = !d ? 'Loading…' : { interview:'Tell me about your project', brief:'Check the project brief', plan:'Check the plan', building:'The team is working',
+      review:'Phase done - your turn', finished:'All phases are done' }[stage] || '';
+    return {
+      headline, steps, err:s.err,
+      peeking:!!peek, peekLabel:peek ? STEPS[peekAt][1].toUpperCase() : '', peekNote:peek ? PEEK_NOTE[peek] + ' Read only.' : '', nowLabel:at >= 0 ? STEPS[at][1].toLowerCase() : '',
+      unpeek:() => this.setState({ peek:null }), peekChat:peek === 'interview' && !!chat.length, chatRead, peekBrief:peek === 'brief' && !!(d && d.brief), briefRead:(d && d.brief) || '',
+      peekPlan:peek === 'plan' && !!planRead.length, planRead, peekEmpty, hasErr:!!s.err, busy:s.busy, isBusy:!!s.busy, isIdle:idle, busyCard:!!s.busy && stage !== 'interview',
+      chatRef:this.chatRef, composerRef:this.composerRef, chatMax:this.props.isPhone ? 'calc(100vh - 360px)' : 'max(320px, calc(100vh - 430px))',
+      sendOp:idle ? '1' : '0.5', sendCursor:idle ? 'pointer' : 'default',
+      canReset:!!(d && idle && (chat.length || stage !== 'interview')),
+      noFolder:!!(d && d.project && !d.project.has_folder && ['interview', 'brief', 'plan'].includes(stage)),
+      isInterview:live && stage === 'interview', msgs, text:s.text, onText:e => this.setState({ text:e.target.value }), textKey:this.textKey, send:this.send,
+      placeholder:chat.length ? 'Your answer…  (Enter to send, Shift+Enter for a new line)' : 'e.g. A website for my bakery where people can see the menu and order cakes',
+      canEnough:idle && chat.some(m => m.role === 'user'), enough:this.enough,
+      isBrief:live && stage === 'brief', briefText:s.brief != null ? s.brief : ((d && d.brief) || ''), onBrief:e => this.setState({ brief:e.target.value }),
+      redoBrief:this.redoBrief, confirmBrief:this.confirmBrief,
+      isPlan:live && stage === 'plan', noPlan:!plan, hasPlan:!!plan, makePlan:this.makePlan, planPhases, fixSel:this.fixSel, dirty:s.dirty, savePlan:this.savePlan, approve:this.approve,
+      note:s.note, onNote:e => this.setState({ note:e.target.value }), redoPlan:this.redoPlan,
+      hasReview:live && !!(d && d.review) && ['review', 'finished'].includes(stage), reviewPhase:d && d.review ? d.review.phase : '', reviewText:d && d.review ? d.review.text : '',
+      canNext:stage === 'review' && !!nextPhase, nextLabel:nextPhase ? 'Looks good - start ' + nextPhase.name : '', next:this.next,
+      change:s.change, onChange:e => this.setState({ change:e.target.value }), askChanges:this.askChanges,
+      showPhases:live && ['building', 'review', 'finished'].includes(stage) && views.length > 0, phaseRows,
+      buildNote:stage === 'building' && cur ? 'Working on "' + cur.name + '". Tasks run one at a time. Tap a phase to see its tasks, and a task to see what it did. I\'ll write a review when this phase is done.'
+        : stage === 'finished' ? 'Every phase in the plan is done. Ask for changes above if something still needs work. Tap a phase to see its tasks.' : 'The plan (tap a phase to see its tasks):',
+      reset:this.reset,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "den_license",
+  "version": "1.0.0",
+  "description": "Licensing: the owner issues per-person licences (tools allowed, machine-locked, revocable); a given-away Den checks in and locks itself if its licence is missing, revoked, moved to another machine, or offline too long.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "serve": {"type": "boolean", "default": true},
+    "serve_host": {"type": "string", "default": "0.0.0.0"},
+    "serve_port": {"type": "integer", "default": 8791},
+    "check_hours": {"type": "number", "default": 6}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

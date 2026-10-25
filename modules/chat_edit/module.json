@@ -1,0 +1,13 @@
+{
+  "name": "chat_edit",
+  "version": "1.0.0",
+  "description": "Edit a message you already sent in a chat and run it again, like ChatGPT. That message and everything after it go to the recycle bin, and Claude Code starts fresh from the chat so far.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {},
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}

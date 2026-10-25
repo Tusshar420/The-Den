@@ -89,6 +89,14 @@
           <sc-if value="{{ isRange }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px; color:#93A1B0;">to</span><div style="flex:1 1 170px; min-width:0;"><dc-import name="DenDatePicker" value="{{ cTo }}" on-change="{{ setTo }}" hint-size="100%,36px"></dc-import></div></sc-if>
           <span style="font-size:12px; color:{{ cHintC }};">{{ cHint }}</span>
         </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-left:72px;">
+          <span style="font-size:12px; color:#93A1B0;">Time</span>
+          <input type="time" aria-label="From time" value="{{ tFrom }}" onChange="{{ setTFrom }}" style="height:36px; padding:0 8px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; color-scheme:dark;">
+          <span style="font-size:12px; color:#93A1B0;">to</span>
+          <input type="time" aria-label="To time" value="{{ tTo }}" onChange="{{ setTTo }}" style="height:36px; padding:0 8px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); color:#E8EEF3; font-family:'JetBrains Mono', monospace; font-size:12px; color-scheme:dark;">
+          <sc-if value="{{ hasTimes }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clearTimes }}" style="height:26px; padding:0 10px; border-radius:7px; border:0; cursor:pointer; font-size:12px; font-weight:600; background:rgba(255,255,255,0.06); color:#93A1B0;">All day</button></sc-if>
+          <span style="font-size:12px; color:#6B7A8A;">Leave empty for the whole day</span>
+        </div>
       </sc-if>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">MODEL</span><sc-for list="{{ fModel }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for></div>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="flex:none; width:64px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.12em; color:#6B7A8A;">PROJECT</span><sc-for list="{{ fProj }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.pick }}" style="flex:none; height:30px; display:flex; align-items:center; gap:6px; padding:0 11px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:600; background:{{ c.bg }}; color:{{ c.fg }}; border:1px solid {{ c.bd }};"><sc-if value="{{ c.dot }}" hint-placeholder-val="{{ false }}"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.dot }};"></span></sc-if>{{ c.label }}</button></sc-for></div>
@@ -174,7 +182,11 @@ class Component extends DCLogic {
     const now = new Date(); now.setHours(23, 59, 59, 0); const pd = x => { const [y, m, d] = (x || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : null; };
     const cFrom = L.from || D.ymd(new Date(Date.now() - 5 * 864e5)), cTo = L.to || D.today();
     let since, until = now, badRange = false;
-    if (L.when === 'custom') { let a = pd(cFrom) || new Date(Date.now() - 5 * 864e5), b = L.cmode === 'range' ? (pd(cTo) || now) : a; if (b < a) { badRange = true; [a, b] = [b, a]; } since = a; until = new Date(b.getFullYear(), b.getMonth(), b.getDate(), 23, 59, 59); }
+    const tm = v => { const m = /^(\d\d):(\d\d)$/.exec(v || ''); return m ? [+m[1], +m[2]] : null; };
+    const tFrom = L.tfrom || '', tTo = L.tto || '';
+    if (L.when === 'custom') { let a = pd(cFrom) || new Date(Date.now() - 5 * 864e5), b = L.cmode === 'range' ? (pd(cTo) || now) : a; const t1 = tm(tFrom), t2 = tm(tTo);
+      a = new Date(a.getFullYear(), a.getMonth(), a.getDate(), t1 ? t1[0] : 0, t1 ? t1[1] : 0, 0); b = new Date(b.getFullYear(), b.getMonth(), b.getDate(), t2 ? t2[0] : 23, t2 ? t2[1] : 59, t2 ? 59 : 59);
+      if (b < a) { badRange = true; if (!t1 && !t2) { const x = a; a = new Date(b.getFullYear(), b.getMonth(), b.getDate()); b = new Date(x.getFullYear(), x.getMonth(), x.getDate(), 23, 59, 59); } else { [a, b] = [b, a]; } } since = a; until = b; }
     else since = { today:new Date(new Date().toDateString()), '7d':new Date(now - 7 * 864e5), '30d':new Date(now - 30 * 864e5) }[L.when];
     const runs = this._runs.filter(r => r.t >= since && r.t <= until && (!L.models.length || L.models.includes(r.model)) && (!L.projs.length || L.projs.includes(r.project)) && (!L.accts.length || L.accts.includes(r.acct)));
     const tog = (k, v) => setL({ [k]: L[k].includes(v) ? L[k].filter(x => x !== v) : [...L[k], v], more:0 });
@@ -201,8 +213,9 @@ class Component extends DCLogic {
       isCustom: L.when === 'custom', isRange: L.cmode === 'range', cFrom, cTo,
       cModes:[['day', 'On a day'], ['range', 'Between']].map(([id, label]) => ({ label, pick:() => setL({ cmode:id, more:0 }), bg: (L.cmode || 'day') === id ? 'rgba(255,255,255,0.1)' : 'transparent', fg: (L.cmode || 'day') === id ? '#FFFFFF' : '#93A1B0' })),
       setFrom:e => setL({ from:e.target.value, more:0 }), setTo:e => setL({ to:e.target.value, more:0 }),
-      cHint: badRange ? 'Dates swapped — end was before start' : L.when === 'custom' ? (Math.round((until - since) / 864e5) || 1) + (L.cmode === 'range' ? ' days' : ' day') + ' · history goes back ' + ((this.data(s) || {}).days || 30) + ' days' : '', cHintC: badRange ? '#FFCB7A' : '#6B7A8A',
-      filtered: L.models.length + L.projs.length + L.accts.length > 0 || L.when !== '7d', resetF:() => setL({ when:'7d', models:[], projs:[], accts:[], more:0 }),
+      tFrom, tTo, setTFrom:e => setL({ tfrom:e.target.value, more:0 }), setTTo:e => setL({ tto:e.target.value, more:0 }), hasTimes: !!(tFrom || tTo), clearTimes:() => setL({ tfrom:'', tto:'', more:0 }),
+      cHint: badRange ? (tFrom || tTo ? 'Times swapped — end was before start' : 'Dates swapped — end was before start') : L.when === 'custom' ? (Math.round((until - since) / 864e5) || 1) + (L.cmode === 'range' ? ' days' : ' day') + ' · history goes back ' + ((this.data(s) || {}).days || 30) + ' days' : '', cHintC: badRange ? '#FFCB7A' : '#6B7A8A',
+      filtered: L.models.length + L.projs.length + L.accts.length > 0 || L.when !== '7d', resetF:() => setL({ when:'7d', tfrom:'', tto:'', models:[], projs:[], accts:[], more:0 }),
       logKpis:[{ label:'RUNS', v:String(runs.length), c:'#E8EEF3' }, { label:'API COST', v:money(sum(runs, 'cost')), c:'#E8EEF3' }, { label:'TOKENS', v:fmtTok(sum(runs, 'tok')), c:C.teal }, { label:'AGENT TIME', v:fmtDur(agentMin), c:C.coral }],
       mxCols: '180px repeat(' + mods.length + ', minmax(120px, 1fr)) 110px', mxMin: (180 + mods.length * 120 + 110) + 'px',
       mxHead: mods.map(([label, c]) => ({ label, c })),

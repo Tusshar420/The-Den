@@ -1086,6 +1086,10 @@
         } catch (e) {
           console.error(e);
           renderErr = this.__name + ".renderVals(): " + (e instanceof Error && e.message ? e.message : String(e));
+          try {
+            window.__dcRenderError && window.__dcRenderError(this.__name, e);
+          } catch (x) {
+          }
         }
         this.__streamingNow = !!(r.htmlStreaming || r.jsStreaming);
         this.__htmlStreamingNow = !!r.htmlStreaming;

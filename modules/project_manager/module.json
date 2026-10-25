@@ -1,0 +1,16 @@
+{
+  "name": "project_manager",
+  "version": "1.0.0",
+  "description": "An AI project manager for a project: asks what you want, writes a brief, splits the work into phases, gives each task to a specialist AI and reviews each phase with you before the next.",
+  "enabled": true,
+  "entry": "module.py",
+  "requires": {},
+  "optional": {},
+  "config": {
+    "model": {"type": "string", "default": "claude-code-sonnet"},
+    "max_questions": {"type": "integer", "default": 8}
+  },
+  "secrets": [],
+  "capabilities": [],
+  "hot_reload": true
+}
